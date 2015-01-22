@@ -1,0 +1,841 @@
+#!/usr/bin/env python
+#a Documentation
+r"""
+A mesh class built from contours
+
+A mesh is a set of 2D points that are connected by lines, and which is filled with non-overlapping triangles
+
+A contour is an ordered set of lines between points in the mesh. A contour may be open or closed
+
+A contoured mesh is a mesh and contours, where all the lines in every one of the contours is a line in the mesh, and where the lines are part of the triangles forming the mesh
+    
+"""
+__docformat__ = "restructuredtext"
+
+#a Imports
+import gjslib.math.bezier as bezier
+
+#a Variable
+verbose = True
+verbose = False
+
+#a Mesh classes
+#c c_mesh_point
+class c_mesh_point( object ):
+    """
+    A point within a (contoured) mesh
+
+    A mesh point is a 2d-point (using an instance of a point class) that will be part of the mesh, and it will be part of lines and triangles in the mesh
+
+    A mesh point will be in any number of line segments and triangles, but in a complete mesh every point should be part of at least two lines and one triangle
+
+    The instance of the 'point class' which the mesh point uses must provide:
+    * a 'coords' property that is either a tuple or list of two coordinates.
+    """
+    #f __init__
+    def __init__( self, pt ):
+        """
+        Create a new mesh point from an instance of a 2d 'point class'.
+
+        pt - an instance of a 2D point class, which must have a :attr:`coords` property
+        """
+        self.pt = pt
+        self.triangles = []
+        self.line_segments = []
+        self.entry_number = -1
+        pass
+    #f check_consistent
+    def check_consistent( self ):
+        """
+        Check the mesh point is consistent.
+
+        Checks that every line segment that the mesh point believes it is part of has the mesh point as one of its two end-points.
+        Checks that every triangle that the mesh point believes it is part of has the mesh point as one of its three points.
+        Checks that there are no duplicate entries in the triangles and line segment lists
+        """
+        for l in self.line_segments:
+            if self not in l[0].get_points():
+                raise Exception("Failed to find point %s in line %s"%(str(self),str(l)))
+            if self.line_segments.count(l)>1:
+                raise Exception("Duplicate line in point %s: line %s"%(str(self),str(l)))
+            pass
+        for t in self.triangles:
+            if t is not None:
+                if self not in t.get_points():
+                    raise Exception("Failed to find point %s in triangle %s"%(str(self),str(t)))
+                pass
+            if self.triangles.count(t)>1:
+                raise Exception("Duplicate triangle in point %s: triangle %s"%(str(self),str(t)))
+            pass
+        pass
+    #f coords
+    def coords( self ):
+        """Return the 2D coordinates of the mesh point using the 'point class' instance that it was created with."""
+        return self.pt.coords
+    #f add_to_line
+    def add_to_line( self, line, other, line_pt_num ):
+        """Add the mesh point to a line segment by updating the mesh point data *only*."""
+        self.line_segments.append( (line, other, line_pt_num) )
+        return
+    #f remove_from_line
+    def remove_from_line( self, line ):
+        """Remove the mesh point from a line segment by updating the mesh point data *only*."""
+        for i in range(len(self.line_segments)):
+            if self.line_segments[i][0]==line:
+                self.line_segments.pop(i)
+                return
+            pass
+        raise Exception("Failed to find %s in attempting to remove %s from that line"%(line,self))
+    #f is_on_line
+    def is_on_line( self, line ):
+        """Return True if the mesh point is one of the end-points of the line, else return False."""
+        for (l,pt,x) in self.line_segments:
+            if l == line: return True
+            pass
+        return False
+    #f find_line_segment_to
+    def find_line_segment_to( self, other, mesh_only=False ):
+        """
+        Find the line segment which goes from this mesh point to the :data:`other` mesh point.
+
+        other - the other mesh point in the line segment to find
+        mesh_only - True if only points that are in the mesh (i.e. those that are part of triangles) should be searched
+        """
+        for (l,pt,x) in self.line_segments:
+            if mesh_only and (l.triangles[0] is None): continue
+            if pt==other: return l
+            pass
+        return None
+    #f used_in_lines
+    def used_in_lines( self ):
+        """Return True if the mesh point is used in any lines."""
+        return len(self.line_segments)>0
+    #f add_to_triangle
+    def add_to_triangle( self, triangle ):
+        """Add the mesh point to a triangle by updating the mesh point data *only*."""
+        self.triangles.append(triangle)
+        pass
+    #f remove_from_triangle
+    def remove_from_triangle( self, triangle ):
+        """Remove the mesh point from a triangle by updating the mesh point data *only*."""
+        self.triangles.remove(triangle)
+        pass
+    #f compare_with
+    def compare_with( self, other ):
+        """
+        Compare a mesh point with another mesh point in terms of coordinates.
+
+        Compare the first coordinate - return -1 if this mesh point is less than the other, 1 if greater than, else contine.
+        Compare the second coordinate - return -1 if this mesh point is less than the other, 1 if greater than, else contine.
+        Return 0 then if the points are equal.
+        """
+        for i in range(len(self.pt.coords)):
+            if self.pt.coords[i]<other.coords[i]: return -1
+            if self.pt.coords[i]>other.coords[i]: return 1
+        return 0
+    #f __repr__
+    def __repr__( self ):
+        """Provide a string representation of a mesh point including lines and triangles that it is part of."""
+        lines = ""
+        for l in self.line_segments: lines += "%d,"%l[0].line_num
+        tris = ""
+        for t in self.triangles: tris += "%d,"%t.triangle_num
+        return "mesh_pt(%d:%s:(%s):(%s))"%(self.entry_number,str(self.pt),lines,tris)
+
+#c c_mesh_line
+class c_mesh_line( object ):
+    """
+    A line in a mesh, constructed from two mesh points
+
+    A line in a mesh has the following properties:
+
+    :data:`pts`
+        Two points as a tuple that are the end-points of the mesh line, in any order.
+
+    :data:`direction`
+        Two coordinates containing the vector from pts[0] to pts[1].
+
+    :data:`triangles`
+        A 2-tuple of mesh triangles that the line is part of. If the line is part of no triangles, this will be
+        (None, None). If the line is part of only one triangle, triangles[1] will be None.
+
+    :data:`line_num`
+        An integer for debug during printing, unique to each mesh_line
+    """
+    line_log = []
+    #f __init__
+    def __init__( self, pt0, pt1 ):
+        """
+        Create a mesh line from two mesh points
+
+        Ensure the mesh is consistent by adding the new line to the two mesh points
+        """
+        self.line_num = len(self.line_log)
+        self.line_log.append(self)
+        self.pts = (pt0, pt1)
+        self.direction = (pt1.coords()[0]-pt0.coords()[0], pt1.coords()[1]-pt0.coords()[1])
+        self.triangles = (None, None)
+        pt0.add_to_line( self, pt1, 0 )
+        pt1.add_to_line( self, pt0, 1 )
+        pass
+    #f check_consistent
+    def check_consistent( self ):
+        """
+        Check that the mesh line is consistent with the rest of the mesh.
+
+        Check that the two mesh points at the ends of the line believe that they are part of this mesh line.
+        Check that the triangle 2-tuple is not malformed.
+        Check that each triangle which the line is part of both the mesh points that the mesh line has as end-points.
+        Check that each triangle finds this line in the mesh when the triangle is asked.
+        """
+        for pt in self.pts:
+            if not pt.is_on_line(self):
+                raise Exception("Failed to find %s in %s"%(str(self),str(pt)))
+            if self.pts.count(pt)>1:
+                raise Exception("Duplicate point in %s: %s"%(str(self),str(pt)))
+            pass
+        if (self.triangles[0] is None) and (self.triangles[1] is not None):
+            raise Exception("Badly formed triangle tuple in line %s"%(str(self)))
+        for t in self.triangles:
+            if t is None: continue
+            t_pts = t.get_points()
+            for pt in self.pts:
+                if pt not in t_pts:
+                    raise Exception("Point %s in %s not in line's triangle %s"%(str(pt),str(self),str(t)))
+                pass
+            if self not in t.find_lines(mesh_only=True):
+                raise Exception("%s not found in %s"%(str(self),str(t)))
+            pass
+        pass
+    #f get_points
+    def get_points( self ):
+        """Get a 2-tuple of the two mesh points at the ends of the line."""
+        return self.pts
+    #f is_parallel_to
+    def is_parallel_to( self, other ):
+        """Return true if the mesh lines 'self' and 'other' are parallel."""
+        return (self.direction[1]*other.direction[0] - self.direction[0]*other.direction[1])==0
+    #f add_to_triangle
+    def add_to_triangle( self, tri ):
+        """Add the mesh line to a mesh triangle by updating the mesh line data *only*."""
+        if self.triangles[0] is None:
+            self.triangles=(tri,None)
+            pass
+        elif self.triangles[1] is None:
+            self.triangles=(self.triangles[0],tri)
+            pass
+        else:
+            raise Exception("Cannot add a third triangle to %s as a line only has two sides"%self)
+        return tri
+    #f swap_triangle
+    def swap_triangle( self, tri_from, tri_to ):
+        """Move the mesh line from tri_from to tri_to, but updating the triangles tuple."""
+        if self.triangles[0]==tri_from:
+            self.triangles = (tri_to,self.triangles[1])
+            return
+        elif self.triangles[1]==tri_from:
+            self.triangles = (self.triangles[0],tri_to)
+            return
+        raise Exception("Failed to find %s in %s to swap over to another triangle"%(str(tri_from),str(self)))
+    #f merge
+    def merge( self, other ):
+        """
+        Merge one mesh line segment with another.
+
+        For two mesh lines with a shared point, remove the two lines and return a new line with the non-shared points
+        Cannot be performed it the lines are part of triangles.
+
+        Note that either self.pts[1]==other.pts[0] or self.pts[0]==other.pts[1]
+
+        After this call the mesh point in the middle may require garbage-collecting from the mesh.
+        """
+        if self.triangles[0] is not None: raise Exception("Attempt to merge mesh lines which are part of triangles")
+        if other.triangles[0] is not None: raise Exception("Attempt to merge mesh lines which are part of triangles")
+        self_index = 0
+        if self.pts[1]==other.pts[0]:
+            self_index = 1
+            pass
+        self.pts[0].remove_from_line( self )
+        self.pts[1].remove_from_line( self )
+        other.pts[0].remove_from_line( other )
+        other.pts[1].remove_from_line( other )
+        return c_mesh_line( self.pts[1-self_index], other.pts[self_index] )
+    #f can_shorten_diagonal
+    def can_shorten_diagonal( self ):
+        """
+        Determine if this line, being part of two triangles hence forming the diagonal a quadrilateral, would be shorter if it were the other diagonal of the quadrilateral.
+
+        If the mesh line is not part of two triangles, then clearly it cannot be a shorter diagonal.
+        If the quadrilateral is concave then the 'other diagonal' will not work (even if shorter) as it would be outside the quadrilateral
+
+        To check for concavity, we know that the quad (ABCD, for quad[0..3]) has a good diagonal AC (this mesh line).
+        Now, looking at BD (the other diagonal), we can see that the quadrilateral is concave if both A and C are on the same side of BD.
+        We calculate the vector BD as dx1,dy1; the normal (it does not matter which way) is dy1,-dx1.
+        The scalar product of AB with the normal to BD is |AB|.|BD_normal|.cos(ABD); the sign of this indicates which side of BD point A is.
+        The scalar product of CB with the normal to BD is |CB|.|BD_normal|.cos(CBD); the sign of this indicates which side of BD point C is.
+        So if these are multiplied, the result is positive if both points are on the same side, negative if they are on opposite sides, and zero if at least one point is on the line.
+
+        Here 'on the line' is not yet clear - it is best to avoid such circumstances.
+        """
+        #b Check that there are two triangles
+        if self.triangles[1] is None: return False
+
+        #b Get the coordinates (and for humans, the quadrilateral...)
+        quad = [self.pts[0].coords(), None, self.pts[1].coords(), None]
+        quad[1] = self.triangles[0].get_other_point( self.pts ).coords()
+        quad[3] = self.triangles[1].get_other_point( self.pts ).coords()
+
+        #b Check to see if diagonal is shorter - if not, then return False
+        (dx0, dy0) = ( quad[2][0]-quad[0][0], quad[2][1]-quad[0][1] )
+        (dx1, dy1) = ( quad[3][0]-quad[1][0], quad[3][1]-quad[1][1] )
+        if (dx0*dx0+dy0*dy0 <= dx1*dx1+dy1*dy1): return False
+
+        #b Are both quad[0] and quad[2] on the same side of the line quad[3]-quad[1]? If so, concave :-(
+        if ( ( dy1*(quad[0][0]-quad[1][0])-dx1*(quad[0][1]-quad[1][1]) ) *
+             ( dy1*(quad[2][0]-quad[1][0])-dx1*(quad[2][1]-quad[1][1]) ) ) >= 0: return False
+        return True
+    #f swap_diagonal
+    def swap_diagonal( self, p, verbose=False ):
+        """
+        Trusting that the line has two triangles (ABX and ABY) move it to be XY and the triangles to be AYX and XBY
+
+        For consistency, the line has to be removed from points A and B
+        Point B has to be removed from the first triangle
+        Point A has to be removed from the second triangle
+        Point Y has to be added to the first triangle
+        Point X has to be added to the second triangle
+        The line is added to points X and Y (line 'XY')
+        The line is changed to be X and Y
+        The first triangle changes its points from ABX to AXY
+        The second triangle changes its points from ABY to XBY
+        """
+        if self.triangles[1] is None: die_horribly
+        A = self.pts[0]
+        B = self.pts[1]
+        X = self.triangles[0].get_other_point( self.pts )
+        Y = self.triangles[1].get_other_point( self.pts )
+        if verbose:
+            p.check_consistent()
+            print "********************************************************************************"
+            print p.__repr__(verbose=True)
+            print "********************************************************************************"
+            print "Swapping diagonal (A,B) with (X,Y) for line",A,B,X,Y,self
+            print "Triangles ",self.triangles[0], self.triangles[1]
+        self.pts = ( X, Y )
+        self.triangles[0].change_point( B, Y, self.triangles[1] )
+        self.triangles[1].change_point( A, X, self.triangles[0] )
+        if verbose:
+            print "Now", A,B,X,Y,self
+            print "Triangles ",self.triangles[0], self.triangles[1]
+            pass
+        A.remove_from_line( self )
+        B.remove_from_line( self )
+        X.add_to_line( self, Y, 0 )
+        Y.add_to_line( self, X, 1 )
+        if verbose:
+            print "********************************************************************************"
+            print p.__repr__(verbose=True)
+            print "********************************************************************************"
+            p.check_consistent()
+            pass
+        pass
+    #f __repr__
+    def __repr__( self ):
+        tris = "(X,X)"
+        if self.triangles[1] is not None: tris="(%d,%d)"%(self.triangles[0].triangle_num,self.triangles[1].triangle_num)
+        elif self.triangles[0] is not None: tris="(%d,X)"%(self.triangles[0].triangle_num)
+        return "line(%d:%d:%d:%s)"%(self.line_num,self.pts[0].entry_number,self.pts[1].entry_number,tris)
+
+#c c_mesh_triangle
+class c_mesh_triangle( object ):
+    """
+    A triangle in the mesh contains three points, and implicitly three line segments.
+
+    It is created from the three points, assuming that the lines have already been made.
+    """
+    triangle_log = []
+    #f __init__
+    def __init__( self, pts ):
+        """
+        To create a triangle, the lines between the points must have already been created so that the points are connected
+        """
+        self.triangle_num = len(self.triangle_log)
+        self.triangle_log.append(self)
+        self.pts = list(pts)
+        pts[0].add_to_triangle( self )
+        pts[1].add_to_triangle( self )
+        pts[2].add_to_triangle( self )
+        pts[0].find_line_segment_to( pts[1] ).add_to_triangle( self )
+        pts[1].find_line_segment_to( pts[2] ).add_to_triangle( self )
+        pts[2].find_line_segment_to( pts[0] ).add_to_triangle( self )
+        pass
+    #f check_consistent
+    def check_consistent( self ):
+        """
+        Check that the triangle is consistent within the mesh.
+
+        The triangle is inconsistent if some of the lines in the mesh, derived from the points in the triangle, do not believe they are part of this triangle
+        """
+        for l in self.find_lines(mesh_only=True):
+            if self not in l.triangles:
+                raise Exception("Failed to find %s in %s"%(str(self),str(l)))
+            pass
+        pass
+    #f find_lines
+    def find_lines( self, mesh_only=False ):
+        """
+        Find the three lines that make up the triangle, using the triangles mesh points and finding the lines that they form.
+        """
+        lines = []
+        for i in range(3):
+            pt = self.pts[i]
+            for j in range(1,3):
+                l = pt.find_line_segment_to(self.pts[(i+j)%3], mesh_only)
+                if l not in lines:
+                    lines.append(l)
+                    pass
+                pass
+            pass
+        if len(lines)!=3: raise Exception("Triangle %s seems to have more than three lines that make it up"%str(self))
+        return lines
+    #f change_point
+    def change_point( self, pt_from, pt_to, other_triangle ):
+        """
+        Change a point 'F' from this triangle to be point 'T' consistently.
+
+        This triangle is 'ABF', the other triangle is 'AFT'; they are becoming 'ABT' and 'BFT'.
+        The five lines to start with AB, BF, FT, AT, and the common line AF
+        The five lines a full swap of the diagonal are AB, AT, BF, FT, and the common line BT
+        The lines AB and FT remain in the triangles they were in.
+        The line AT is in the other triangle to start and will move to this one
+        The line BF is in this triangle to start and will move to the other one
+        The common line AF becomes the new common line BT that is in both triangles
+        This method takes charge of only changing line BF to believe it is no longer in this triangle, but in other
+
+        Find the point 'pt_from' (F) in the triangle's list of points
+        Find the lines 'AF' and 'BF', and if that is in this triangle but not the other (it is BF) then change the line to be part of the other triangle.
+        This is done for consistency.
+        Then remove F from this triangle and add T to this triangle
+        """
+        for i in range(3):
+            if self.pts[i]==pt_from:
+                for j in range(1,3):
+                    l = pt_from.find_line_segment_to( self.pts[(i+j)%3], mesh_only=True )
+                    if (self in l.triangles) and not (other_triangle in l.triangles):
+                        l.swap_triangle( self, other_triangle)
+                        pass
+                    pass
+                pt_from.remove_from_triangle( self )
+                pt_to.add_to_triangle( self )
+                self.pts[i] = pt_to
+                return
+            pass
+        raise Exception("Cannot change %s as it is not in %s"%(str(pt_from),str(self)))
+    #f get_other_point
+    def get_other_point( self, pts ):
+        """Get the point in the triangle that is not in the 2-tuple 'pts'."""
+        for p in self.pts:
+            if p not in pts: return p
+            pass
+        return None
+    #f get_points
+    def get_points( self ):
+        """Get the points in the triangle."""
+        return self.pts
+    #f __repr__
+    def __repr__( self ):
+        """Return a representation of the triangle."""
+        return "tri(%d:%d,%d,%d)"%(self.triangle_num,self.pts[0].entry_number,self.pts[1].entry_number,self.pts[2].entry_number)
+
+#c c_mesh
+class c_mesh( object ):
+    """
+    A mesh is a set of mesh points, which are connected by mesh line segments, which are then filled with non-overlapping mesh triangles.
+
+    It can be created from a set of contours, from which a set of mesh points is generated.
+    Mesh lines are then created for the points to enable it to be filled with triangles, and triangles are made to fill the convex hull of the mesh points.
+    Then the contours can be applied to ensure that all of the contours are present as mesh line segments.
+
+    After the mesh is fully built with contours winding rules and fill can be applied, or gradients applied to lines.
+    """
+    #f __init__
+    def __init__( self ):
+        """Create an empty mesh."""
+        self.reset()
+        pass
+    #f reset
+    def reset( self ):
+        """Reset a mesh to be empty."""
+        self.line_segments = []
+        self.triangles = []
+        self.point_set = []
+        self.contours = []
+        pass
+    #f check_consistent
+    def check_consistent( self ):
+        """
+        Check that the mesh is consistent.
+
+        Perform checks for the points, lines and triangles that make up the mesh
+        """
+        for pt in self.point_set:
+            pt.check_consistent()
+            pass
+        for l in self.line_segments:
+            l.check_consistent()
+            pass
+        for t in self.triangles:
+            t.check_consistent()
+            pass
+        pass
+    #f find_insertion_index
+    def find_insertion_index( self, set, element, compare_fn ):
+        """
+        Find where to insert an element in a set, using a specified compare_fn
+
+        compare_fn takes (set_element, element) and returns -1 if set_element<element, 0 if set_element==element, 1 if set_element>element
+
+        Return (index, match); if match is True then element compares to match (compare_fn returned 0)
+        index is the index of the entry in 'set' to insert 'element' before to maintain an ordered list (i.e. set[index-1]<element<set[index])
+
+        Use a binary search
+        """
+        l = len(set)
+        if l==0: return (0, False)
+        (i0, i1) = (-1,l)
+        while i0<i1-1:
+            im = (i0+i1)/2
+            cmp = compare_fn( set[im], element )
+            if cmp==0:
+                return (im, True)
+            if cmp<0: # i.e. im is 'less' than element
+                i0 = im
+                pass
+            else:
+                i1 = im
+                pass
+            pass
+        return (i1, False)
+    #f add_point
+    def add_point( self, point ):
+        """
+        Add a point to the set of points in the mesh
+
+        point is a mesh point
+        Add an external representation of a point to the set of points in the mesh, and return that object
+        If the point is already in our set, return that object
+        Keep the point set ordered by coords
+        """
+        (ins, match) = self.find_insertion_index( self.point_set, point, lambda s,e:s.compare_with(e) )
+        if match: return self.point_set[ins]
+        new_point = c_mesh_point( point )
+        self.point_set.insert( ins, new_point )
+        return new_point
+    #f add_line
+    def add_line( self, pt0, pt1 ):
+        line = c_mesh_line(pt0,pt1)
+        self.line_segments.append( line )
+        return line
+    #f find_or_create_line
+    def find_or_create_line( self, pt0, pt1 ):
+        line = pt0.find_line_segment_to(pt1)
+        if line is not None: return line
+        return self.add_line( pt0, pt1 )
+    #f add_triangle_from_points
+    def add_triangle_from_points( self, pts ):
+        """
+        Must add a triangle from points to ensure that the winding order is passed in cleanly
+        """
+        self.find_or_create_line( pts[0], pts[1] )
+        self.find_or_create_line( pts[1], pts[2] )
+        self.find_or_create_line( pts[2], pts[0] )
+        triangle = c_mesh_triangle( pts )
+        self.triangles.append(triangle)
+        return triangle
+    #f add_contour
+    def add_contour( self, pts, closed=True, contour_data=None ):
+        """
+        Add a contour to the mesh
+
+        The points must be a list of 'point class' instances which are joined by line segments that make the contour
+        The contour may be closed (last point has a line segment to the first point) or open (effectively just a line)
+        The contour_data is opaque to the mesh; it can include contour height, winding order, etc, depending on the mesh usage.
+
+        The contour is just added to the mesh; later method invocations are required to create the mesh points and lines
+        """
+        self.contours.append( (pts, [], closed, contour_data) )
+        pass
+    #f add_bezier_list_contour
+    def add_bezier_list_contour( self, bezier_list, closed=False, contour_data=None, straightness=1000, perturbation=None ):
+        points = []
+        i = 0
+        for b in bezier_list:
+            subbeziers = b.break_into_segments(straightness)
+            for s in subbeziers:
+                if perturbation is not None:
+                    s.pts[0].perturb(i*perturbation)
+                    pass
+                points.append(s.pts[0])
+                i += 1
+                pass
+            pass
+        self.add_contour( points, closed=closed, contour_data=contour_data )
+        return self
+    #f map_contours_to_mesh
+    def map_contours_to_mesh( self ):
+        """
+        Map the contours of the mesh to mesh points
+
+        Add all the points as mesh points, and update the contour.
+        """
+        for c in self.contours:
+            print c
+            mesh_pts = c[1]
+            for p in c[0]:
+                mesh_pts.append( self.add_point( p ) )
+                pass
+            pass
+        pass
+    #f from_points
+    def from_points( self, points ):
+        """
+        points is a list of c_points
+
+        Must create the set of c_mesh_point, and the line segments that use them
+        The points list can then be sorted to start with the smallest X point (with smallest Y on ties)
+
+        Once sorted, one can reorder the line segments to start at that smallest X point.
+        This is a normalized mesh
+        """
+        self.line_segments = []
+        p0 = points[-1]
+        for i in range(len(points)):
+            p1 = points[i]
+            self.add_line( p0, p1 )
+            p0 = p1
+            pass
+        pass
+    #f from_bezier_list
+    def from_bezier_list( self, bezier_list, straightness=1000 ):
+        epsilon = 1e-9
+        self.reset()
+        points = []
+        i = 0
+        for b in bezier_list:
+            subbeziers = b.break_into_segments(straightness)
+            for s in subbeziers:
+                s.pts[0].perturb(i*epsilon)
+                points.append(self.add_point(s.pts[0]) )
+                i += 1
+                pass
+            pass
+
+        self.from_points( points )
+        return self
+    #f number_points
+    def number_points( self ):
+        for i in range(len(self.point_set)):
+            self.point_set[i].entry_number = i
+            pass
+        pass
+    #f find_first_segment
+    def find_first_segment( self ):
+        first_segment = None
+        for i in range(len(self.line_segments)):
+            if self.line_segments[i].pts[0].entry_number==0:
+                return i
+                break
+            pass
+        return None
+    #f normalize
+    def normalize( self ):
+        self.number_points()
+        self.remove_empty_triangles()
+        pass
+    #f remove_empty_triangles
+    def remove_empty_triangles( self ):
+        """
+        Find all pair of consecutive line segments make a 'zero area' triangle, and merge to a single line segment
+
+        If the line segments are (a, b) and (b,c), and b-a and c-b are parallel, then change first line segment to be (a,c) and remove the second
+        """
+        l = len(self.line_segments)
+        i = l-1
+        while i>0:
+            if self.line_segments[i].is_parallel_to(self.line_segments[(i+1)%l]):
+                self.line_segments[i] = self.line_segments[i].merge(self.line_segments[(i+1)%l])
+                old_point = self.line_segments.pop((i+1)%l)
+                if not old_point.used_in_lines():
+                    self.remove_unused_point( old_point )
+                    pass
+                if (i+1==l): i-= 2
+                l -= 1
+                pass
+            else:
+                i -= 1
+                pass
+            pass
+        pass
+    #f fill_with_triangles
+    def fill_with_triangles( self ):
+        """
+        Starting with a normalized mesh, we can generate filled triangles
+
+        A normalized mesh has a sorted set of points and a list of line segments starting at any point without any consecutive parallel line segments
+        Since we can guarantee that no consecutive line segments are parallel, two consecutive line segments must form a non-zero area triangle
+
+        So, if we find the top-most of the left-most points, and the line segments starting there, we can guarantee that the triangle with those line segments is in the convex hull.
+        Note that it _MAY_ overlap with another line segment (i.e. some other point in the point set may lie within this triangle)
+        ... argh
+        Find all points within the triangle
+
+        """
+        first_segment = self.find_first_segment()
+        if first_segment is None:
+            die_horribly
+            pass
+
+        lines_to_do = self.line_segments[first_segment:]
+        lines_to_do.extend(self.line_segments[:first_segment])
+        
+        pass
+    #f fill_convex_hull_with_triangles
+    def fill_convex_hull_with_triangles( self, must_be_used_in_lines=False ):
+        """
+        Starting with a normalized mesh, we can generate filled triangles
+
+        A normalized mesh has a sorted set of points and a list of line segments starting at any point without any consecutive parallel line segments
+        Since we can guarantee that no consecutive line segments are parallel, two consecutive line segments must form a non-zero area triangle
+
+        Sort all points after the 'first point (x0,y0) (left-most, top-most)' by angle to y=y0 (-90,+90).
+        The sweep all points creating triangles from (x0,y0) to (xn,yn), (xn+1,yn+1) in the swept order
+        """
+        radial_order = []
+        (x0,y0) = self.point_set[0].coords()
+        for pt in self.point_set[1:]:
+            if must_be_used_in_lines and not pt.used_in_lines(): continue
+            (x,y) = pt.coords()
+            (dx,dy) = (x-x0,y-y0)
+            (ins, match) = self.find_insertion_index( radial_order, (dx,dy), lambda s,e:s[0]*e[1]-s[1]*e[0] )
+            radial_order.insert( ins, (dx, dy, pt) )
+            pass
+        radial_order.insert(0,(0,0,self.point_set[0]))
+        num_points_used = len(radial_order)
+        # First fill from the 'starter point'
+        for i in range(2,num_points_used):
+            self.add_triangle_from_points( (radial_order[0][2],radial_order[i-1][2], radial_order[i][2]) )
+            pass
+
+        # Now fill in the perimeter (Graham Scan)
+        hull_pts = [ radial_order[0][2], radial_order[1][2], radial_order[2][2] ]
+        next_point = 3
+        while next_point<num_points_used:
+            # Check for concavity from (hull_pts[-2], hull_pts[-1]) and (hull_pts[-1],next_point)
+            # If not, can add next_point to the hull
+            # If there is, then:
+            #      add a triangle to fill in the concavity
+            #      pop hull_pts[-1] from the points on the hull
+            is_concavity = True
+            if (len(hull_pts)<2):
+                is_concavity = False
+                pass
+            else:
+                (x0,y0) = hull_pts[-2].coords()
+                (x1,y1) = hull_pts[-1].coords()
+                (x2,y2) = radial_order[next_point][2].coords()
+                (dx1,dy1) = (x1-x0,y1-y0)
+                (dx2,dy2) = (x2-x0,y2-y0)
+                is_concavity = ((dx1*dy2-dy1*dx2)>0)
+                pass
+            if is_concavity:
+                self.add_triangle_from_points( (hull_pts[-2], hull_pts[-1], radial_order[next_point][2] ) )
+                hull_pts.pop()
+                pass
+            else:
+                hull_pts.append( radial_order[next_point][2] )
+                next_point = next_point+1
+                pass
+            pass
+        # Remove any zero-area triangles which 
+        #for l in self.line_segments:
+        #    tris = l.get_triangles()
+        #    for t in tris:
+        #        if t.is_degenerate_with_longest_side(l):
+        #            l.swap_as_diagonals()
+        #            break
+        #        pass
+        #    pass
+
+        # Now ensure that the actual lines forming the mesh are in the set of lines
+        # tricky
+        pass
+    #f shorten_quad_diagonals
+    def shorten_quad_diagonals( self, verbose=False ):
+        """
+        Swap diagonals of quadrilaterals by picking the shortest of each one
+
+        Return number of triangles changed
+        """
+        work_done = 0
+        for i in range(len(self.line_segments)):
+            l = self.line_segments[i]
+            if l.can_shorten_diagonal():
+                l.swap_diagonal( self, verbose=verbose  )
+                work_done += 1
+                #self.check_consistent()
+                #return
+                pass
+            pass
+        return work_done
+
+    #f __repr__
+    def __repr__( self, verbose=False ):
+        result =  "mesh\n"
+        result += "  pts: %s\n"%(str(self.point_set))
+        result += "  lns: %s\n"%(str(self.line_segments))
+        result += "  tris: %s\n"%(str(self.triangles))
+        if verbose:
+            result = result.replace(", ",",\n        ")
+        return result
+
+#a Mesh pygame test
+def mesh_test_get_draw_fn():
+    import gjslib.graphics.font as font
+    x = c_mesh()
+    bezier_list = []
+    for (p0,c0,p1) in [ ( (100,100), (110,90), (150, 50) ),
+                        ( (150, 50), (150,150), (200,100) ),
+                        ( (200,100), (150,150), (200,200) ),
+                        ( (200,200), (175,175), (150,150) ),
+                        ( (150,150), (125,125), (100,100) ),
+                    ]:
+        p0 = bezier.c_point(coords=p0)
+        c0 = bezier.c_point(coords=c0)
+        p1 = bezier.c_point(coords=p1)
+        bezier_list.append(bezier.c_bezier2(pts=(p0,c0,p1)))
+        pass
+    f = font.c_font("benegraphic").load_from_ttx("/Users/gstark_old/a.ttx")
+    bezier_list = f.create_bezier_lists( "ampersand" )[0]
+    print bezier_list
+    x.from_bezier_list( bezier_list=bezier_list, straightness=10 )
+    #print x
+    print "Normalizing"
+    x.normalize()
+    print x.__repr__(verbose=True)
+    print "Filling"
+    x.fill_convex_hull_with_triangles()
+    print x.__repr__(verbose=True)
+    x.check_consistent()
+    print "Shorten"
+    i=0
+    while x.shorten_quad_diagonals(i>100)>0:
+        i+=1
+        if i>101:break
+        pass
+    print "broken out after",i
+    x.check_consistent()
+    def draw_fn( screen ):
+        draw_triangles( screen, x.triangles )
+        draw_contour( screen, x )
+    return draw_fn
+
