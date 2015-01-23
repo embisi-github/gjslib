@@ -4,7 +4,7 @@ from OpenGL.GLU import *
 from OpenGL.GL import *
 import sys
 import math
-from quaternion import c_quaternion
+from gjslib.math.quaternion import c_quaternion
 
 name = 'ball_glut'
 

@@ -227,6 +227,16 @@ class c_mesh_line( object ):
         else:
             raise Exception("Cannot add a third triangle to %s as a line only has two sides"%self)
         return tri
+    #f remove_from_triangle
+    def remove_from_triangle( self, tri ):
+        """Remove the mesh line from a mesh triangle by updating the mesh line data *only*."""
+        if self.triangles[1]==tri:
+            self.triangles = (self.triangles[0], None )
+            return
+        elif self.triangles[0]==tri:
+            self.triangles=(self.triangles[1], None)
+            return
+        raise Exception("Cannot remove %s from %s as it was not present"%(str(tri),str(self)))
     #f swap_triangle
     def swap_triangle( self, tri_from, tri_to ):
         """Move the mesh line from tri_from to tri_to, but updating the triangles tuple."""
@@ -322,8 +332,8 @@ class c_mesh_line( object ):
             print "Swapping diagonal (A,B) with (X,Y) for line",A,B,X,Y,self
             print "Triangles ",self.triangles[0], self.triangles[1]
         self.pts = ( X, Y )
-        self.triangles[0].change_point( B, Y, self.triangles[1] )
-        self.triangles[1].change_point( A, X, self.triangles[0] )
+        self.triangles[0].change_point_on_diagonal( B, Y, self.triangles[1] )
+        self.triangles[1].change_point_on_diagonal( A, X, self.triangles[0] )
         if verbose:
             print "Now", A,B,X,Y,self
             print "Triangles ",self.triangles[0], self.triangles[1]
@@ -339,6 +349,53 @@ class c_mesh_line( object ):
             p.check_consistent()
             pass
         pass
+    #f find_intersection
+    def find_intersection( self, pt, dxy ):
+        """
+        Find intersection of the line segment with a line from pt=(x,y) with vector dxy=(dx,dy)
+
+        Intersection is point Z, and this line segment is A to B
+        Z = pt + k.dxy = l.B + (1-l).A = l.(B-A) + A
+        k.dxy + l.(A-B) = A-pt
+
+        This can be solved by inverting the matrix
+        (A = x0,y0 and B=x1,y1)
+        (dxy[0] x0-x1) (k) = ( x0-x )
+        (dxy[1] y0-y1) (l)   ( y0-y )
+
+       (k) = (y0-y1   x1-x0 ) (x0-x)    / determinant
+       (l)   (-dxy[1] dxy[0]) (y0-y)
+        """
+        epsilon = 1E-9
+        (x0,y0) = self.pts[0].coords()
+        (x1,y1) = self.pts[1].coords()
+        if True:
+            if (dxy[0]>0):
+                if (x0<pt[0])        and (x1<pt[0]):        return None
+                if (x0>pt[0]+dxy[0]) and (x1>pt[0]+dxy[0]): return None
+                pass
+            else:
+                if (x0>pt[0])        and (x1>pt[0]):        return None
+                if (x0<pt[0]+dxy[0]) and (x1<pt[0]+dxy[0]): return None
+                pass
+            if (dxy[1]>0):
+                if (y0<pt[1])        and (y1<pt[1]):        return None
+                if (y0>pt[1]+dxy[1]) and (y1>pt[1]+dxy[1]): return None
+                pass
+            else:
+                if (y0>pt[1])        and (y1>pt[1]):        return None
+                if (y0<pt[1]+dxy[1]) and (y1<pt[1]+dxy[1]): return None
+                pass
+
+        det = dxy[0]*(y0-y1) - dxy[1]*(x0-x1)
+        if -epsilon<det<epsilon: return None # Parallel lines
+        k =  ((y0-y1)*(x0-pt[0]) + (x1-x0)*(y0-pt[1]))/det
+        l =  (-dxy[1]*(x0-pt[0]) +  dxy[0]*(y0-pt[1]))/det
+        #print k,l
+        #print pt[0]+k*dxy[0] - l*x1 - (1-l)*x0
+        if k<0 or k>1 or l<0 or l>1: return None
+        return (k, l, pt[0]+k*dxy[0], pt[1]+k*dxy[1])
+
     #f __repr__
     def __repr__( self ):
         tris = "(X,X)"
@@ -398,8 +455,19 @@ class c_mesh_triangle( object ):
             pass
         if len(lines)!=3: raise Exception("Triangle %s seems to have more than three lines that make it up"%str(self))
         return lines
-    #f change_point
-    def change_point( self, pt_from, pt_to, other_triangle ):
+    #f change_vertex
+    def change_vertex( self, pt_from, pt_to ):
+        """
+        Change a vertex for a triangle and update the mesh point data - do not touch the line data
+        """
+        for i in range(3):
+            if self.pts[i]==pt_from: self.pts[i]=pt_to
+            pass
+        pt_from.remove_from_triangle( self )
+        pt_to.add_to_triangle( self )
+        pass
+    #f change_point_on_diagonal
+    def change_point_on_diagonal( self, pt_from, pt_to, other_triangle ):
         """
         Change a point 'F' from this triangle to be point 'T' consistently.
 
@@ -517,11 +585,11 @@ class c_mesh( object ):
             pass
         return (i1, False)
     #f add_point
-    def add_point( self, point ):
+    def add_point( self, point, append_to_numbers=False ):
         """
         Add a point to the set of points in the mesh
 
-        point is a mesh point
+        point is NOT a mesh point
         Add an external representation of a point to the set of points in the mesh, and return that object
         If the point is already in our set, return that object
         Keep the point set ordered by coords
@@ -530,12 +598,25 @@ class c_mesh( object ):
         if match: return self.point_set[ins]
         new_point = c_mesh_point( point )
         self.point_set.insert( ins, new_point )
+        if append_to_numbers:
+            new_point.entry_number = len(self.point_set)
+            pass
         return new_point
     #f add_line
     def add_line( self, pt0, pt1 ):
+        """
+        Add a line to the mesh using two mesh points.
+        """
         line = c_mesh_line(pt0,pt1)
         self.line_segments.append( line )
         return line
+    #f remove_line
+    def remove_line( self, line ):
+        """
+        Remove a line to the mesh - just from the mesh data
+        """
+        self.line_segments.remove( line )
+        return
     #f find_or_create_line
     def find_or_create_line( self, pt0, pt1 ):
         line = pt0.find_line_segment_to(pt1)
@@ -652,6 +733,61 @@ class c_mesh( object ):
         self.number_points()
         self.remove_empty_triangles()
         pass
+    #f split_line_segment_in_half
+    def split_line_segment_in_half( self, line ):
+        (p0,p1) = line.get_points()
+        midpoint = bezier.c_point( coords=( 0.5*(p0.coords()[0]+p1.coords()[0]),
+                                            0.5*(p0.coords()[1]+p1.coords()[1]) ) )
+        pt = self.add_point(midpoint, append_to_numbers=True)
+        self.split_line_segment( line, pt )
+    #f split_line_segment
+    def split_line_segment( self, line, pt ):
+        """
+        Split a mesh line segment by inserting a mesh point.
+
+        Return the two mesh line segments that replace the original.
+
+        Effectively replace the line with two line segments, plus up to two further line segments if splitting up to 2 triangles, and create up to 2 more triangles.
+
+        For the line, remove the line from the two mesh points at its ends (P0, P1), and create two more line segments L0=(P0,pt) and L1=(pt,p1)
+
+        For each triangle T (P0.P1.X) in the original line's triangles:
+            Move T to be P0.Pt.X (change the point P1 on the triangle to Pt, remove T from P1's triangles, add to Pt's triangles)
+            Remove triangle T from line P1.X's triangle list
+            Add T to L0's triangles list
+            Add line LX (Pt.X), and add T to that line
+            Add (new) triangle Pt.P1.X to the mesh
+
+        Return (L0, L1)
+        """
+        self.check_consistent()
+        (p0, p1) = line.get_points()
+        p0.remove_from_line( line )
+        p1.remove_from_line( line )
+        l0 = self.add_line( p0, pt )
+        l1 = self.add_line( pt, p1 )
+
+        print "Split line",line,pt
+        print "p0",p0
+        print "p1",p1
+        print "l0",l0
+        print "l1",l1
+        for t in line.triangles:
+            if t is None: continue
+            x = t.get_other_point( (p1, p0) )
+            print "Other point",x
+            t.change_vertex( p1, pt )
+            print "Triangle",t
+            p1.find_line_segment_to( other=x, mesh_only=True ).remove_from_triangle( t )
+            l0.add_to_triangle( t )
+            lx = self.add_line( pt, x )
+            lx.add_to_triangle( t )
+            self.add_triangle_from_points( (pt, p1, x) )
+            pass
+
+        self.remove_line( line )
+        self.check_consistent()
+        return (l0, l1)
     #f remove_empty_triangles
     def remove_empty_triangles( self ):
         """
@@ -786,7 +922,78 @@ class c_mesh( object ):
                 #return
                 pass
             pass
+        #self.split_line_segment_in_half( self.line_segments[0] )
+
         return work_done
+    #f find_line_segments_on_line
+    def find_line_segments_on_line( self, pt0, pt1 ):
+        """
+        Find all the line segments that intersect a line between two mesh points if the line is not between two mesh points already
+        """
+        if pt0.find_line_segment_to(pt1) is not None: return []
+        intersections = []
+        (x0,y0) = pt0.coords()
+        (x1,y1) = pt1.coords()
+        (dx,dy) = (x1-x0, y1-y0)
+        for l in self.line_segments:
+            l_pts = l.get_points()
+            if pt0 in l_pts or pt1 in l_pts: continue
+            intersect = l.find_intersection( (x0,y0), (dx,dy) )
+            if intersect is not None:
+                intersections.append( (l, intersect) )
+                pass
+            pass
+        return intersections
+    #f split_a_line_for_contour_segment
+    def split_a_line_for_contour_segment( self, mesh_pts, pt_num, intersections, max_breaks=1 ):
+        """
+        Split a line between mesh_pts[pt_num-1] and mesh_pts[pt_num] using one or more of the list of intersections.
+
+        intersections is returned by find_line_segments_on_line, and so is a list of (line segment, intersection info) tuples
+        intersection info is (k, l, x, y) where k is how far along the line segment to split and l is how far between the two mesh points the split would be.
+        (k and l are in the range 0 to 1).
+
+        First cut is to split at lowest l...
+        """
+        min_l = 2
+        min_i = None
+        for i in range(len(intersections)):
+            if intersections[i][1][1]<min_l:
+                min_l=intersections[i][1][1]
+                min_i=i
+                pass
+            pass
+        (x,y) = (intersections[min_i][1][2],intersections[min_i][1][3])
+        pt = self.add_point(bezier.c_point( coords=(x,y) ), append_to_numbers=True)
+        mesh_pts.insert( pt_num, pt )
+        self.split_line_segment( intersections[min_i][0], pt )
+        return
+    #f ensure_contours_on_mesh
+    def ensure_contours_on_mesh( self ):
+        """
+        For every line segment in every contour, if the line segment is not present in the mesh, split
+
+        BLAH
+        """
+        lines_changed = 0
+        for c in self.contours:
+            mesh_pts = c[1]
+            p0 = mesh_pts[-1]
+            if not c[2]: p0=None
+            i = 0
+            while i<len(mesh_pts):
+                p = mesh_pts[i]
+                if p0 is not None:
+                    ls = self.find_line_segments_on_line( p0, p )
+                    if len(ls)>0:
+                        self.split_a_line_for_contour_segment( mesh_pts, i, ls )
+                        lines_changed+=1
+                    pass
+                p0 = p
+                i+=1
+                pass
+            pass
+        return lines_changed
 
     #f __repr__
     def __repr__( self, verbose=False ):

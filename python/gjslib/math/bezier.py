@@ -45,189 +45,151 @@ import math
 verbose = True
 verbose = False
 
-#a c_bezier classes
-#c c_bezier_base original - p'(0) == c0
-class c_bezier_base( object ):
-    r"""
-    A base class for Bezier curves
-
-    :math:`p(t,A,B) = (1-t)*A + t*B`
-
-    If we expand out the equation for 'p' in 'q', we get:
-
-    .. math::
-     \begin{align}
-     q(t,A,B,C) &= (1-t)*p(t,A,B) + t*p(t,B,C) \\
-     &= (1-t)(1-t)A + t(1-t)tB + t(1-t)B + t*t*C \\
-     &= (1-t)^2A + 2t(1-t)B + t^2C
-     \end{align}
-    """
-    __docformat__ = "restructuredtext"
-
-    n = 10
-    fmt = "%6.2f"
-    def __init__( self, p0, p1, c0, c1, color=(255,255,255,255) ):
-        self.pts = (p0, p1)
-        c0 = (c0[0]/2.0,c0[1]/2.0)
-        c1 = (c1[0]/2.0,c1[1]/2.0)
-
-        #c0 = (c0[0]/4.0,c0[1]/4.0)
-        #c1 = (c1[0]/4.0,c1[1]/4.0)
-        self.ctls = (c0,c1)
-        self.a = ( c0[0]+c1[0]-2*(p1[0]-p0[0]),
-                   c0[1]+c1[1]-2*(p1[1]-p0[1]) )
-        self.b = ( 3*(p1[0]-p0[0]) - 2*c0[0] - c1[0],
-                   3*(p1[1]-p0[1]) - 2*c0[1] - c1[1] )
-        self.c = c0
-        self.d = p0
-        self.color = color
+#a Point class
+#c c_point
+class c_point( object ):
+    def __init__( self, coords ):
+        self.coords = coords
         pass
-    def coord( self, t ):
-        x = self.a[0]*t*t*t + self.b[0]*t*t + self.c[0]*t + self.d[0]
-        y = self.a[1]*t*t*t + self.b[1]*t*t + self.c[1]*t + self.d[1]
-        return (x,y)
-    def draw( self, screen ):
-        for t in range(self.n):
-            (x,y) = self.coord( t/(self.n+0.0) )
-            screen.draw_dot( screen, int(x), int(y), self.color )
+    def perturb( self, quantum ):
+        cs = []
+        for c in self.coords:
+            cs.append(c)
             pass
-        pass
-    def draw( self, screen ):
-        screen.draw_line( self.pts[0][0], self.pts[0][1], self.pts[1][0], self.pts[1][1], self.color )
-        pass
-    def straightness( self ):
-        p10n = (self.pts[1][1]-self.pts[0][1], self.pts[0][0]-self.pts[1][0])
-        c0p10n = self.ctls[0][0]*p10n[0] + self.ctls[0][1]*p10n[1]
-        c1p10n = self.ctls[1][0]*p10n[0] + self.ctls[1][1]*p10n[1]
-        max = c0p10n
-        if (max<0): max=-max
-        if (c1p10n<0) and (-c1p10n>max): max=c1p10n
-        if (c1p10n>max): max=c1p10n
-        len_p10n = p10n[0]*p10n[0] + p10n[1]*p10n[1]
-        #print c0p10n, c1p10n, len_p10n, max*max, (max*max)*10/len_p10n
-        return (max*max)/len_p10n
-    def split( self ):
-        p2 = ( 0.5*(self.pts[1][0]+self.pts[0][0]) + 0.125*(self.ctls[0][0]-self.ctls[1][0]),
-               0.5*(self.pts[1][1]+self.pts[0][1]) + 0.125*(self.ctls[0][1]-self.ctls[1][1]) )
-        c2 = ( 1.5*(self.pts[1][0]-self.pts[0][0]) - 0.25*(self.ctls[0][0]+self.ctls[1][0]),
-               1.5*(self.pts[1][1]-self.pts[0][1]) - 0.25*(self.ctls[0][1]+self.ctls[1][1]) )
-
-        #p2 = ( 0.5*(self.pts[1][0]+self.pts[0][0]) + 0.5*(self.ctls[0][0]-self.ctls[1][0]),
-        #       0.5*(self.pts[1][1]+self.pts[0][1]) + 0.5*(self.ctls[0][1]-self.ctls[1][1]) )
-        #c2 = ( 1.5*(self.pts[1][0]-self.pts[0][0]) - (self.ctls[0][0]+self.ctls[1][0]),
-        #       1.5*(self.pts[1][1]-self.pts[0][1]) - (self.ctls[0][1]+self.ctls[1][1]) )
-        #c2 = (c2[0]*2.0,c2[1]*2.0)
-        return ( c_bezier( self.pts[0], p2, self.ctls[0], c2, color=self.color ),
-                 c_bezier( p2, self.pts[1], c2, self.ctls[1], color=self.color ) )
+        cs[0] += quantum+cs[1]*quantum
+        cs[1] += quantum-cs[0]*quantum
+        self.coords = tuple(cs)
+    def get_coords( self, scale=(1.0,), offset=(0.0,) ):
+        cs = []
+        i = 0
+        ls = len(scale)
+        lo = len(offset)
+        for c in self.coords:
+            cs.append(c*scale[i%ls]+offset[i%lo])  
+            i += 1
+            pass
+        return cs
+    def length( self ):
+        c = 0
+        for i in range(len(self.coords)):
+            d = self.coords[i]
+            c += d*d
+            pass
+        return math.sqrt(c)
+    def scale( self, factor ):
+        c = []
+        for i in range(len(self.coords)):
+            c.append( self.coords[i] * factor )
+            pass
+        return c_point( c )
+    def is_parallel_to( self, other ):
+        return (self.coords[1]*other.coords[0]-self.coords[0]*other.coords[1])==0
+    def add( self, other, factor=1 ):
+        c = []
+        for i in range(len(self.coords)):
+            c.append( self.coords[i]+factor*other.coords[i] )
+            pass
+        return c_point( c )
+    def distance( self, other ):
+        c = 0
+        for i in range(len(self.coords)):
+            d = self.coords[i]-other.coords[i]
+            c += d*d
+            pass
+        return math.sqrt(c)
+    def normal( self ):
+        return c_point( coords=(-self.coords[1], self.coords[0]) )
+    def scalar_product( self, other ):
+        c = 0
+        for i in range(len(self.coords)):
+            c += self.coords[i]*other.coords[i]
+            pass
+        return c
+    def cross_product( self, other ):
+        c = []
+        for i in range(3):
+            c.append( self.coords[(i+1)%3]*other.coords[(i+2)%3] -
+                      other.coords[(i+1)%3]*self.coords[(i+2)%3] )
+            pass
+        if verbose:
+            print "result",c
+        return c_point(c)
     def __repr__( self ):
-        result = ("bezier ("+self.fmt+","+self.fmt+") , ("+self.fmt+","+self.fmt+")") % (self.pts[0][0],
-                                                                                         self.pts[0][1],
-                                                                                         self.pts[1][0],
-                                                                                         self.pts[1][1] )
-        result += "\n  straightness %6.1f\n"%self.straightness()
+        result = "("
+        for c in self.coords:
+            result += "%6.4f "%c
+        result += ")"
         return result
-        
-    pass
 
-#c c_bezier newer - p'(0) == 2c0
-class c_bezier2( c_bezier_base ):
-    def __init__( self, p0, p1, c0, c1, color=(255,255,255,255), s=0 ):
-        self.s = s
-        self.pts = (p0, p1)
-        self.ctls = (c0,c1)
-        self.a = ( 2*(c0[0]+c1[0]-p1[0]+p0[0]),
-                   2*(c0[1]+c1[1]-p1[1]+p0[1]) )
-        self.b = ( 3*(p1[0]-p0[0]) - 4*c0[0] - 2*c1[0],
-                   3*(p1[1]-p0[1]) - 4*c0[1] - 2*c1[1] )
-        self.c = ( 2*c0[0], 2*c0[1] )
-        self.d = p0
-        self.color = color
-        pass
-    def split( self ):
-        p2 = ( 0.5*(self.pts[1][0]+self.pts[0][0]) + 0.25*(self.ctls[0][0]-self.ctls[1][0]),
-               0.5*(self.pts[1][1]+self.pts[0][1]) + 0.25*(self.ctls[0][1]-self.ctls[1][1]) )
-        print self.ctls
-        c2 = ( 0.375*(self.pts[1][0]-self.pts[0][0]) - 0.125*(self.ctls[0][0]+self.ctls[1][0]),
-               0.375*(self.pts[1][1]-self.pts[0][1]) - 0.125*(self.ctls[0][1]+self.ctls[1][1]) )
-        print c2
-        return ( c_bezier( self.pts[0], p2, (self.ctls[0][0]*0.5,self.ctls[0][1]*0.5), c2, color=(255,255,0,255), s=self.s+1 ),
-                 c_bezier( p2, self.pts[1], c2, (self.ctls[1][0]*0.5,self.ctls[1][1]*0.5), color=(255,0,255,255), s=self.s+1 ) )
-    pass
+#a Bezier classes
+#c c_bezier2
+class c_bezier2( object ):
+    """
+    A quadratic bezier curve class
 
-#c c_bezier newest - p'(0) == 4c0
-class c_bezier4( c_bezier_base ):
-    def __init__( self, p0, p1, c0, c1, color=(255,255,255,255), s=0, split_parent=None, first_split=True ):
-        self.s = s
-        self.pts = (p0, p1)
-        self.ctls = (c0,c1)
-        self.a = ( 4*(c0[0]+c1[0])-2*(p1[0]-p0[0]),
-                   4*(c0[1]+c1[1])-2*(p1[1]-p0[1]) )
-        self.b = ( 3*(p1[0]-p0[0]) - 8*c0[0] - 4*c1[0],
-                   3*(p1[1]-p0[1]) - 8*c0[1] - 4*c1[1] )
-        self.c = ( 4*c0[0], 4*c0[1] )
-        self.d = p0
-        self.color = color
-        pass
-    def split( self ):
-        p2 = ( 0.5*(self.pts[1][0]+self.pts[0][0]) + 0.5*(self.ctls[0][0]-self.ctls[1][0]),
-               0.5*(self.pts[1][1]+self.pts[0][1]) + 0.5*(self.ctls[0][1]-self.ctls[1][1]) )
-        print self.ctls
-        c2 = ( 0.5*0.375*(self.pts[1][0]-self.pts[0][0]) - 0.125*(self.ctls[0][0]+self.ctls[1][0]),
-               0.5*0.375*(self.pts[1][1]-self.pts[0][1]) - 0.125*(self.ctls[0][1]+self.ctls[1][1]) )
-        print c2
-        return ( c_bezier( self.pts[0], p2, (self.ctls[0][0]*0.5,self.ctls[0][1]*0.5), c2, color=(255,255,0,255), s=self.s+1 ),
-                 c_bezier( p2, self.pts[1], c2, (self.ctls[1][0]*0.5,self.ctls[1][1]*0.5), color=(255,0,255,255), s=self.s+1 ) )
-    pass
+    Here a point is defined by p(t) = (1-t)^2 * p0 + 2t(1-t) * c0 + t^2 * p1
+    If we subdivide, we need p(0)=p0, p(1/2)=p0/4 + c0/2 + p1/4, and p(1)=p1
+    And we need new control points
 
-#c c_bezier newest - p'(0) == 4c0
-class c_bezier( c_bezier_base ):
+    We will end up with a q(u) (0<=u<=1) where q(u)=p(u/2) - this is the first half of the subdivide
+    Now if we express q(u) as (1-u)^2 * p0 + 2u(1-u) * C0 + u^2 * (p0/4 + c0/2 + p1/4)
+    q(0) = p0; q(1) = p0/4 + c0/2 + p1/4 ; q(1/2) = p0/4 + C0/2 + p0/16 + c0/8 + p1/16
+    Note that p(1/4) should be the same as q(1/2), and p(1/4) = 9/16*p0 + 6/16*c0 + 1/16*p1
+    So we can deduce that C0 = 8/16*p0 + 8/16*c0 = p0/2 + c0/2
+
+    For the second half of the subdivide we have r(u)
+    Now if we express r(u) as (1-u)^2 * (p0/4 + c0/2 + p1/4) + 2u(1-u) * C1 + u^2 * p1
+    r(0) = p0/4 + c0/2 + p1/4 ; r(1) = p1; r(1/2) = p0/16 + c0/8 + p1/16 + C1/2 + p1/4
+    Note that p(3/4) should be the same as q(1/2), and p(3/4) = 1/16*p0 + 6/16*c0 + 9/16*p1
+    So we can deduce that C1 = 8/16*c0 + 8/16*p1 = c0/2 + p1/2
+    """
     n = 100
     fmt = "%6.2f"
-    def __init__( self, p0, p1, c0, c1, color=(255,255,255,255), s=0, split_parent=None, first_split=True ):
+    def __init__( self, pts=None, color=(255,255,255,255), s=0, split_parent=None, first_split=True ):
         self.s = s
         self.color = color
         if split_parent is None:
-            self.pts = (p0, p1)
-            self.ctls = (c0,c1)
-            self.a = ( 4*(c0[0]+c1[0])-2*(p1[0]-p0[0]),
-                       4*(c0[1]+c1[1])-2*(p1[1]-p0[1]) )
-            self.b = ( 3*(p1[0]-p0[0]) - 8*c0[0] - 4*c1[0],
-                       3*(p1[1]-p0[1]) - 8*c0[1] - 4*c1[1] )
-            self.c = ( 4*c0[0], 4*c0[1] )
-            self.d = p0
-            pass
-        elif first_split:
+            self.pts = pts
+            return
+        (p0, c0, p1) = split_parent.pts
+        if first_split:
             self.s = split_parent.s+1
-            self.a = ( split_parent.a[0]/8.0, split_parent.a[1]/8.0 )
-            self.b = ( split_parent.b[0]/4.0, split_parent.b[1]/4.0 )
-            self.c = ( split_parent.c[0]/2.0, split_parent.c[1]/2.0 )
-            self.d = ( split_parent.d[0]/1.0, split_parent.d[1]/1.0 )
-            self.pts = ( (self.d[0], self.d[1]),
-                         (self.a[0]+self.b[0]+self.c[0]+self.d[0],
-                          self.a[1]+self.b[1]+self.c[1]+self.d[1] ) )
-            self.ctls = ( (self.c[0]/4.0, self.c[1]/4.0),
-                          ( (3*self.a[0]+2*self.b[0]+self.c[0])/4.0,
-                            (3*self.a[1]+2*self.b[1]+self.c[1])/4.0) )
+            self.pts = (p0,
+                        p0.scale(0.5).add( c0, factor=0.5 ),
+                        p0.scale(0.25).add(c0,factor=0.5).add(p1,factor=0.25) )
         else:
             self.s = split_parent.s+1
-            self.a = ( split_parent.a[0]/8.0, split_parent.a[1]/8.0 )
-            self.b = ( split_parent.a[0]*3.0/8.0+split_parent.b[0]/4.0, split_parent.a[1]*3.0/8.0+split_parent.b[1]/4.0 )
-            self.c = ( split_parent.a[0]*3.0/8.0+split_parent.b[0]/2.0+split_parent.c[0]/2.0, split_parent.a[1]*3.0/8.0+split_parent.b[1]/2.0+split_parent.c[1]/2.0 )
-            self.d = ( split_parent.a[0]/8.0+split_parent.b[0]/4.0+split_parent.c[0]/2.0+split_parent.d[0]/1.0,
-                       split_parent.a[1]/8.0+split_parent.b[1]/4.0+split_parent.c[1]/2.0+split_parent.d[1]/1.0 )
-            self.pts = ( (self.d[0], self.d[1]),
-                         (self.a[0]+self.b[0]+self.c[0]+self.d[0],
-                          self.a[1]+self.b[1]+self.c[1]+self.d[1] ) )
-            self.ctls = ( (self.c[0]/4.0, self.c[1]/4.0),
-                          ( (3*self.a[0]+2*self.b[0]+self.c[0])/4.0,
-                            (3*self.a[1]+2*self.b[1]+self.c[1])/4.0) )
+            self.pts = (p1.scale(0.25).add(c0,factor=0.5).add(p0,factor=0.25),
+                        p1.scale(0.5).add( c0, factor=0.5 ),
+                        p1 )
         pass
-    def split( self ):
-        return ( c_bezier( 0,0,0,0, color=self.color, split_parent=self, first_split=True ),
-                 c_bezier( 0,0,0,0, color=self.color, split_parent=self, first_split=False ) )
+    def straight_enough( self, v ):
+        p10n = self.pts[-1].add(self.pts[0],factor=-1).normal()
+        len_p10n = p10n.length()
+        v_len_p10n = v*len_p10n
+        c0p10n = p10n.scalar_product(self.pts[1].add(self.pts[0],factor=-1))
+        #print c0p10n, v_len_p10n, p10n
+        if c0p10n*c0p10n>v_len_p10n: return False
+        return True
+    def break_into_segments( self, straightness ):
+        lines = [self]
+        i = 0
+        while i<len(lines):
+            if not lines[i].straight_enough(straightness):
+                l = lines.pop(i)
+                lines.insert(i,c_bezier2(color=self.color,split_parent=l,first_split=False))
+                lines.insert(i,c_bezier2(color=self.color,split_parent=l,first_split=True))
+                pass
+            else:
+                i+=1
+                pass
+            pass
+        return lines
+    def __repr__(self ):
+        return "bezier2(%s %s %s)"%(str(self.pts[0]),str(self.pts[1]),str(self.pts[2]),)
     pass
 
-#c c_bezier newest 1-t/t
+#c c_bezier
 class c_bezier( object ):
     n = 100
     fmt = "%6.2f"
@@ -306,62 +268,6 @@ class c_bezier( object ):
     pass
 
 #c c_bezier_patch
-class c_point( object ):
-    def __init__( self, coords ):
-        self.coords = coords
-        pass
-    def get_coords( self, scale=(1.0,), offset=(0.0,) ):
-        cs = []
-        i = 0
-        ls = len(scale)
-        lo = len(offset)
-        for c in self.coords:
-            cs.append(c*scale[i%ls]+offset[i%lo])  
-            i += 1
-            pass
-        return cs
-    def length( self ):
-        c = 0
-        for i in range(len(self.coords)):
-            d = self.coords[i]
-            c += d*d
-            pass
-        return math.sqrt(c)
-    def add( self, factor, other ):
-        c = []
-        for i in range(len(self.coords)):
-            c.append( self.coords[i]+factor*other.coords[i] )
-            pass
-        return c_point( c )
-    def distance( self, other ):
-        c = 0
-        for i in range(len(self.coords)):
-            d = self.coords[i]-other.coords[i]
-            c += d*d
-            pass
-        return math.sqrt(c)
-    def scalar_product( self, other ):
-        c = 0
-        for i in range(len(self.coords)):
-            c += self.coords[i]*other.coords[i]
-            pass
-        return c
-    def cross_product( self, other ):
-        c = []
-        for i in range(3):
-            c.append( self.coords[(i+1)%3]*other.coords[(i+2)%3] -
-                      other.coords[(i+1)%3]*self.coords[(i+2)%3] )
-            pass
-        if verbose:
-            print "result",c
-        return c_point(c)
-    def __repr__( self ):
-        result = "("
-        for c in self.coords:
-            result += "%6.4f "%c
-        result += ")"
-        return result
-
 class c_bezier_patch( object ):
     factors = [ 1.0, 3.0, 3.0, 1.0,
                 3.0, 9.0, 9.0, 3.0,
@@ -401,6 +307,8 @@ class c_bezier_patch( object ):
             pass
         return pt
 
+#a Tests
+#f test_bezier
 def test_bezier():
     epsilon = 0.001
     patches = { "flat_xy_square": ( (0,0,0),     (1/3.0,0,0),     (2/3.0,0,0),   (1,0,0),
