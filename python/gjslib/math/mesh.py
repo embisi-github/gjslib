@@ -175,6 +175,7 @@ class c_mesh_line( object ):
         self.pts = (pt0, pt1)
         self.direction = (pt1.coords()[0]-pt0.coords()[0], pt1.coords()[1]-pt0.coords()[1])
         self.triangles = (None, None)
+        self.winding_order = None
         pt0.add_to_line( self, pt1, 0 )
         pt1.add_to_line( self, pt0, 1 )
         pass
@@ -206,6 +207,13 @@ class c_mesh_line( object ):
             if self not in t.find_lines(mesh_only=True):
                 raise Exception("%s not found in %s"%(str(self),str(t)))
             pass
+        direction = (self.pts[1].coords()[0]-self.pts[0].coords()[0], self.pts[1].coords()[1]-self.pts[0].coords()[1])
+        errs = [direction[0]-self.direction[0], direction[1]-self.direction[1]]
+        if errs[0]<0: errs[0]=-errs[0]
+        if errs[1]<0: errs[1]=-errs[1]
+        err = errs[0]+errs[1]
+        if err>1E-10:
+            raise Exception("%s has bad direction (got %s wanted %s)"%(str(self),str(self.direction),str(direction)))
         pass
     #f get_points
     def get_points( self ):
@@ -237,6 +245,11 @@ class c_mesh_line( object ):
             self.triangles=(self.triangles[1], None)
             return
         raise Exception("Cannot remove %s from %s as it was not present"%(str(tri),str(self)))
+    #f num_triangles
+    def num_triangles( self ):
+        if self.triangles[0] is None: return 0
+        if self.triangles[1] is None: return 1
+        return 2
     #f swap_triangle
     def swap_triangle( self, tri_from, tri_to ):
         """Move the mesh line from tri_from to tri_to, but updating the triangles tuple."""
@@ -332,6 +345,7 @@ class c_mesh_line( object ):
             print "Swapping diagonal (A,B) with (X,Y) for line",A,B,X,Y,self
             print "Triangles ",self.triangles[0], self.triangles[1]
         self.pts = ( X, Y )
+        self.direction = (Y.coords()[0]-X.coords()[0], Y.coords()[1]-X.coords()[1])
         self.triangles[0].change_point_on_diagonal( B, Y, self.triangles[1] )
         self.triangles[1].change_point_on_diagonal( A, X, self.triangles[0] )
         if verbose:
@@ -396,12 +410,33 @@ class c_mesh_line( object ):
         if k<0 or k>1 or l<0 or l>1: return None
         return (k, l, pt[0]+k*dxy[0], pt[1]+k*dxy[1])
 
+    #f side_of_line
+    def side_of_line( self, pt, verbose=False ):
+        """Return <0 if pt is to left of line, >0 if pt is to right of line."""
+        (px,py) = pt.coords()
+        p0 = self.pts[0].coords()
+        if verbose:
+            print (px,py), p0
+            print self.direction
+            print (px-p0[0])*self.direction[1],(py-p0[1])*self.direction[0]
+        return (px-p0[0])*self.direction[1] - (py-p0[1])*self.direction[0]
+    #f set_winding_order
+    def set_winding_order( self, p0=None, p1=None ):
+        """Set the winding order for the line to be from p0 to p1"""
+        if p0 is None:
+            self.winding_order=None
+            return
+        if p0 not in self.pts or p1 not in self.pts:
+            raise Exception("Unable to set winding order of %s as it does not have both points %s and %s"%(str(self),str(p0),str(p1)))
+        self.winding_order = (self.pts[0]==p0)
     #f __repr__
     def __repr__( self ):
+        winding = "X"
+        if self.winding_order is not None: winding="%d"%self.winding_order
         tris = "(X,X)"
         if self.triangles[1] is not None: tris="(%d,%d)"%(self.triangles[0].triangle_num,self.triangles[1].triangle_num)
         elif self.triangles[0] is not None: tris="(%d,X)"%(self.triangles[0].triangle_num)
-        return "line(%d:%d:%d:%s)"%(self.line_num,self.pts[0].entry_number,self.pts[1].entry_number,tris)
+        return "line(%d:%s:%d:%d:%s)"%(self.line_num,winding,self.pts[0].entry_number,self.pts[1].entry_number,tris)
 
 #c c_mesh_triangle
 class c_mesh_triangle( object ):
@@ -425,6 +460,7 @@ class c_mesh_triangle( object ):
         pts[0].find_line_segment_to( pts[1] ).add_to_triangle( self )
         pts[1].find_line_segment_to( pts[2] ).add_to_triangle( self )
         pts[2].find_line_segment_to( pts[0] ).add_to_triangle( self )
+        self.winding_order = None
         pass
     #f check_consistent
     def check_consistent( self ):
@@ -510,10 +546,44 @@ class c_mesh_triangle( object ):
     def get_points( self ):
         """Get the points in the triangle."""
         return self.pts
+    #f set_winding_order
+    def set_winding_order( self, line=None, winding_order_base=0, verbose=False ):
+        """
+        Set the winding order for the triangle based on a line and a winding order for the other side of the line
+        """
+        if self.winding_order is not None: return[]
+        #verbose = (self.triangle_num==41) or (self.triangle_num==25)
+        if line is None:
+            self.winding_order = None
+            return []
+        p = self.get_other_point( line.pts )
+        if verbose:
+            print line.pts
+            print line
+            print p
+        if line.winding_order is None:
+            self.winding_order = winding_order_base
+        else:
+            side_of_line = line.side_of_line( p, verbose=verbose )
+            if (side_of_line<0) and (line.winding_order):
+                self.winding_order = winding_order_base-1
+                pass
+            elif (side_of_line>0) and (not line.winding_order):
+                self.winding_order = winding_order_base-1
+                pass
+            else:
+                self.winding_order = winding_order_base+1
+                pass
+            pass
+        l0 = line.pts[0].find_line_segment_to(p)
+        l1 = line.pts[1].find_line_segment_to(p)
+        return [l0, l1]
     #f __repr__
     def __repr__( self ):
         """Return a representation of the triangle."""
-        return "tri(%d:%d,%d,%d)"%(self.triangle_num,self.pts[0].entry_number,self.pts[1].entry_number,self.pts[2].entry_number)
+        winding = "X"
+        if self.winding_order is not None: winding="%d"%self.winding_order
+        return "tri(%d:%s,%d,%d,%d)"%(self.triangle_num,winding,self.pts[0].entry_number,self.pts[1].entry_number,self.pts[2].entry_number)
 
 #c c_mesh
 class c_mesh( object ):
@@ -644,7 +714,7 @@ class c_mesh( object ):
 
         The contour is just added to the mesh; later method invocations are required to create the mesh points and lines
         """
-        self.contours.append( (pts, [], closed, contour_data) )
+        self.contours.append( {"pts":pts, "mesh_pts":[], "closed":closed, "data":contour_data} )
         pass
     #f add_bezier_list_contour
     def add_bezier_list_contour( self, bezier_list, closed=False, contour_data=None, straightness=1000, perturbation=None ):
@@ -670,9 +740,8 @@ class c_mesh( object ):
         Add all the points as mesh points, and update the contour.
         """
         for c in self.contours:
-            print c
-            mesh_pts = c[1]
-            for p in c[0]:
+            mesh_pts = c["mesh_pts"]
+            for p in c["pts"]:
                 mesh_pts.append( self.add_point( p ) )
                 pass
             pass
@@ -973,13 +1042,18 @@ class c_mesh( object ):
         """
         For every line segment in every contour, if the line segment is not present in the mesh, split
 
-        BLAH
+        Check every pair of mesh points on every contour.
+        If the line between the points is not a line segment, then chose one from the set of line segments that lies between the two points and split that at the correct point, adding this new point to the contour
+        Return the total number of lines split.
+
+        At each call the situation is improved; however, the method should be invoked repeatedly until it returns zero if all contours are required to be on the mesh.
+        Between calls of this method the mesh can be optimized with, for example, calls of the shorten_quad_diagonals() method.
         """
         lines_changed = 0
         for c in self.contours:
-            mesh_pts = c[1]
+            mesh_pts = c["mesh_pts"]
             p0 = mesh_pts[-1]
-            if not c[2]: p0=None
+            if not c["closed"]: p0=None
             i = 0
             while i<len(mesh_pts):
                 p = mesh_pts[i]
@@ -995,6 +1069,80 @@ class c_mesh( object ):
             pass
         return lines_changed
 
+    #f assign_winding_order_to_contours
+    def assign_winding_order_to_contours( self ):
+        """
+        Assign a winding order to mesh line segments which make up lines
+
+        For every line segment making a contour set the winding order to be that of the contour
+        """
+        for l in self.line_segments:
+            l.set_winding_order()
+            pass
+
+        for c in self.contours:
+            mesh_pts = c["mesh_pts"]
+            p0 = mesh_pts[-1]
+            if not c["closed"]: p0=None
+            i = 0
+            while i<len(mesh_pts):
+                p = mesh_pts[i]
+                if p0 is not None:
+                    l = p0.find_line_segment_to(p)
+                    if l is not None: # Should be none if ensure_contours_on_mesh process is complete, but do not require it
+                        l.set_winding_order(p0,p)
+                        pass
+                    pass
+                p0 = p
+                i+=1
+                pass
+            pass
+        pass
+    #f assign_winding_order_to_mesh
+    def assign_winding_order_to_mesh( self ):
+        """
+        Assign a winding order to the whole mesh given that some lines have a winding order
+
+        Clear the winding order for each triangle
+        Work from the 'outside' in of the mesh.
+           Create a list of lines segments that border exactly one triangle
+           Pop the first line in the list
+             If there are two triangles for the line and both already have a winding order, move on
+             If there is one triangle for the line, set its winding order based on the winding order of the line
+             If there are two triangles for the line then at least one has a winding order, and set the winding order of the other triangle
+             For each triangle whose winding order is set, and the other lines in the triangle to the list of line segments to work on
+           Repeat until the work list is empty
+
+        If a line has 'None' as its winding order, then the triangles on both sides have the same winding order
+        If a line has 'False' as its winding order, then the triangle on the 'left' of the line (that whose third point is left of line.pts[0] -> line.pts[1]) has -1 of the other triangle
+        If a line has 'True' as its winding order, then the triangle on the 'left' of the line (that whose third point is left of line.pts[0] -> line.pts[1]) has +1 of the other triangle
+        """
+        for t in self.triangles:
+            t.set_winding_order()
+            pass
+
+        work_list = []
+        for l in self.line_segments:
+            if l.num_triangles()==1:
+                work_list.append(l)
+                pass
+            pass
+
+        while len(work_list)>0:
+            l = work_list.pop(0)
+            (t0, t1) = l.triangles
+            if (t1 is not None) and (t0.winding_order is not None) and (t1.winding_order is not None): continue
+            if t1 is None:
+                work_list.extend( t0.set_winding_order(l) )
+                pass
+            elif (t1 is not None) and (t1.winding_order is not None):
+                work_list.extend( t0.set_winding_order(l,t1.winding_order) )
+                pass
+            elif (t0 is not None) and (t0.winding_order is not None):
+                work_list.extend( t1.set_winding_order(l,t0.winding_order) )
+                pass
+            pass
+        pass
     #f __repr__
     def __repr__( self, verbose=False ):
         result =  "mesh\n"
