@@ -87,9 +87,9 @@ class c_font( object ):
     No hinting support is provided in this class, as the rendering is expected to be used in OpenGL (for which hints are pointless)
     """
     @staticmethod
-    def convert_ttf_to_ttx( self, ttf_filename, ttx_filename ):
-        import ttLib
-        tt = ttLib.TTFont(ttf_filename)
+    def convert_ttf_to_ttx( ttf_filename, ttx_filename ):
+        import fontTools.ttLib
+        tt = fontTools.ttLib.TTFont(ttf_filename)
         tt.saveXML(ttx_filename)
         pass
     def __init__( self, font_name ):
@@ -115,6 +115,21 @@ class c_font( object ):
             self.glyphs[gn].ttx_get_glyph(glyf)
         return self
     pass
+    def get_bbox( self, glyph_name ):
+        glyph = self.glyphs[glyph_name]
+        lx = glyph.glyph["xMin"]
+        w = glyph.glyph["xMax"] - glyph.glyph["xMin"]
+        if w<0:
+            w=-w
+            lx = glyph.glyph["xMax"]
+            pass
+        by = glyph.glyph["yMin"]
+        h = glyph.glyph["yMax"] - glyph.glyph["yMin"]
+        if h<0:
+            h=-h
+            by = glyph.glyph["xMin"]
+            pass
+        return (lx,by,w,h)
     def create_bezier_lists( self, glyph_name ):
         import gjslib.math.bezier as bezier
         glyph = self.glyphs[glyph_name]

@@ -49,8 +49,15 @@ verbose = False
 #c c_point
 class c_point( object ):
     def __init__( self, coords ):
-        self.coords = coords
+        self.set_coords(coords)
+        #print "Creating point at",self.coords,self
         pass
+    def set_coords( self, coords ):
+        cs = []
+        for c in coords:
+            cs.append(c+0.0)
+            pass
+        self.coords = tuple(cs)
     def perturb( self, quantum ):
         cs = []
         for c in self.coords:
