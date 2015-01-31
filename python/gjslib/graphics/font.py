@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 
+import gjslib.math.bezier as bezier
+import gjslib.math.mesh as mesh
+
 class c_glyph( object ):
     def __init__( self, name ):
         self.name = name
         self.metrics = {}
         self.glyph = {}
+        self.mesh = None
         pass
     def ttx_get_element_by_name( self, node, tag_name, name ):
         for m in node.getElementsByTagName(tag_name):
@@ -71,6 +75,63 @@ class c_glyph( object ):
         r["contours"] = contours
         self.glyph = r
         pass
+    def create_bezier_lists( self ):
+        bezier_lists = []
+        for c in self.glyph["contours"]:
+            beziers = []
+            i = 0
+            p0 = c0 = p1 = None
+            while i<len(c):
+                (p0,c0,p1) = (c0,p1,bezier.c_point(coords=c[i]))
+                if ((i&1)==0) and p0 is not None:
+                    beziers.append( bezier.c_bezier2( pts=(p0,c0,p1) ) )
+                    pass
+                i += 1
+                pass
+            bezier_lists.append(beziers)
+            pass
+        return bezier_lists
+    def get_mesh( self, straightness=50 ):
+        if self.mesh is not None: return self.mesh
+        m = mesh.c_mesh()
+        contours = self.create_bezier_lists()
+        for bl in contours:
+            m.add_bezier_list_contour( bezier_list=bl, closed=True, contour_data=None, straightness=straightness )
+            pass
+        m.map_contours_to_mesh()
+        m.normalize()
+        m.fill_convex_hull_with_triangles()
+        m.remove_small_lines(min_length=0.01)
+        m.remove_small_area_triangles( min_area=0.01)
+        for i in range(10):
+            if m.shorten_quad_diagonals()==0: break
+            pass
+        for i in range(10):
+            m.ensure_contours_on_mesh()
+            m.shorten_quad_diagonals()
+            m.remove_small_lines(min_length=0.01)
+            m.remove_small_area_triangles( min_area=0.01)
+            pass
+        m.assign_winding_order_to_contours()
+        m.assign_winding_order_to_mesh()
+        #m.check_consistent()
+        self.mesh = m
+        return m
+    def get_bbox( self ):
+        lx = self.glyph["xMin"]
+        w = self.glyph["xMax"] - self.glyph["xMin"]
+        if w<0:
+            w=-w
+            lx = self.glyph["xMax"]
+            pass
+        by = self.glyph["yMin"]
+        h = self.glyph["yMax"] - self.glyph["yMin"]
+        if h<0:
+            h=-h
+            by = self.glyph["xMin"]
+            pass
+        return (lx,by,w,h)
+
     def __repr__( self ):
         result = "glyph '%s' : %s : %s"%(self.name,str(self.metrics),str(self.glyph))
         return result
@@ -114,37 +175,13 @@ class c_font( object ):
             self.glyphs[gn].ttx_get_metrics(hmtx)
             self.glyphs[gn].ttx_get_glyph(glyf)
         return self
-    pass
     def get_bbox( self, glyph_name ):
         glyph = self.glyphs[glyph_name]
-        lx = glyph.glyph["xMin"]
-        w = glyph.glyph["xMax"] - glyph.glyph["xMin"]
-        if w<0:
-            w=-w
-            lx = glyph.glyph["xMax"]
-            pass
-        by = glyph.glyph["yMin"]
-        h = glyph.glyph["yMax"] - glyph.glyph["yMin"]
-        if h<0:
-            h=-h
-            by = glyph.glyph["xMin"]
-            pass
-        return (lx,by,w,h)
+        return glyph.get_bbox()
     def create_bezier_lists( self, glyph_name ):
-        import gjslib.math.bezier as bezier
         glyph = self.glyphs[glyph_name]
-        bezier_lists = []
-        for c in glyph.glyph["contours"]:
-            beziers = []
-            i = 0
-            p0 = c0 = p1 = None
-            while i<len(c):
-                (p0,c0,p1) = (c0,p1,bezier.c_point(coords=c[i]))
-                if ((i&1)==0) and p0 is not None:
-                    beziers.append( bezier.c_bezier2( pts=(p0,c0,p1) ) )
-                    pass
-                i += 1
-                pass
-            bezier_lists.append(beziers)
-            pass
-        return bezier_lists
+        return glyph.create_bezier_lists()
+    def get_mesh( self, glyph_name, straightness=50 ):
+        glyph = self.glyphs[glyph_name]
+        return glyph.get_mesh( straightness=straightness )
+

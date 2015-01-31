@@ -904,7 +904,7 @@ class c_mesh( object ):
         pt = self.add_point(midpoint, append_to_numbers=True)
         self.split_line_segment( line, pt )
     #f split_line_segment
-    def split_line_segment( self, line, pt ):
+    def split_line_segment( self, line, pt, verbose=False ):
         """
         Split a mesh line segment by inserting a mesh point, which should be on the line
 
@@ -923,7 +923,9 @@ class c_mesh( object ):
 
         Return (L0, L1)
         """
-        self.check_consistent()
+        if verbose:
+            self.check_consistent()
+            pass
         (p0, p1) = line.get_points()
         if (pt is p0) or (pt is p1):
             raise Exception("Request to split a line %s at one of its endpoints %s"%(str(line),str(pt)))
@@ -936,18 +938,16 @@ class c_mesh( object ):
         l0 = self.add_line( p0, pt )
         l1 = self.add_line( pt, p1 )
 
-        print "Split line",line,pt
-        print "p0",p0
-        print "p1",p1
-        print "l0",l0
-        print "l1",l1
+        if verbose:
+            print "Split line",line,pt
+            print "p0",p0
+            print "p1",p1
+            print "l0",l0
+            print "l1",l1
         for t in line.triangles:
-            print "t",t
             if t is None: continue
             x = t.get_other_point( (p1, p0) )
-            print "Other point",x
             t.change_vertex( p1, pt )
-            print "Triangle",t
             p1.find_line_segment_to( other=x, mesh_only=True ).remove_from_triangle( t )
             l0.add_to_triangle( t )
             lx = self.add_line( pt, x )
@@ -956,7 +956,9 @@ class c_mesh( object ):
             pass
 
         self.remove_line( line )
-        self.check_consistent()
+        if verbose:
+            self.check_consistent()
+            pass
         return (l0, l1)
     #f remove_empty_triangles
     def remove_empty_triangles( self ):
@@ -1149,10 +1151,10 @@ class c_mesh( object ):
                 print "********************************************************************************"
                 print "Length %f of %s, want to remove"%(l.get_length(),str(l))
                 pass
-            self.check_consistent()
+            #self.check_consistent()
             self.merge_two_line_ends(l, verbose=verbose)
-            print self.__repr__(verbose=True)
-            self.check_consistent()
+            #print self.__repr__(verbose=True)
+            #self.check_consistent()
             lines_removed += 1
             pass
         if verbose:
@@ -1223,7 +1225,7 @@ class c_mesh( object ):
             AC = A.find_line_segment_to(C)
             BC = B.find_line_segment_to(C)
             if AB.num_triangles()==1:
-                self.check_consistent()
+                #self.check_consistent()
                 A.remove_from_triangle( t )
                 B.remove_from_triangle( t )
                 AC.remove_from_triangle( t )
@@ -1232,12 +1234,12 @@ class c_mesh( object ):
                 B.remove_from_line( AB )
                 self.remove_line( AB )
                 self.remove_triangle( t )
-                self.check_consistent()
+                #self.check_consistent()
                 pass
             else:
-                self.check_consistent()
+                #self.check_consistent()
                 AB.swap_diagonal( self, verbose=True )
-                self.check_consistent()
+                #self.check_consistent()
                 pass
             i+=1
             pass
@@ -1432,6 +1434,18 @@ class c_mesh( object ):
                 work_list.extend( t1.set_winding_order(l,t0.winding_order) )
                 pass
             pass
+        pass
+    #f get_vertices_and_triangles
+    def get_vertices_and_triangles( self ):
+        """
+        Generate lists of all vertices
+
+        Generate triangle strips (list of triangle strips) for all triangles
+          triangle strip = [ vertex index, vertex index, ...]
+        Generate list of edges in counter-clockwise order
+          an edge is a line that does not have two triangles
+          may need to have a 'other-handedness flag' so the mesh can be 'inverted'
+        """
         pass
     #f __repr__
     def __repr__( self, verbose=False ):
