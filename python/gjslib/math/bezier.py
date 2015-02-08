@@ -48,16 +48,20 @@ verbose = False
 #a Point class
 #c c_point
 class c_point( object ):
+    #f __init__
     def __init__( self, coords ):
         self.set_coords(coords)
         #print "Creating point at",self.coords,self
         pass
+    #f set_coords
     def set_coords( self, coords ):
         cs = []
         for c in coords:
             cs.append(c+0.0)
             pass
         self.coords = tuple(cs)
+        pass
+    #f perturb
     def perturb( self, quantum ):
         cs = []
         for c in self.coords:
@@ -66,6 +70,8 @@ class c_point( object ):
         cs[0] += quantum+cs[1]*quantum
         cs[1] += quantum-cs[0]*quantum
         self.coords = tuple(cs)
+        pass
+    #f get_coords
     def get_coords( self, scale=(1.0,), offset=(0.0,) ):
         cs = []
         i = 0
@@ -76,6 +82,7 @@ class c_point( object ):
             i += 1
             pass
         return cs
+    #f length
     def length( self ):
         c = 0
         for i in range(len(self.coords)):
@@ -83,20 +90,24 @@ class c_point( object ):
             c += d*d
             pass
         return math.sqrt(c)
+    #f scale
     def scale( self, factor ):
         c = []
         for i in range(len(self.coords)):
             c.append( self.coords[i] * factor )
             pass
         return c_point( c )
+    #f is_parallel_to
     def is_parallel_to( self, other ):
         return (self.coords[1]*other.coords[0]-self.coords[0]*other.coords[1])==0
+    #f add
     def add( self, other, factor=1 ):
         c = []
         for i in range(len(self.coords)):
             c.append( self.coords[i]+factor*other.coords[i] )
             pass
         return c_point( c )
+    #f distance
     def distance( self, other ):
         c = 0
         for i in range(len(self.coords)):
@@ -104,14 +115,17 @@ class c_point( object ):
             c += d*d
             pass
         return math.sqrt(c)
+    #f normal
     def normal( self ):
         return c_point( coords=(-self.coords[1], self.coords[0]) )
+    #f scalar_product
     def scalar_product( self, other ):
         c = 0
         for i in range(len(self.coords)):
             c += self.coords[i]*other.coords[i]
             pass
         return c
+    #f cross_product
     def cross_product( self, other ):
         c = []
         for i in range(3):
@@ -121,6 +135,7 @@ class c_point( object ):
         if verbose:
             print "result",c
         return c_point(c)
+    #f __repr__
     def __repr__( self ):
         result = "("
         for c in self.coords:
