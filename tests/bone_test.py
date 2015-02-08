@@ -281,10 +281,25 @@ class c_bone_expr( object ):
     To evaluate the expression the initial stack contents is copied, then the expression elements are evaluated one by one
     """
     expression_ops = {}
+    script_op2s = {"mult":c_bone_expr_op(c_bone_op_mult),
+                   "add":c_bone_expr_op(c_bone_op_add),
+                   "div":c_bone_expr_op(c_bone_op_div),
+                   "dir":c_bone_expr_op(c_bone_op_direction),
+                   "pt":c_bone_expr_op(c_bone_op_point),
+                   }
+    script_op1s = {"neg":c_bone_expr_op( c_bone_op_neg ),
+                   }
+    script_op1s.update(script_op2s)
+    script_op0s = {"dup":c_bone_expr_op( c_bone_op_dup ),
+                   "pop":c_bone_expr_op( c_bone_op_pop )
+                   }
+    script_op0s.update(script_op1s)
+    #f reset_opts
     @classmethod
     def reset_ops( cls ):
         cls.expression_ops = {}
         pass
+    #f add_op
     @classmethod
     def add_op( cls, stack_tuple, op ):
         cls.expression_ops[ stack_tuple ] = op
@@ -297,6 +312,57 @@ class c_bone_expr( object ):
     #f add_element
     def add_element( self, e ):
         self.elements.append( e )
+        pass
+    #f add_script
+    def add_script( self, script ):
+        if type(script)==float:
+            self.add_element( c_bone_expr_push( c_bone_type_scalar().set(script) ) )
+            pass
+        elif type(script)==int:
+            self.add_element( c_bone_expr_push( c_bone_type_scalar().set(0.0+script) ) )
+            pass
+        elif type(script)==list:
+            for t in script:
+                self.add_script( t )
+                pass
+            pass
+        elif (type(script)==tuple) and (len(script)==3):
+            if script[0]=="set":
+                self.add_script( script[2] )
+                self.add_element( c_bone_expr_push_bone_var( script[1] ) )
+                self.add_element( c_bone_expr_op( c_bone_op_set ) )
+                pass
+            elif script[0] in self.script_op2s:
+                self.add_script( script[1] )
+                self.add_script( script[2] )
+                self.add_element( self.script_op2s[script[0]] )
+                pass
+            else:
+                raise Exception("Cannot interpret script %s"%(str(script)))
+            pass
+        elif (type(script)==tuple) and (len(script)==2):
+            if script[0]=="set":
+                self.add_element( c_bone_expr_push_bone_var( script[1] ) )
+                self.add_element( c_bone_expr_op( c_bone_op_set ) )
+                pass
+            elif script[0]=="get":
+                self.add_element( c_bone_expr_push_bone_var( script[1] ) )
+                self.add_element( c_bone_expr_op( c_bone_op_get ) )
+                pass
+            elif script[0] in self.script_op1s:
+                self.add_script( script[1] )
+                self.add_element( self.script_op1s[script[0]] )
+                pass
+            else:
+                raise Exception("Cannot interpret script %s"%(str(script)))
+            pass
+        elif (type(script)==str):
+            if script in self.script_op0s:
+                self.add_element( self.script_op0s[script] )
+                pass
+            else:
+                raise Exception("Cannot interpret script %s"%(str(script)))
+            pass
         pass
     #f clear_error
     def clear_error( self ):
@@ -449,18 +515,23 @@ class c_bone_base( object ):
         self.children = []
         self.parent = parent
         if parent is not None: parent.add_child(self)
-        self.expression = None
-        self.expression_scope = None
+        self.expressions = {}
         pass
-    #f init_expression
-    def init_expression( self, scope ):
-        self.expression = c_bone_expr()
-        self.expression_scope = scope
-        return self.expression
-    #f evaluate_expression
-    def evaluate_expression( self ):
-        if self.expression is None: return None
-        return self.expression.evaluate( self.expression_scope )
+    #f add_expression
+    def add_expression( self, id, scope, script=None ):
+        self.expressions[id] = (scope, c_bone_expr())
+        if script is not None:
+            self.expressions[id][1].add_script( script )
+            pass
+        return self.expressions[id][1]
+    #f evaluate_expressions
+    def evaluate_expressions( self, ids=None ):
+        if ids is None: ids=self.expressions.keys()
+        for id in ids:
+            print "Evaluating", id, self.expressions[id]
+            print self.expressions[id][1].evaluate( scope=self.expressions[id][0] )
+            pass
+        pass
     #f add_child
     def add_child( self, node ):
         self.children.append(node)
@@ -620,73 +691,29 @@ base_a = bone_1.add_child( c_bone_var("base_a", "vector") )
 base_b = bone_1.add_child( c_bone_var("base_b", "vector") )
 base_mid = bone_1.add_child( c_bone_var("base_mid", "vector") )
 bone_1_b = bone_1.add_child( c_bone_var("base_bezier", "bezier") )
-bone_1.set_node("base_a", null_point )
-bone_1.set_node("base_b", null_point )
+
+bone_1.add_expression( id="base_ab", scope=ship, script= [("mult",
+                                                           ("get","size"),
+                                                           ("mult", 0.5, ("get","direction"))),
+                                                          ("dup"),
+                                                          ("set", "bone1.base_a", ("add", ("get","anchor_point"))), ("pop"),
+                                                          ("neg"),
+                                                          ("set", "bone1.base_b", ("add", ("get","anchor_point"))), ("pop"),
+                                                          ]
+                       )
+
+bone_1.add_expression( id="base_mid", scope=bone_1, script=[ ("set", "base_mid", ("mult", 0.5, ("add", ("get", "base_a"), ("get", "base_b")))) ] )
+bone_1.evaluate_expressions( ("base_ab", "base_mid") )
 bone_1_b.set( (base_a,base_mid,base_b) )
+bone_1.add_expression( id="bezier_notes", scope=bone_1, script=[ ("dir", ("get", "base_bezier"), 0.0),
+                                                                 ("dir", ("get", "base_bezier"), 0.5),                                                                 
+                                                                 ("dir", ("get", "base_bezier"), 1.0),                                                                 
+                                                                 ("pt",  ("get", "base_bezier"), 0.0),                                                                 
+                                                                 ("pt",  ("get", "base_bezier"), 0.5),                                                                 
+                                                                 ("pt",  ("get", "base_bezier"), 1.0),
+                                                                 ])
 
-e = bone_1.init_expression( scope=ship )
-e.add_element( c_bone_expr_push_bone_var( "size" ) )
-e.add_element( c_bone_expr_op( c_bone_op_get ) )
-e.add_element( c_bone_expr_push_bone_var( "direction" ) )
-e.add_element( c_bone_expr_op( c_bone_op_get ) )
-e.add_element( c_bone_expr_push( c_bone_type_scalar().set(0.5) ) )
-e.add_element( c_bone_expr_op( c_bone_op_mult ) )
-e.add_element( c_bone_expr_op( c_bone_op_mult ) )
-e.add_element( c_bone_expr_op( c_bone_op_dup ) )
-e.add_element( c_bone_expr_push_bone_var( "anchor_point" ) )
-e.add_element( c_bone_expr_op( c_bone_op_get ) )
-e.add_element( c_bone_expr_op( c_bone_op_add ) )
-e.add_element( c_bone_expr_push_bone_var( "bone1.base_a" ) )
-e.add_element( c_bone_expr_op( c_bone_op_set ) )
-e.add_element( c_bone_expr_op( c_bone_op_pop ) )
-e.add_element( c_bone_expr_op( c_bone_op_neg ) )
-e.add_element( c_bone_expr_push_bone_var( "anchor_point" ) )
-e.add_element( c_bone_expr_op( c_bone_op_get ) )
-e.add_element( c_bone_expr_op( c_bone_op_add ) )
-e.add_element( c_bone_expr_push_bone_var( "bone1.base_b" ) )
-e.add_element( c_bone_expr_op( c_bone_op_set ) )
-
-e.add_element( c_bone_expr_push_bone_var( "bone1.base_a" ) )
-e.add_element( c_bone_expr_op( c_bone_op_get ) )
-e.add_element( c_bone_expr_push_bone_var( "bone1.base_b" ) )
-e.add_element( c_bone_expr_op( c_bone_op_get ) )
-e.add_element( c_bone_expr_op( c_bone_op_add ) )
-e.add_element( c_bone_expr_push( c_bone_type_scalar().set(0.5) ) )
-e.add_element( c_bone_expr_op( c_bone_op_mult ) )
-e.add_element( c_bone_expr_push_bone_var( "bone1.base_mid" ) )
-e.add_element( c_bone_expr_op( c_bone_op_set ) )
-
-e.add_element( c_bone_expr_push_bone_var( "bone1.base_bezier" ) )
-e.add_element( c_bone_expr_op( c_bone_op_get ) )
-e.add_element( c_bone_expr_push( c_bone_type_scalar().set(0.0) ) )
-e.add_element( c_bone_expr_op( c_bone_op_direction ) )
-
-e.add_element( c_bone_expr_push_bone_var( "bone1.base_bezier" ) )
-e.add_element( c_bone_expr_op( c_bone_op_get ) )
-e.add_element( c_bone_expr_push( c_bone_type_scalar().set(0.5) ) )
-e.add_element( c_bone_expr_op( c_bone_op_direction ) )
-
-e.add_element( c_bone_expr_push_bone_var( "bone1.base_bezier" ) )
-e.add_element( c_bone_expr_op( c_bone_op_get ) )
-e.add_element( c_bone_expr_push( c_bone_type_scalar().set(1.0) ) )
-e.add_element( c_bone_expr_op( c_bone_op_direction ) )
-
-e.add_element( c_bone_expr_push_bone_var( "bone1.base_bezier" ) )
-e.add_element( c_bone_expr_op( c_bone_op_get ) )
-e.add_element( c_bone_expr_push( c_bone_type_scalar().set(0.0) ) )
-e.add_element( c_bone_expr_op( c_bone_op_point ) )
-
-e.add_element( c_bone_expr_push_bone_var( "bone1.base_bezier" ) )
-e.add_element( c_bone_expr_op( c_bone_op_get ) )
-e.add_element( c_bone_expr_push( c_bone_type_scalar().set(0.5) ) )
-e.add_element( c_bone_expr_op( c_bone_op_point ) )
-
-e.add_element( c_bone_expr_push_bone_var( "bone1.base_bezier" ) )
-e.add_element( c_bone_expr_op( c_bone_op_get ) )
-e.add_element( c_bone_expr_push( c_bone_type_scalar().set(1.0) ) )
-e.add_element( c_bone_expr_op( c_bone_op_point ) )
-
-print bone_1.evaluate_expression()
+print bone_1.evaluate_expressions( ("bezier_notes",) )
 
 # bone_1 has 'base_a' = 'anchor point' + 'size'/2*'direction'
 # 'perturb_shake' = rotate(shake_angle) * size/2 * direction - size/2 * direction
@@ -694,9 +721,3 @@ print bone_1.evaluate_expression()
 # 'perturb_b' = -'pertrub_shake'
 subbone_1_1 = c_bone( "sub1", parent=bone_1 )
 subbone_1_2 = c_bone( "sub2", parent=bone_1 )
-print ship.find_node("anchor_point")
-print ship.find_node("bone1.sub1")
-print ship.find_node("bone1")
-print ship.find_node("bone1.banana.tickle")
-print "bone_a",ship.find_node_or_fail("bone1.base_a").get()
-print "bone_b",ship.find_node_or_fail("bone1.base_b").get()
