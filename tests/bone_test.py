@@ -2,6 +2,7 @@
 #a Imports
 import pygame
 import sys, os
+import math
 
 sys.path.insert(0, os.path.abspath('../python'))
 import gjslib.math.bezier as bezier
@@ -74,6 +75,7 @@ class c_bezier( object ):
             else:
                 self.pt_coords = lambda p:p.get_coords()
                 pass
+            #print pts
             self.dimension = len(self.pt_coords(pts[0]))
             if pt_class is not None:
                 self.pt_class = pt_class
@@ -126,6 +128,8 @@ class c_bezier( object ):
 #c c_bone_op
 class c_bone_op( object ):
     op_string="<none>"
+    derefs_var = False
+    defines_var = False
     def __repr__( self ):
         return "op'%s'"%(self.op_string)
     pass
@@ -145,6 +149,11 @@ class c_bone_op_sub( c_bone_op ):
     op_string = "-"
     pass
 
+#c c_bone_op_rot
+class c_bone_op_rot( c_bone_op ):
+    op_string = "rot"
+    pass
+
 #c c_bone_op_div
 class c_bone_op_div( c_bone_op ):
     op_string = "/"
@@ -158,11 +167,13 @@ class c_bone_op_pop( c_bone_op ):
 #c c_bone_op_get
 class c_bone_op_get( c_bone_op ):
     op_string = "get"
+    derefs_var = True
     pass
 
 #c c_bone_op_set
 class c_bone_op_set( c_bone_op ):
     op_string = "set"
+    defines_var = True
     pass
 
 #c c_bone_op_direction
@@ -192,6 +203,9 @@ class c_bone_op_swap( c_bone_op ):
 
 #c c_bone_expr_element
 class c_bone_expr_element( object ):
+    #f find_dependencies
+    def find_dependencies( self, expression, stack, scope, dependencies, defines ):
+        pass
     pass
 
 #c c_bone_expr_op
@@ -250,6 +264,17 @@ class c_bone_expr_op( c_bone_expr_element ):
         return True
     pass
 
+    #f find_dependencies
+    def find_dependencies( self, expression, stack, scope, dependencies, defines ):
+        if self.op.defines_var:
+            node = stack.pop()
+            if node not in defines: defines.append(node)
+            pass
+        elif self.op.derefs_var:
+            node = stack.pop()
+            if node not in dependencies: dependencies.append(node)
+            pass
+        pass
 #c c_bone_expr_push
 class c_bone_expr_push( c_bone_expr_element ):
     #f __init__
@@ -272,6 +297,11 @@ class c_bone_expr_push_bone_var( c_bone_expr_element ):
         node = scope.find_node_or_fail(self.id)
         stack.append( node )
         return True
+    #f find_dependencies
+    def find_dependencies( self, expression, stack, scope, dependencies, defines ):
+        node = scope.find_node_or_fail(self.id)
+        stack.append( node )
+        pass
     pass
 
 #c c_bone_expr
@@ -283,6 +313,7 @@ class c_bone_expr( object ):
     expression_ops = {}
     script_op2s = {"mult":c_bone_expr_op(c_bone_op_mult),
                    "add":c_bone_expr_op(c_bone_op_add),
+                   "rot":c_bone_expr_op(c_bone_op_rot),
                    "div":c_bone_expr_op(c_bone_op_div),
                    "dir":c_bone_expr_op(c_bone_op_direction),
                    "pt":c_bone_expr_op(c_bone_op_point),
@@ -388,6 +419,15 @@ class c_bone_expr( object ):
         if self.errored():
             return (False, self.get_error())
         return (True, stack )
+    #f find_dependencies
+    def find_dependencies( self, scope ):
+        stack = []
+        dependencies = []
+        defines = []
+        for e in self.elements:
+            e.find_dependencies( self, stack, scope, dependencies, defines )
+            pass
+        return (dependencies, defines)
 
 #a Bone type classes
 #c c_bone_type
@@ -409,9 +449,17 @@ class c_bone_type( object ):
     def __init__( self, id=None ):
         self.id = None
         self.value = None
+        self.implicit_dependents = []
         pass
+    #f add_implicit_dependent
+    def add_implicit_dependent( self, other ):
+        self.implicit_dependents.append(other)
+        return self
+    #f get_implicit_dependents
+    def get_implicit_dependents( self ):
+        return self.implicit_dependents
     #f set
-    def set( self, value ):
+    def set( self, value, var=None ):
         self.value = value
         return self
     #f get
@@ -426,6 +474,9 @@ class c_bone_type( object ):
     #f __repr__
     def __repr__( self ):
         return "bt:%s"%(str(self.value))
+    #f visualization
+    def visualization( self ):
+        return ("text",str(self))
     pass
 
 #c c_bone_type_vector
@@ -435,7 +486,7 @@ class c_bone_type_vector( c_bone_type ):
     def get_coords( self ):
         return self.value.get_coords()
     #f set
-    def set( self, value ):
+    def set( self, value, var=None ):
         import copy
         self.value = copy.copy(value)
         return self
@@ -447,17 +498,31 @@ class c_bone_type_vector( c_bone_type ):
     def mult_by_scalar( self, v ):
         self.value = self.value.scale( factor=v.get() )
         return self
+    #f rot_by_scalar
+    def rot_by_scalar( self, v ):
+        angle = math.radians(v.get())
+        c = math.cos(angle)
+        s = math.sin(angle)
+        self.value = self.value.mult_by_matrix( ( (c,s),(-s,c) ) )
+        return self
     #f neg
     def neg( self ):
         self.value = self.value.scale( factor=-1.0 )
         return self
+    #f visualization
+    def visualization( self ):
+        return ("vector",self.value)
+    pass
 
 #c c_bone_type_bezier
 class c_bone_type_bezier( c_bone_type ):
     type_name = "bezier"
     #f set
-    def set( self, vectors ):
+    def set( self, vectors, var=None ):
         self.vectors = vectors
+        for v in vectors:
+            v.instance().add_implicit_dependent( var )
+            pass
         self.bezier = c_bezier( pts=vectors, pt_coords=lambda p:p.instance().get_coords(), pt_class=vectors[0].instance().value.__class__ )
         #print "BEZIER",c_bone_type_vector().set(self.bezier.coord(0.0))
         pass
@@ -473,6 +538,12 @@ class c_bone_type_bezier( c_bone_type ):
     #f __repr__
     def __repr__( self ):
         return "btbez:%s"%(str(self.bezier))
+    #f visualization
+    def visualization( self ):
+        vis = []
+        for v in self.vectors:
+            vis.append(v.instance())
+        return ("bezier",self.bezier,vis)
 
 #c c_bone_type_scalar
 class c_bone_type_scalar( c_bone_type ):
@@ -493,6 +564,9 @@ class c_bone_type_scalar( c_bone_type ):
     def neg( self ):
         self.value = -self.value
         return self
+    #f visualization
+    def visualization( self ):
+        return ("float",self.value)
 
 #f Assemble known classes
 c_bone_type_vector.add_type()
@@ -508,6 +582,7 @@ class c_bone_base( object ):
     """
     #v Required properties
     bone_variables = None
+    has_instance = False
     #f __init__
     def __init__( self, name, parent=None, **kwargs ):
         self.name = name
@@ -517,24 +592,54 @@ class c_bone_base( object ):
         if parent is not None: parent.add_child(self)
         self.expressions = {}
         pass
+    #f set_parent
+    def set_parent( self, parent ):
+        self.parent = parent
+        return self
     #f add_expression
     def add_expression( self, id, scope, script=None ):
-        self.expressions[id] = (scope, c_bone_expr())
+        self.expressions[id] = {"scope":scope, "expr":c_bone_expr(), "defines":[], "dependencies":[]}
         if script is not None:
-            self.expressions[id][1].add_script( script )
+            self.expressions[id]["expr"].add_script( script )
             pass
-        return self.expressions[id][1]
+        return self.expressions[id]["expr"]
     #f evaluate_expressions
     def evaluate_expressions( self, ids=None ):
         if ids is None: ids=self.expressions.keys()
         for id in ids:
             print "Evaluating", id, self.expressions[id]
-            print self.expressions[id][1].evaluate( scope=self.expressions[id][0] )
+            print self.expressions[id]["expr"].evaluate( scope=self.expressions[id]["scope"] )
             pass
         pass
+    #f create_dependencies
+    def create_dependencies( self, ids=None, include_children=True ):
+        if ids is None: ids=self.expressions.keys()
+        for id in ids:
+            print "Finding dependencies", id, self.expressions[id]
+            (dependencies,defines) = self.expressions[id]["expr"].find_dependencies( scope=self.expressions[id]["scope"] )
+            self.expressions[id]["dependencies"] = dependencies
+            self.expressions[id]["defines"] = defines
+            pass
+        if include_children:
+            for c in self.children:
+                c.create_dependencies( ids=None, include_children=True )
+                pass
+            pass
+        pass
+    #f collate_dependencies
+    def collate_dependencies( self, result=None ):
+        if result is None: result = []
+        for id in self.expressions.keys():
+            result.append( (self, id, self.expressions[id]["dependencies"], self.expressions[id]["defines"]) )
+            pass
+        for c in self.children:
+            c.collate_dependencies(result)
+            pass
+        return result
     #f add_child
     def add_child( self, node ):
         self.children.append(node)
+        node.set_parent(self)
         return node
     #f find_node
     def find_node( self, hierarchical_name, result=None ):
@@ -579,8 +684,18 @@ class c_bone_base( object ):
     def set_node( self, hierarchical_name, value ):
         node = self.find_node_or_fail( hierarchical_name )
         return node.set(value)
+    #f iterate
+    def iterate( self, callback, include_children=True ):
+        callback(self)
+        if not include_children: return
+        for c in self.children:
+            c.iterate(callback, include_children=include_children)
+            pass
+        pass
     #f __repr__
     def __repr__( self ):
+        if self.parent is not None:
+            return "%s.%s.%s"%(self.__class__.__name__,self.parent.name,self.name)
         return "%s.%s"%(self.__class__.__name__,self.name)
 
 #c c_bone_var
@@ -590,6 +705,7 @@ class c_bone_var( c_bone_base ):
 
     It may be defined by a stack of operations which permit operations on other bone variables.
     """
+    has_instance = True
     #f __init__
     def __init__( self, name, var_type=None, **kwargs ):
         c_bone_base.__init__( self, name, **kwargs )
@@ -612,7 +728,7 @@ class c_bone_var( c_bone_base ):
         return self.var_instance.set(inst.get())
     #f set
     def set( self, value ):
-        return self.var_instance.set(value)
+        return self.var_instance.set(value, var=self)
     #f get
     def get( self ):
         return self.var_instance.get()
@@ -651,8 +767,9 @@ class c_bone( c_bone_base ):
 
 #a Add expression ops stuff
 c_bone_expr.reset_ops()
+c_bone_expr.add_op( (c_bone_op_rot, c_bone_type_vector, c_bone_type_scalar), ( c_bone_type_vector.rot_by_scalar, 0, 1 ) )
+c_bone_expr.add_op( (c_bone_op_rot, c_bone_type_scalar, c_bone_type_vector), ( c_bone_type_vector.rot_by_scalar, 1, 0 ) )
 c_bone_expr.add_op( (c_bone_op_mult, c_bone_type_vector, c_bone_type_scalar), ( c_bone_type_vector.mult_by_scalar, 0, 1 ) )
-c_bone_expr.add_op( (c_bone_op_mult, c_bone_type_scalar, c_bone_type_vector), ( c_bone_type_vector.mult_by_scalar, 1, 0 ) )
 c_bone_expr.add_op( (c_bone_op_mult, c_bone_type_scalar, c_bone_type_vector), ( c_bone_type_vector.mult_by_scalar, 1, 0 ) )
 c_bone_expr.add_op( (c_bone_op_add,  c_bone_type_vector, c_bone_type_vector), ( c_bone_type_vector.add, 0, 1 ) )
 c_bone_expr.add_op( (c_bone_op_add,  c_bone_type_scalar, c_bone_type_scalar), ( c_bone_type_scalar.add, 0, 1 ) )
@@ -682,9 +799,9 @@ ship.add_child( c_bone_var("size", "scalar") )
 
 from gjslib.math.bezier import c_point
 null_point = c_point((0.0,0.0))
-ship.set_node( "anchor_point", c_point((1.0,1.0)) )
+ship.set_node( "anchor_point", c_point((0.0,0.0)) )
 ship.set_node( "direction", c_point((0.0,1.0)) )
-ship.set_node( "size", 3.0 )
+ship.set_node( "size", 4.0 )
 
 bone_1 = c_bone( "bone1", parent=ship )
 base_a = bone_1.add_child( c_bone_var("base_a", "vector") )
@@ -701,23 +818,183 @@ bone_1.add_expression( id="base_ab", scope=ship, script= [("mult",
                                                           ("set", "bone1.base_b", ("add", ("get","anchor_point"))), ("pop"),
                                                           ]
                        )
-
 bone_1.add_expression( id="base_mid", scope=bone_1, script=[ ("set", "base_mid", ("mult", 0.5, ("add", ("get", "base_a"), ("get", "base_b")))) ] )
 bone_1.evaluate_expressions( ("base_ab", "base_mid") )
 bone_1_b.set( (base_a,base_mid,base_b) )
-bone_1.add_expression( id="bezier_notes", scope=bone_1, script=[ ("dir", ("get", "base_bezier"), 0.0),
-                                                                 ("dir", ("get", "base_bezier"), 0.5),                                                                 
-                                                                 ("dir", ("get", "base_bezier"), 1.0),                                                                 
-                                                                 ("pt",  ("get", "base_bezier"), 0.0),                                                                 
-                                                                 ("pt",  ("get", "base_bezier"), 0.5),                                                                 
-                                                                 ("pt",  ("get", "base_bezier"), 1.0),
-                                                                 ])
 
-print bone_1.evaluate_expressions( ("bezier_notes",) )
+def add_bezier_bone( parent, bone_name, script, num_pts=3 ):
+    bone     = c_bone( bone_name, parent=parent )
+    bez_pts = []
+    for i in range(num_pts):
+        bez_pts.append( bone.add_child( c_bone_var("base_%d"%i, "vector") ) )
+        pass
+    bone_bez = bone.add_child( c_bone_var("base_bezier", "bezier") )
+    bone.add_expression( id="script", scope=parent, script=script )
+    bone.evaluate_expressions( ("script",) )
+    bone_bez.set( bez_pts )
+    return bone
 
-# bone_1 has 'base_a' = 'anchor point' + 'size'/2*'direction'
-# 'perturb_shake' = rotate(shake_angle) * size/2 * direction - size/2 * direction
-# 'perturb_a' = +'pertrub_shake'
-# 'perturb_b' = -'pertrub_shake'
-subbone_1_1 = c_bone( "sub1", parent=bone_1 )
-subbone_1_2 = c_bone( "sub2", parent=bone_1 )
+def script_bez_vec( bezier_name, t=0.0, rotation=0.0, scale=0.0 ):
+    return [("add",
+             ("pt", t, ("get",bezier_name)),
+             ("rot", rotation, ("mult", scale, ("dir", t, ("get",bezier_name)))))]
+
+def add_extend_bone( parent, bone_name, bone_to_extend, scale=1.0, rotation=0.0, src=0.0 ):
+    return add_bezier_bone( parent, bone_name,
+                            num_pts=3,
+                            script=[("rot", rotation, ("mult", scale, ("dir", src, ("get","%s.base_bezier"%bone_to_extend)))),
+                                    ("pt",   src, ("get","%s.base_bezier"%bone_to_extend)),
+                                    ("dup"),
+                                    ("set", "%s.base_0"%bone_name), ("pop"),
+                                    ("add"), ("set", "%s.base_2"%bone_name), ("pop"),
+                                    ("set", "%s.base_1"%bone_name, ("mult", 0.5, ("add", ("get", "%s.base_0"%bone_name), ("get", "%s.base_2"%bone_name)))),
+                                    ] )
+
+bone_2 = add_extend_bone( ship, "bone2", "bone1", scale=-1.0, rotation= 0.0, src=0.0 )
+bone_3 = add_extend_bone( ship, "bone3", "bone2", scale=0.6,  rotation= 0.0, src=1.0 )
+bone_4 = add_extend_bone( ship, "bone4", "bone1", scale=0.5,  rotation= 0.0, src=1.0 )
+bone_5 = add_extend_bone( ship, "bone5", "bone2", scale= 0.4, rotation= 85.0, src=1.0 )
+bone_6 = add_extend_bone( ship, "bone6", "bone2", scale= 0.4, rotation=-85.0, src=1.0 )
+bone_7 = add_extend_bone( ship, "bone7", "bone1", scale=-0.8, rotation= 70.0, src=0.0 )
+bone_8 = add_extend_bone( ship, "bone8", "bone1", scale=-0.8, rotation=-70.0, src=0.0 )
+bone_9 = add_extend_bone( ship, "bone9", "bone1", scale= 0.7, rotation= 80.0, src=1.0 )
+bone_10= add_extend_bone( ship, "bone10","bone1", scale= 0.7, rotation=-80.0, src=1.0 )
+bone_11= add_extend_bone( ship, "bone11","bone4", scale= 0.3, rotation= 40.0, src=1.0 )
+bone_12= add_extend_bone( ship, "bone12","bone4", scale= 0.3, rotation=-40.0, src=1.0 )
+bone_13= add_bezier_bone( ship, "bone13", num_pts=4, script = ( script_bez_vec( "bone11.base_bezier", t=1.0, rotation=90.0, scale=0.5 ) +
+                                                                [ ("set", "bone13.base_2"), "pop", ] +
+                                                                script_bez_vec( "bone9.base_bezier", t=1.0, rotation=-120.0, scale=0.3 ) +
+                                                                [ ("set", "bone13.base_1"), "pop",
+                                                                  ("set", "bone13.base_0", ("pt", 1.0, ("get", "bone9.base_bezier"))), "pop",
+                                                                  ("set", "bone13.base_3", ("pt", 1.0, ("get", "bone11.base_bezier"))), "pop",
+                                                               ]) )
+bone_14= add_extend_bone( ship, "bone14","bone13", scale=-0.6, rotation=-70.0, src=0.3 )
+bone_15= add_extend_bone( ship, "bone15","bone14", scale=-0.6, rotation=140.0, src=1.0 )
+
+print ship.create_dependencies(  )
+dependent_expression_list = ship.collate_dependencies()
+undefined_vars = {}
+dependent_vars = {}
+for t in dependent_expression_list:
+    (node,id,deps,defs) = t
+    for d in defs:
+        if d not in undefined_vars: undefined_vars[d] = []
+        undefined_vars[d].append( t )
+        for p in deps:
+            if p in defs: continue
+            if p not in dependent_vars: dependent_vars[p] = []
+            if d not in dependent_vars[p]:
+                dependent_vars[p].append(d)
+                pass
+            pass
+        pass
+    pass
+print "undefined_vars", undefined_vars
+i = 0
+for d in undefined_vars.keys():
+    id = d.instance().get_implicit_dependents()
+    if len(id)>0:
+        for i in id:
+            if i not in undefined_vars: undefined_vars[i] = []
+            undefined_vars[i].append( (None, "imp", [d], [i] ) )
+            pass
+        pass
+    pass
+print "dependent_vars", dependent_vars
+defined_vars = {}
+for d in dependent_vars:
+    if d not in undefined_vars:
+        defined_vars[d] = 0
+        pass
+    pass
+print defined_vars
+predefined_vars = defined_vars.copy()
+ordered_expressions = []
+stage = 0
+while len(undefined_vars)>0:
+    stage = stage + 1
+    undefined_vars_list = undefined_vars.keys()
+    n = len(undefined_vars_list)
+    for d in undefined_vars_list:
+        can_define = True
+        if d not in undefined_vars: continue
+        for t in undefined_vars[d]:
+            (node,id,deps,defs) = t
+            for dd in deps:
+                if (dd in undefined_vars_list) and (dd not in defs):
+                    can_define = False
+                    break
+                pass
+            pass
+        if can_define:
+            tl = undefined_vars[d]
+            for t in tl:
+                (node,id,deps,defs) = t
+                ordered_expressions.append(t)
+                for dd in defs:
+                    if dd in undefined_vars:
+                        del undefined_vars[dd]
+                        pass
+                    defined_vars[dd] = stage
+                    pass
+                pass
+            pass
+        pass
+    if len(undefined_vars)==n:
+        raise Exception("Cyclic dependency chain:%s"%(str(undefined_vars_list)))
+    pass
+print defined_vars
+print ordered_expressions
+expr_deps = predefined_vars
+expr_defs = defined_vars
+for d in expr_deps:
+    if d in expr_defs:
+        del expr_defs[d]
+expr_deps = expr_deps.keys()
+expr_defs = expr_defs.keys()
+expressions = []
+for t in ordered_expressions:
+    (node,id,deps,defs) = t
+    if node is not None:
+        expressions.append( (node,id) )
+        pass
+    pass
+print expr_deps
+print expr_defs
+print expressions
+
+for (node,id) in expressions:
+    node.evaluate_expressions( ids=(id,) )
+    pass
+
+#a Toplevel
+import pygame_test
+def draw_fn( screen ):
+    pygame.font.init()
+    pyfont = pygame.font.SysFont(u'palatino',10)
+    def screen_coords( pt, scale=-50, offset=500 ):
+        c = pt.get_coords()
+        return (c[0]*scale+offset,c[1]*scale+offset)
+    def draw_cb( node ):
+        if node.has_instance:
+            vis = node.instance().visualization()
+            if vis[0] == "vector":
+                p = pyfont.render(node.name,False,(255,255,255))
+                #screen.blit(p,screen_coords(vis[1]))
+                pass
+            elif vis[0] == "bezier":
+                bez = vis[1]
+                last_pt = None
+                for i in range(40):
+                    pt = screen_coords(bez.coord((i+0.0)/40))
+                    #if vis[1]: print pt
+                    if last_pt is not None:
+                        screen.draw_line( last_pt[0],last_pt[1],pt[0], pt[1], (255,255,255,255) )
+                        pass
+                    last_pt = pt
+                pass
+            pass
+        pass
+    ship.iterate(draw_cb)
+    pass
+pygame_test.pygame_display( draw_fn=draw_fn )

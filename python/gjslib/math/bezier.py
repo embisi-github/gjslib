@@ -82,6 +82,16 @@ class c_point( object ):
             i += 1
             pass
         return cs
+    #f mult_by_matrix
+    def mult_by_matrix( self, m ):
+        c = []
+        for i in range(len(self.coords)):
+            c.append(0)
+            for j in range(len(m[i])):
+                c[-1] += m[i][j]*self.coords[j]
+                pass
+            pass
+        return c_point( c )
     #f length
     def length( self ):
         c = 0
