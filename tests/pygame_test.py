@@ -21,6 +21,9 @@ class c_screen( object ):
     def blit( self, surface, coords ):
         self.screen.blit( surface, coords )
         pass
+    def fill( self, color ):
+        self.screen.fill( color )
+        pass
 
 #f draw_dot
 def draw_dot( screen, x, y, color ):
@@ -150,7 +153,7 @@ def draw_contour(screen, polygon, scale=(1,1), offset=(0,0)):
     pass
 
 #a Toplevel functions
-def pygame_display( draw_fn, tick_ms=30, (w,h)=(1000,1000) ):
+def pygame_display( draw_fn, key_fn=lambda k:(k==pygame.K_q), tick_ms=30, (w,h)=(1000,1000) ):
     screen = pygame.display.set_mode((w,h),pygame.DOUBLEBUF|pygame.HWSURFACE)
     my_screen = c_screen(screen)
     def loop():
@@ -162,7 +165,7 @@ def pygame_display( draw_fn, tick_ms=30, (w,h)=(1000,1000) ):
                     pygame.quit(); sys.exit();
                     pass
                 if event.type == pygame.KEYDOWN:
-                    if event.key==pygame.K_q:
+                    if key_fn(event.key):
                         pygame.quit(); sys.exit();
                 pass
             draw_fn( my_screen )
