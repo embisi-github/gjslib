@@ -6,6 +6,12 @@ class c_polynomial( object ):
         pass
     def __repr__( self ):
         return str(self.coeffs)
+    def is_constant( self ):
+        return len(self.coeffs)==1
+    def is_linear( self ):
+        return len(self.coeffs)==2
+    def get_coeff( self, n ):
+        return self.coeffs[n]
     def pretty( self, var ):
         fmt = ""
         if len(self.coeffs)==0: return "0"
@@ -182,80 +188,6 @@ class c_polynomial( object ):
         result.reverse()
         return (c_polynomial(coeffs=result),c_polynomial(coeffs=remainder))
             
-
-a = c_polynomial( [1] )
-b = a.multiply( c_polynomial([0, 1]) )
-c = b.multiply( c_polynomial([1, 1]) )
-d = c.multiply( c_polynomial([2, 1]) )
-e = d.multiply( c_polynomial([3, 1]) )
-f = e.multiply( c_polynomial([4, 1]) )
-g = f.multiply( c_polynomial([5, 1]) )
-h = g.multiply( c_polynomial([6, 1]) )
-
-print a
-print b
-print c
-print d
-print e
-print f
-print g
-print h
-
-
-print a.differentiate(), b.differentiate(), c.differentiate()
-
-print d.divide(b)
-print f.divide(d)
-
-print f.pretty_factors('n')
-
-for i in range(10):
-    print i, d.evaluate(i)
-
-x = c_polynomial([0,1])
-x_p_1 = c_polynomial([1,1])
-x_m_1 = c_polynomial([-1,1])
-print c.evaluate_poly(x_p_1).pretty("x")
-print c.evaluate_poly(x_m_1).pretty("x")
-
-d_i     = d.evaluate_poly(x)
-d_i_m_1 = d.evaluate_poly(x_m_1)
-d_diff = d_i.add(d_i_m_1,scale=-1)
-print "d_diff",d_diff.pretty("i"),"   OR   ",d_diff.pretty_factors("i")
-
-e_i     = e.evaluate_poly(x)
-e_i_m_1 = e.evaluate_poly(x_m_1)
-e_diff = e_i.add(e_i_m_1,scale=-1)
-print "e_diff",e_diff.pretty("i"),"   OR   ",e_diff.pretty_factors("i")
-
-
-sum_i_0 = c_polynomial([0,1])
-sum_i_1 = c_polynomial([0,1/2.0]).multiply(c_polynomial([1,1]))
-sum_i_2 = d.add(sum_i_1,scale=-3)
-#
-# sum_i_2 = polynomial d MINUS d_diff.coeff[1]*sum_i_1
-# and divide by d_diff.coeff[2]
-# sum_i_3 = polynomial e MINUS e_diff.coeff[1]*sum_i_1
-#                        MINUS e_diff.coeff[2]*sum_i_2
-# and divide by e_diff.coeff[3]
-# etc
-# Actually we can keep the sums as (divisor, sum_poly)
-
-print sum_i_0.pretty_factors('n')
-print sum_i_1.pretty_factors('n')
-print sum_i_2.pretty_factors('n')
-
-print sum_i_0.pretty('n')
-print sum_i_1.pretty('n')
-print sum_i_2.pretty('n')
-
-x = c_polynomial([-3,3,1])
-print x.pretty('n') ,"=", x.pretty_factors('n')
-
-x = c_polynomial([165.0,-55.0,18.0,-6.0,-3.0,1.0])
-print x.pretty('n') ,"=", x.pretty_factors('n')
-
-
 import math
 import fractions
 
@@ -300,21 +232,96 @@ def find_eqn( x ):
         pass
     pass
 
-print "\nLooking for ",610/987.0
-find_eqn( 610/987.0 )
-print "\nLooking for ",1597/987.0
-find_eqn( 1597/987.0 )
-print "\nLooking for ",math.sqrt(2)+3
-find_eqn( math.sqrt(2)+3 )
-print "\nLooking for ",154/949.0
-find_eqn( 154/949.0 )
-print "\nLooking for ",91/919.0
-find_eqn( 91/919.0 )
-print "\nLooking for ",251/829.0
-find_eqn( 251/829.0 )
-print "\nLooking for ",436/551.0
-find_eqn( 436/551.0 )
-print "\nLooking for ",-1.5+math.sqrt(21)/2
-find_eqn( 0*-1.5+math.sqrt(21) )
-print "\nLooking for ",-2378/985.0
-find_eqn( -2378/985.0 )
+def main():
+
+    a = c_polynomial( [1] )
+    b = a.multiply( c_polynomial([0, 1]) )
+    c = b.multiply( c_polynomial([1, 1]) )
+    d = c.multiply( c_polynomial([2, 1]) )
+    e = d.multiply( c_polynomial([3, 1]) )
+    f = e.multiply( c_polynomial([4, 1]) )
+    g = f.multiply( c_polynomial([5, 1]) )
+    h = g.multiply( c_polynomial([6, 1]) )
+
+    print a
+    print b
+    print c
+    print d
+    print e
+    print f
+    print g
+    print h
+
+    print a.differentiate(), b.differentiate(), c.differentiate()
+
+    print d.divide(b)
+    print f.divide(d)
+
+    print f.pretty_factors('n')
+
+    for i in range(10):
+        print i, d.evaluate(i)
+
+    x = c_polynomial([0,1])
+    x_p_1 = c_polynomial([1,1])
+    x_m_1 = c_polynomial([-1,1])
+    print c.evaluate_poly(x_p_1).pretty("x")
+    print c.evaluate_poly(x_m_1).pretty("x")
+
+    d_i     = d.evaluate_poly(x)
+    d_i_m_1 = d.evaluate_poly(x_m_1)
+    d_diff = d_i.add(d_i_m_1,scale=-1)
+    print "d_diff",d_diff.pretty("i"),"   OR   ",d_diff.pretty_factors("i")
+
+    e_i     = e.evaluate_poly(x)
+    e_i_m_1 = e.evaluate_poly(x_m_1)
+    e_diff = e_i.add(e_i_m_1,scale=-1)
+    print "e_diff",e_diff.pretty("i"),"   OR   ",e_diff.pretty_factors("i")
+
+
+    sum_i_0 = c_polynomial([0,1])
+    sum_i_1 = c_polynomial([0,1/2.0]).multiply(c_polynomial([1,1]))
+    sum_i_2 = d.add(sum_i_1,scale=-3)
+    #
+    # sum_i_2 = polynomial d MINUS d_diff.coeff[1]*sum_i_1
+    # and divide by d_diff.coeff[2]
+    # sum_i_3 = polynomial e MINUS e_diff.coeff[1]*sum_i_1
+    #                        MINUS e_diff.coeff[2]*sum_i_2
+    # and divide by e_diff.coeff[3]
+    # etc
+    # Actually we can keep the sums as (divisor, sum_poly)
+
+    print sum_i_0.pretty_factors('n')
+    print sum_i_1.pretty_factors('n')
+    print sum_i_2.pretty_factors('n')
+
+    print sum_i_0.pretty('n')
+    print sum_i_1.pretty('n')
+    print sum_i_2.pretty('n')
+
+    x = c_polynomial([-3,3,1])
+    print x.pretty('n') ,"=", x.pretty_factors('n')
+
+    x = c_polynomial([165.0,-55.0,18.0,-6.0,-3.0,1.0])
+    print x.pretty('n') ,"=", x.pretty_factors('n')
+
+    print "\nLooking for ",610/987.0
+    find_eqn( 610/987.0 )
+    print "\nLooking for ",1597/987.0
+    find_eqn( 1597/987.0 )
+    print "\nLooking for ",math.sqrt(2)+3
+    find_eqn( math.sqrt(2)+3 )
+    print "\nLooking for ",154/949.0
+    find_eqn( 154/949.0 )
+    print "\nLooking for ",91/919.0
+    find_eqn( 91/919.0 )
+    print "\nLooking for ",251/829.0
+    find_eqn( 251/829.0 )
+    print "\nLooking for ",436/551.0
+    find_eqn( 436/551.0 )
+    print "\nLooking for ",-1.5+math.sqrt(21)/2
+    find_eqn( 0*-1.5+math.sqrt(21) )
+    print "\nLooking for ",-2378/985.0
+    find_eqn( -2378/985.0 )
+
+if __name__=="__main__": main()
