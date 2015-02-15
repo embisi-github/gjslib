@@ -457,7 +457,7 @@ D has 3n+2/3m+2 ->
 Starting at 2/1 -> 4/1 or 5/1 or 7/2?
 4/1 -> 7/4 or 8/1 or 5/4
 
-
+Hmm....
 """
 
 def ns( ap, cp) : return (2*(ap-cp)*(ap+cp+1), (2*ap+1)*(2*cp+1), 2*(ap**2+ap+cp**2+cp+1)-1 )
