@@ -438,26 +438,122 @@ Since the UAD tree continues forever, there must be an infinite number of areas 
 
 
 We can create another tree of 'no common factors with none being multiple of 3 either' (UAD tree is no common factors with none being multiple of 2 either).
+To do this, start as with HCF by finding the mapping from larger number pairs to smaller number pairs (reverse tree).
+First, note that every value in the tree modulo 3 is either 1 or 2.
+This inspires a notation such as a/b:1/2: -> ..., where 1/2 indicates a modulo 3 is 1, and b modulo 3 is 2. Also, this means a>b.
+Consider the mapping:
+a/b:1/2 or 2/1:  b < a < 2b : a/b ->  b/a-b:1/1 or 2/2
+a/b:1/2 or 2/1: 2b < a      : a/b ->  a-b/b:1/1 or 2/2
+a/b:1/1 or 2/2:  b < a < 2b : a/b -> b/2b-a:1/1 or 2/2
+a/b:1/1 or 2/2: 2b < a < 3b : a/b -> b/a-2b:1/2 or 2/1
+a/b:1/1 or 2/2: 3b < a      : a/b -> a-2b/b:1/2 or 2/1
 
-We have to cover:
-2/1
-4/1
-5/1, 5/2, 5/4
-7/1, 7/2, 7/4, 7/5
-8/1, 8/5, 8/7
-10/1, 10/5, 10/7
-11/1, 11/2, 11/4, 11/7, 11/8, 11/10
-...
+The forward mapping is then:
+a/b:1/1 or 2/2: a/b ->  b/a+b:1/2 or 2/1
+            AND a/b ->  a+b/a:1/2 or 2/1
+            AND a/b -> 2a-b/a:1/1 or 2/2
+a/b:1/2 or 2/1: a/b -> 2a+b/a:1/1 or 2/2
+            AND a/b -> a+2b/b:1/1 or 2/2
 
-A has 3n+1/3m+2 -> 2c/d :3(2n)+2/3m+2
-B has 3n+1/3m+1 -> c+d/d:3(n+m)+2/3m+1 and 6n+2/3+1 allowed
-C has 3n+2/3m+1
-D has 3n+2/3m+2 -> 
+We can actually encode a and b as m.n=3m+n and p.q=3p+q, where n and q are 1 or 2, and where the first element is 0.2/0.1
+Then we have (forward mapping):
+m.1/p.1 ->      p.1/m+p.2,     m+p.2/m.1, 2m-p.1/m.1
+m.2/p.2 ->      p.2/m+p+1.1, m+p+1.1/m.2, 2m-p.2/m.2
+m.1/p.2 -> 2m+p+1.1/m.1,    m+2p+1.2/p.2
+m.2/p.1 -> 2m+p+1.2/m.2,    m+2p+1.1/p.1
 
-Starting at 2/1 -> 4/1 or 5/1 or 7/2?
-4/1 -> 7/4 or 8/1 or 5/4
+One simple question is what happens in the reverse mapping if the elements are not coprime? For example, 25 and 35 (11.2/8.1)
+11.2/8.1 -> 8.1/3.1 -> 3.1/1.2 -> 1.2/1.2 -> 1.2/1.2
 
-Hmm....
+Pythagorean quadruple:
+w^2 + x^2 = v^2
+v^2 + y^2 = z^2
+i.e. w^2 + x^2 + y^2 = z^2 (this is a subset of the possible quadruples)
+There are clearly an infinite number of these (primitive) (indeed, of quintuples, etc), since v is odd, and every odd number forms
+part of a primitive Pythagorean triple (in this case for ((v^2)-1)/2 and ((v^2)+1)/2).
+w = (2c+1)(2d+1)
+x = 2(c+d+1)(c-d)
+v = 2(c+d+1)(c+d) - 4cd +1 = (2C+1)(2D+1)
+y = 2(C+D+1)(C-D)
+z = 2(C+D+1)(C+D) - 4CD +1
+
+From v,
+  2(c+d+1)(c+d) - 4cd +1 = (2C+1)(2D+1)
+  2c^2+2cd+2c+2cd+2d^2+2d - 4cd +1 = 4CD + 2D + 2C + 1
+  2c^2+2c+2d^2+2d         = 4CD + 2D + 2C
+  c^2+c+d^2+d             = 2CD +  D + C
+  (c+d)^2 -2cd + c + d    = 2CD +  D + C
+  (c-d)^2 +2cd + c + d    = 2CD +  D + C
+Mod (c+d) we get 2CD + D + C + 2cd = 0
+Note that c/d = 1/0 gives w=3, x=4 (and C/D=2/0 y/z=12/13); sadly this means 2CD+C+D=0 mod 1, which is true for all C,D
+Note that c/d = 5/3 gives w=77, x=36; C/D=8/2, y/z=85/132/157
+  OR that c/d = 6/0 gives w=13, x=84; C/D=8/2, y/z=85/132/157
+if w=(4cd+2d+2c+1)=2q+1 then q=(2cd+c+d)=6, and x=2q(q+1)=2(2cd+c+d)(2cd+c+d+1)=84. 3/4/5 is q=1
+So, we want v=2q(q+1)+1=85 to be (2C+1)(2D+1) (which it is for c/d/C/D=6/0/8/2); this means c=q, d=0.
+Putting c=q and d=0
+w = (2q+1)
+x = 2q(q+1)
+v = 2q(q+1)+1 = (2C+1)(2D+1)
+y = 2(C+D+1)(C-D)
+z = 2(C+D+1)(C+D) - 4CD +1
+and...  q(q+1) = 2CD+D+C
+If we make Q=2CD+C+D, then 2Q+1=v=2q(q+1)+1 -> Q=q(q+1)
+Then we have w=(2q+1), x=2q(q+1), y=2Q(Q+1), z=2Q(Q+1)+1
+OR w=2q+1 x=2q(q+1), y=2q(q+1)(2q(q+1)+1), z=2q(q+1)(2q(q+1)+1)+1
+w^2 + x^2 = 4q^2+4q+1+4q^2+4q = 8q^2+8q+1
+y^2=(2q(q+1)(2q(q+1)+1))^2 = 4q^2(q+1)^2(2q(q+1)+1)^2
+                           = 4q^2(q^2+2q+1)(2q^2+q+2)^2
+                           = 4(q^4+2q^3+q^2)(4q^4+2q^3+4q^2+2q^3+q^2+2q+4q^2+2q+4)
+                           = 4(q^4+2q^3+q^2)(4q^4+4q^3+9q^2+3q+4)
+
+Can a Pythagorean Triple have squares as x, y and z? (Fermat's Last Theorem says no...)
+z = (4c^2 + 4c + 1 + 4d^2 + 4d + 1)/2
+  = 2(c+d+1)(c+d) - 4cd +1
+  = ((2c+1)^2 + (2d+1)^2)/2
+x = 2(c+d+1)(c-d)
+y = (2c+1)(2d+1)
+
+For y to be a square we require 2c+1 to be a km^2 and 2d+1 to be kn^2, where m and n are coprime.
+In this case z=(k^2.m^4 + k^2.n^4)/2, which is k^2/2.(m^4+n^4)
+First note that y and z need to be coprime for a primitive solution, so k must be 1.
+Now for z to be a square, (m^4+n^4) must be 2 mod 4 (since (m^4+n^4)/2 is a square)
+For this to be a square we need m^4+n^4=2p^2.
+(8a+1)^2 mod 8 = 1
+(8a+2)^2 mod 8 = 4
+(8a+3)^2 mod 8 = 1
+(8a+5)^2 mod 8 = 1
+(8a+6)^2 mod 8 = 4
+(8a+7)^2 mod 8 = 1
+Hence m, n and p must all be odd.
+If m = 2e+1, then m^4 = (4e^2+4e+1)^2 = 16e^4+32e^3+24e^2+8e+1, and similarly for n and f
+Then m^4+n^4 = 2.(8e^4+16e^3+12e^2+4e + 8f^4+16f^3+12f^2+4f +1)
+And if p = 2g+1 then
+p^2-1 = 4g^2 + 4g = (8e^4+16e^3+12e^2+4e + 8f^4+16f^3+12f^2+4f)
+        g(1+g)    = (2e^4+ 4e^3+ 3e^2+e  + 2f^4+ 4f^3+ 3f^2+f )
+Note that 2c+1=m^2 => c=e(1+e), and d=f(1+f)
+Hence x = 2(e^2+e+f^2+f+1)(e^2+e-f^2-f)
+        = 2(e^2+e+f^2+f+1)(e-f)(e+f+1)
+Hmmm
+
+Can we use induction on the UAD thing?
+(c,d) -> (down) (2c-d,    c)
+x = 2(c+d+1)(c-d)
+y = (2c+1)(2d+1)
+z = ((2c+1)^2 + (2d+1)^2)/2
+If x, y and z are not squares, what about UAD u,v,w of e,f (e=2c-d, f=c)?
+u = 2(e+f+1)(e-f)
+v = (2e+1)(2f+1)
+w = ((2e+1)^2 + (2f+1)^2)/2
+
+u = 2(2c-d+c+1)(2c-d-c)
+  = 2(3c-d+1)(c-d)
+  = 2(c-d)(c+d+1) + 4(c-d)(c-d)
+v = (2c+1)(4c-2d+1)
+w = ((2c+1)^2 + (4c-2d+1)^2)/2
+Looking at u; if x is a square, then x=2(c-d)(c+d+1) = (c-d)^2.m^2
+Hence u = x^2 + 4(c-d)^2 = (c-d)^2(m^2+4), and m^2+4 must be a square (say n^2). Then n^2-m^2=4, (n+m)(n-m)=4, so n=2, m=0.
+This means x=0, which is not possible. Hence IF x is a square, then u is not a square.
+
 """
 
 def ns( ap, cp) : return (2*(ap-cp)*(ap+cp+1), (2*ap+1)*(2*cp+1), 2*(ap**2+ap+cp**2+cp+1)-1 )

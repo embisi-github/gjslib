@@ -15,6 +15,9 @@ class c_screen( object ):
     def draw_dot( self, x, y, color ):
         draw_dot( self.screen, x, y, color )
         pass
+    def draw_lines( self, points_list, color ):
+        pygame.draw.lines(self.screen, color, False, points_list )
+        pass
     def fill_polygon( self, points_list, color ):
         pygame.draw.polygon(self.screen, color, points_list )
         pass

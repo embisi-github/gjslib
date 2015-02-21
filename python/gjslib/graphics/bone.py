@@ -291,14 +291,26 @@ class c_bone_expr_push_bone_var( c_bone_expr_element ):
     def __init__( self, id ):
         self.id = id
         pass
+    #f find_node_in_scope
+    def find_node_in_scope( self, scope ):
+        node = None
+        e = None
+        for s in scope:
+            try:
+                return s.find_node_or_fail(self.id)
+            except Exception as e:
+                pass
+            pass
+        #print scope
+        raise e
     #f evaluate
     def evaluate( self, expression, stack, scope ):
-        node = scope.find_node_or_fail(self.id)
+        node = self.find_node_in_scope(scope)
         stack.append( node )
         return True
     #f find_dependencies
     def find_dependencies( self, expression, stack, scope, dependencies, defines ):
-        node = scope.find_node_or_fail(self.id)
+        node = self.find_node_in_scope(scope)
         stack.append( node )
         pass
     pass
@@ -583,6 +595,8 @@ class c_bone_base( object ):
     #v Required properties
     bone_variables = None
     has_instance = False
+    is_bone = False
+    is_drawable = False
     #f __init__
     def __init__( self, name, parent=None, **kwargs ):
         self.name = name
@@ -598,6 +612,8 @@ class c_bone_base( object ):
         return self
     #f add_expression
     def add_expression( self, id, scope, script=None ):
+        #print scope
+        if type(scope) not in [tuple, list]: scope=(scope,)
         self.expressions[id] = {"scope":scope, "expr":c_bone_expr(), "defines":[], "dependencies":[]}
         if script is not None:
             self.expressions[id]["expr"].add_script( script )
@@ -607,15 +623,15 @@ class c_bone_base( object ):
     def evaluate_expressions( self, ids=None ):
         if ids is None: ids=self.expressions.keys()
         for id in ids:
-            print "Evaluating", id, self.expressions[id]
-            print self.expressions[id]["expr"].evaluate( scope=self.expressions[id]["scope"] )
+            #print "Evaluating", id, self.expressions[id]
+            self.expressions[id]["expr"].evaluate( scope=self.expressions[id]["scope"] )
             pass
         pass
     #f create_dependencies
     def create_dependencies( self, ids=None, include_children=True ):
         if ids is None: ids=self.expressions.keys()
         for id in ids:
-            print "Finding dependencies", id, self.expressions[id]
+            #print "Finding dependencies", id, self.expressions[id]
             (dependencies,defines) = self.expressions[id]["expr"].find_dependencies( scope=self.expressions[id]["scope"] )
             self.expressions[id]["dependencies"] = dependencies
             self.expressions[id]["defines"] = defines
@@ -685,18 +701,56 @@ class c_bone_base( object ):
         node = self.find_node_or_fail( hierarchical_name )
         return node.set(value)
     #f iterate
-    def iterate( self, callback, include_children=True ):
-        callback(self)
+    def iterate( self, callback, include_children=True, state=None ):
+        if state is None: state={}
+        push_data = callback(self,state)
+        if push_data is not None and len(push_data)>0:
+            state=state.copy()
+            state.update(push_data)
+            pass
         if not include_children: return
         for c in self.children:
-            c.iterate(callback, include_children=include_children)
+            c.iterate(callback, include_children=include_children, state=state)
             pass
         pass
+    #f resolve
+    def resolve( self ):
+        return None
     #f __repr__
     def __repr__( self ):
         if self.parent is not None:
             return "%s.%s.%s"%(self.__class__.__name__,self.parent.name,self.name)
         return "%s.%s"%(self.__class__.__name__,self.name)
+
+#c c_bone_ref
+class c_bone_ref( c_bone_base ):
+    """
+    This class is a bone type that is a reference to another bone.
+
+    It may refer to a subset of a bone using the 'opts' fields.
+    For example, a bone_ref can be a reference to a portion of a bezier curve held in a bone_var.
+    """
+    #f __init__
+    def __init__( self, name, ref, scope=None, opts=None, **kwargs ):
+        c_bone_base.__init__( self, name, **kwargs )
+        if type(ref) is str:
+            ref_name = ref
+            ref = None
+            if scope is None: scope=self.parent
+            if scope is not None: ref = scope.find_node_or_fail( ref_name )
+            pass
+        else:
+            ref_name = ref.name
+            pass
+        self.ref_name = ref_name
+        self.ref = ref
+        self.opts = opts
+        pass
+    #f resolve
+    def resolve( self ):
+        if self.ref is None:
+            self.ref = self.parent.find_node_or_fail(self.ref_name)
+        return (self.ref, self.opts)
 
 #c c_bone_var
 class c_bone_var( c_bone_base ):
@@ -744,7 +798,32 @@ class c_bone_group( c_bone_base ):
 
     A bone group does not have any lines or areas; bones must have them.
     """
+
+#c c_bone_plane
+class c_bone_plane( c_bone_group ):
+    """
+    A bone plane is a special sort of group that has a z-value and whose contents can be drawable.
+
+    Only bone planes are drawn, and only drawables within a bone plane
+    """
     is_bone = False
+    #f __init__
+    def __init__( self, name, depth=0, **kwargs ):
+        c_bone_group.__init__( self, name, **kwargs )
+        self.depth = depth
+
+#c c_bone_drawable
+class c_bone_drawable( c_bone_group ):
+    """
+    A bone drawable is a list of bones or bone refs and associated stroke and fill properties. Only bones/bone refs inside the drawable are used
+    """
+    is_bone = False
+    is_drawable = True
+    #f __init__
+    def __init__( self, name, stroke=None, fill=None, **kwargs ):
+        c_bone_group.__init__( self, name, **kwargs )
+        self.fill = fill
+        self.stroke = stroke
 
 #c c_bone
 class c_bone( c_bone_base ):
@@ -792,16 +871,25 @@ c_bone_expr.add_op( (c_bone_op_point, c_bone_type_scalar, c_bone_type_bezier ), 
 
 #a Functions
 #f add_bezier_bone
-def add_bezier_bone( parent, bone_name, script, num_pts=3 ):
-    bone     = c_bone( bone_name, parent=parent )
+def add_bezier_bone( parent, bone_name, script, scope=None, num_pts=3 ):
+    if scope is None: scope=parent
+    if type(scope) is list:
+        pass
+    elif type(scope) is tuple:
+        scope=list(scope)
+        pass
+    else:
+        scope=[scope,]
+        pass
+    bone = parent.add_child( c_bone_var(bone_name, "bezier") )
     bez_pts = []
     for i in range(num_pts):
         bez_pts.append( bone.add_child( c_bone_var("base_%d"%i, "vector") ) )
         pass
-    bone_bez = bone.add_child( c_bone_var("base_bezier", "bezier") )
-    bone.add_expression( id="script", scope=parent, script=script )
+    scope.insert(0,bone)
+    bone.add_expression( id="script", scope=scope, script=script )
     bone.evaluate_expressions( ("script",) )
-    bone_bez.set( bez_pts )
+    bone.set( bez_pts )
     return bone
 
 #f script_bez_vec
@@ -814,8 +902,8 @@ def script_bez_vec( bezier_name, t=0.0, rotation=0.0, scale=0.0 ):
 def add_extend_bone( parent, bone_name, bone_to_extend, scale=1.0, rotation=0.0, src=0.0 ):
     return add_bezier_bone( parent, bone_name,
                             num_pts=3,
-                            script=[("rot", rotation, ("mult", scale, ("dir", src, ("get","%s.base_bezier"%bone_to_extend)))),
-                                    ("pt",   src, ("get","%s.base_bezier"%bone_to_extend)),
+                            script=[("rot", rotation, ("mult", scale, ("dir", src, ("get","%s"%bone_to_extend)))),
+                                    ("pt",   src, ("get","%s"%bone_to_extend)),
                                     ("dup"),
                                     ("set", "%s.base_0"%bone_name), ("pop"),
                                     ("add"), ("set", "%s.base_2"%bone_name), ("pop"),
@@ -823,17 +911,20 @@ def add_extend_bone( parent, bone_name, bone_to_extend, scale=1.0, rotation=0.0,
                                     ] )
 
 #f bezier4_script
-def bezier4_script( bone_name, pts ):
+def bezier4_script( pts, bone_name=None ):
     script = []
     for i in range(len(pts)):
         pt = pts[i]
         if len(pts[i])==2:
-            script.append( ("pt", pt[1], ("get", "%s.base_bezier"%pt[0])) )
+            script.append( ("pt", pt[1], ("get", "%s"%pt[0])) )
             pass
         else:
-            script.extend( script_bez_vec( "%s.base_bezier"%pt[0], t=pt[1], scale=pt[2], rotation=pt[3] ) )
+            script.extend( script_bez_vec( "%s"%pt[0], t=pt[1], scale=pt[2], rotation=pt[3] ) )
             pass
-        script.extend( [ ("set", "%s.base_%d"%(bone_name,i)), "pop" ] )
+        if bone_name is None:
+            script.extend( [ ("set", "base_%d"%(i)), "pop" ] )
+        else:
+            script.extend( [ ("set", "%s.base_%d"%(bone_name,i)), "pop" ] )
         pass
     return script
 

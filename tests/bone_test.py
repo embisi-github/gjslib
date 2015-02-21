@@ -15,7 +15,7 @@ def main():
     imp.reload(sample_ship)
     ship = sample_ship.build_ship()
 
-    print ship.create_dependencies(  )
+    #print ship.create_dependencies(  )
     dependent_expression_list = ship.collate_dependencies()
     undefined_vars = {}
     dependent_vars = {}
@@ -103,9 +103,9 @@ def main():
             expressions.append( (node,id) )
             pass
         pass
-    print expr_deps
-    print expr_defs
-    print expressions
+    #print expr_deps
+    #print expr_defs
+    #print expressions
 
     for (node,id) in expressions:
         node.evaluate_expressions( ids=(id,) )
@@ -118,30 +118,69 @@ def draw_fn( screen ):
     def screen_coords( pt, scale=-50, offset=500 ):
         c = pt.get_coords()
         return (c[0]*scale+offset,c[1]*scale+offset)
-    def draw_cb( node, show_bones=False ):
-        if node.has_instance:
-            vis = node.instance().visualization()
-            if vis[0] == "vector":
-                p = pyfont.render(node.name,False,(0,0,0))
-                #screen.blit(p,screen_coords(vis[1]))
+    draw_list = []
+    def draw_cb( node, state, show_bones=False ):
+        push_data = {}
+        if "depth" in node.__dict__:
+            push_data["depth"] = node.depth
+            pass
+        if node.is_drawable:
+            push_data["drawable"]=True
+            if state["depth"] not in draw_list:
+                draw_list[state["depth"]] = []
                 pass
-            elif vis[0] == "bezier":
-                bez = vis[1]
-                last_pt = None
-                if show_bones or ("bone" not in vis[3].parent.name):
-                    for i in range(40+1):
-                        pt = screen_coords(bez.coord((i+0.0)/40))
-                        if last_pt is not None:
-                            screen.draw_line( last_pt[0],last_pt[1],pt[0], pt[1], (0,0,0,255) )
+            draw_list[state["depth"]].append( ( node,
+                                                [] )
+                                              )
+            pass
+        r = node.resolve()
+        if r is not None:
+            (n, opts) = r
+            if n.has_instance:
+                if "drawable" in state:
+                    dl = draw_list[state["depth"]][-1][1]
+                    vis = n.instance().visualization()
+                    if vis[0] == "vector":
+                        p = pyfont.render(n.name,False,(0,0,0))
+                        #screen.blit(p,screen_coords(vis[1]))
+                        pass
+                    elif vis[0] == "bezier":
+                        bez = vis[1]
+                        n_steps = 40
+                        base=0.0
+                        scale=1.0
+                        if "n_steps" in opts: n_steps=opts["n_steps"]
+                        if "start"   in opts: base = opts["start"]
+                        if "end"     in opts: scale = opts["end"] - base
+                        for i in range(1+n_steps):
+                            dl.append( bez.coord(base+(scale*i)/n_steps) )
                             pass
-                        last_pt = pt
                         pass
                     pass
                 pass
             pass
-        pass
+        return push_data
     screen.fill((255,255,255))
+    draw_list = {}
     ship.iterate(draw_cb)
+    depths = draw_list.keys()
+    depths.sort()
+    for dep in reversed(depths):
+        for d in draw_list[dep]: # d is a tuple of (node, list of points) that make the drawable
+            node = d[0]
+            if len(d[1])<2: continue
+            point_list = []
+            for p in d[1]:
+                point_list.append( screen_coords( p ) )
+                pass
+            if node.fill is not None:
+                screen.fill_polygon( point_list, node.fill )
+                pass
+            if node.stroke is not None:
+                screen.draw_lines( point_list, node.stroke  )
+                pass
+            pass
+        pass
     pass
 
 if __name__ == '__main__':
