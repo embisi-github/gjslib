@@ -10,12 +10,13 @@ from OpenGL.GL import *
 from gjslib.math.quaternion import c_quaternion
 
 camera = gjslib.graphics.opengl.camera
-x = gjslib.graphics.obj.c_obj()
+icosahedron = gjslib.graphics.obj.c_obj()
 f = open("icosahedron.obj")
-x.load_from_file(f)
+icosahedron.load_from_file(f)
 
 xxx = 0
 yyy = 0
+first = True
 def display():
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
@@ -71,26 +72,39 @@ def display():
     glPopMatrix()
 
     glPushMatrix()
-    global xxx
-    xxx += 0.3
+    global xxx, first
+    xxx += 2#0.1
     brightness = 0.4
-    glRotate(xxx,1,1,0)
+    glRotate(xxx,1,0,1)
     glTranslate(0.0 ,-0.75, 0.0)
 
-    glMaterialfv(GL_FRONT,GL_DIFFUSE,[brightness*1.0,brightness*1.,brightness*0.,1.])
-    glPushMatrix()
-    glTranslate(0,0,1)
-    gjslib.graphics.opengl.stuff()
-    glPopMatrix()
-    glPushMatrix()
-    glRotate(180,0,1,0)
-    glTranslate(0,0,1)
-    gjslib.graphics.opengl.stuff()
-    glPopMatrix()
+    import traceback
+    if True:
+        glEnable(GL_TEXTURE_2D)
+        glBindTexture(GL_TEXTURE_2D, texture)
+        glMaterialfv(GL_FRONT,GL_DIFFUSE,[brightness*1.0,brightness*1.,brightness*1.0,1.])
+        glPushMatrix()
+        glTranslate(0,0,1)
+        try:
+            icosahedron.draw_opengl_surface()
+        except:
+            traceback.print_exc()
+            pass
+        glDisable(GL_TEXTURE_2D)
+        glPopMatrix()
+
+        pass
 
     glPopMatrix()
 
     glutSwapBuffers()
+    first = False
     return
 
-if __name__ == '__main__': gjslib.graphics.opengl.main(gjslib.graphics.opengl.init_stuff, display)
+def init():
+    global texture
+    texture = gjslib.graphics.opengl.texture_from_png("icosahedron.png")
+    icosahedron.create_opengl_surface()
+    pass
+
+if __name__ == '__main__': gjslib.graphics.opengl.main(init, display)

@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+from OpenGL.GLUT import *
+from OpenGL.GLU import *
+from OpenGL.GL import *
 
 import re
 """
@@ -169,7 +172,7 @@ class c_obj(object):
         for l in f:
             m = uv_map_re.match(l)
             if m is not None:
-                self.uv_map.append( (float(m.group(1)),float(m.group(2))) )
+                self.uv_map.append( (float(m.group(1)),1.0-float(m.group(2))) )
                 pass
             m = normal_map_re.match(l)
             if m is not None:
@@ -196,3 +199,56 @@ class c_obj(object):
                 pass
             pass
         pass
+    def create_opengl_surface(self):
+        import OpenGL.arrays.vbo as vbo
+        import numpy
+        from ctypes import sizeof, c_float, c_void_p, c_uint
+
+        self.opengl_surface = {}
+
+        index_list = []
+        vector_list = []
+        for f in self.faces:
+            for (vi,vti,vni) in f:
+                vertex = self.vertices[vi-1]
+                normal = self.normals[vni-1]
+                uv_map = (0.0,0.0)
+                if vti is not None: uv_map = self.uv_map[vti-1]
+                vector_list.extend( [vertex[0], vertex[1], vertex[2],
+                                     normal[0], normal[1], normal[2],
+                                     uv_map[0], uv_map[1]] )
+                index_list.append(len(index_list))
+                pass
+            pass
+        print vector_list
+        print index_list
+
+        vectors = vbo.VBO( data=numpy.array(vector_list, dtype=numpy.float32), target=GL_ARRAY_BUFFER )
+        indices = vbo.VBO( data=numpy.array(index_list, dtype=numpy.uint8), target=GL_ELEMENT_ARRAY_BUFFER )
+
+        self.opengl_surface["vectors"] = vectors
+        self.opengl_surface["indices"] = indices
+
+        self.opengl_surface["vectors"].bind()
+        self.opengl_surface["indices"].bind()
+
+        pass
+    def draw_opengl_surface(self):
+        from ctypes import sizeof, c_float, c_void_p, c_uint
+        glEnableClientState(GL_VERTEX_ARRAY)
+        glEnableClientState(GL_NORMAL_ARRAY)
+        glEnableClientState(GL_TEXTURE_COORD_ARRAY)
+
+        glVertexPointer( 3, GL_FLOAT,   8*sizeof(c_float), c_void_p(0) )
+        glNormalPointer( GL_FLOAT,      8*sizeof(c_float), c_void_p(3*sizeof(c_float)) )
+        glTexCoordPointer( 2, GL_FLOAT, 8*sizeof(c_float), c_void_p(6*sizeof(c_float)) )
+
+        self.opengl_surface["vectors"].bind()
+        self.opengl_surface["indices"].bind()
+
+        if True:
+            glDrawElements( GL_TRIANGLES,
+                            len(self.opengl_surface["indices"]),
+                            GL_UNSIGNED_BYTE,
+                            self.opengl_surface["indices"] )
+            pass

@@ -21,6 +21,25 @@ from gjslib.math import bezier
 #import bezier
 import array
 opengl_surface = {}
+
+def texture_from_png(png_filename):
+    from PIL import Image
+    import numpy
+
+    png = Image.open(png_filename)
+    png_data = numpy.array(list(png.getdata()), numpy.uint8)
+
+    texture = glGenTextures(1)
+    glPixelStorei(GL_UNPACK_ALIGNMENT,1)
+    glBindTexture(GL_TEXTURE_2D, texture)
+
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT)
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT)
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, png.size[0], png.size[1], 0, GL_RGB, GL_UNSIGNED_BYTE, png_data)
+    return texture
+
 def init_stuff():
     patches = { "flat_xy_square": ( (0,0,0),     (1/3.0,0,0),     (2/3.0,0,0),   (1,0,0),
                                     (0,1/3.0,0), (1/3.0,1/3.0,0), (2/3.0,1/3.0,0), (1,1/3.0,0),
