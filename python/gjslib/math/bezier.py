@@ -301,6 +301,11 @@ class c_bezier( object ):
 
 #c c_bezier_patch
 class c_bezier_patch( object ):
+    """
+    A bezier patch here has 16 values - this is 4 corner points, and for each corner 3 control points
+    The points are supplied in a 16-entry array
+    The corners are points 0, 3, 12, 15
+    """
     factors = [ 1.0, 3.0, 3.0, 1.0,
                 3.0, 9.0, 9.0, 3.0,
                 3.0, 9.0, 9.0, 3.0,
@@ -310,31 +315,35 @@ class c_bezier_patch( object ):
         pass
     def bezier_gradient( self, ofs=0, stride=1, t=0 ):
         tis = [ -3*(1-t)*(1-t), 3*(1-t)*(1-3*t), 3*(2-3*t)*t, 3*t*t ]
-        pt = self.pts[0].add( -1.0, self.pts[0] )
+        pt = self.pts[0].add(self.pts[0],factor=-1.0)
         for i in range(4):
-            pt = pt.add( tis[i], self.pts[ofs+i*stride] )
+            pt = pt.add( self.pts[ofs+i*stride], factor=tis[i] )
             #print i, t, tis[i], pt, ofs+i*stride, self.pts[ofs+i*stride]
             pass
         return pt
     def normal( self, t, u ):
         tis = [ (1-t)*(1-t)*(1-t), 3*(1-t)*(1-t)*t, 3*(1-t)*t*t, t*t*t ]
         uis = [ (1-u)*(1-u)*(1-u), 3*(1-u)*(1-u)*u, 3*(1-u)*u*u, u*u*u ]
-        dt_vec = self.pts[0].add(-1.0,self.pts[0])
-        du_vec = self.pts[0].add(-1.0,self.pts[0])
+        dt_vec = self.pts[0].add(self.pts[0],factor=-1.0)
+        du_vec = self.pts[0].add(self.pts[0],factor=-1.0)
         for i in range(4):
-            dt_vec = dt_vec.add( uis[i], self.bezier_gradient( ofs=4*i, stride=1, t=t ) )
-            du_vec = du_vec.add( tis[i], self.bezier_gradient( ofs=i,   stride=4, t=u ) )
+            dt_vec = dt_vec.add( self.bezier_gradient( ofs=4*i, stride=1, t=t ), factor=uis[i] )
+            du_vec = du_vec.add( self.bezier_gradient( ofs=i,   stride=4, t=u ), factor=tis[i] )
             pass
         #print t, u, dt_vec, du_vec
         return dt_vec.cross_product( du_vec )
     def coord( self, t, u ):
+        """
+        Calculate the bezier patch coordinate given by parameters t and u
+        0<=t<=1, 0<=u<=1
+        """
         pt = self.pts[0]
-        pt = pt.add( -1.0, pt )
+        pt = pt.add( other=pt, factor=-1.0 )
         tis = [ (1-t)*(1-t)*(1-t), (1-t)*(1-t)*t, (1-t)*t*t, t*t*t ]
         uis = [ (1-u)*(1-u)*(1-u), (1-u)*(1-u)*u, (1-u)*u*u, u*u*u ]
         for i in range(4):
             for j in range(4):
-                pt = pt.add( self.factors[i+4*j]*tis[i]*uis[j], self.pts[i+4*j] )
+                pt = pt.add( self.pts[i+4*j], factor=self.factors[i+4*j]*tis[i]*uis[j]  )
                 pass
             pass
         return pt

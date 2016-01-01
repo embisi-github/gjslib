@@ -17,7 +17,8 @@ angle_speed = 0.0
 delay = 40
 delay = 100
 use_primitive_restart = False
-import bezier
+from gjslib.math import bezier
+#import bezier
 import array
 opengl_surface = {}
 def init_stuff():
@@ -41,7 +42,7 @@ def init_stuff():
     patch = patches["bump_two"]
     patch = patches["bump_two"]
     patch = patches["bump_one"]
-    patch = patches["flat_xy_square"]
+    #patch = patches["flat_xy_square"]
     global opengl_surface
     import OpenGL.arrays.vbo as vbo
     import numpy
