@@ -140,7 +140,7 @@ def stuff():
                         GL_UNSIGNED_BYTE,
                         opengl_surface["indices"] )
 
-def main():
+def main(init_stuff,display):
     glutInit(sys.argv)
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)
     glutInitWindowSize(1000,1000)
@@ -312,5 +312,5 @@ def display():
     glutSwapBuffers()
     return
 
-if __name__ == '__main__': main()
+if __name__ == '__main__': main(init_stuff,display)
 
