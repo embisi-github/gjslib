@@ -178,7 +178,7 @@ def main(init_stuff,display):
 
     glClearColor(0.,0.,0.,1.)
     glShadeModel(GL_SMOOTH)
-    glEnable(GL_CULL_FACE)
+    #glEnable(GL_CULL_FACE)
     glEnable(GL_DEPTH_TEST)
     glEnable(GL_LIGHTING)
 

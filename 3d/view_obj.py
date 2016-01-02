@@ -13,6 +13,7 @@ camera = gjslib.graphics.opengl.camera
 icosahedron = gjslib.graphics.obj.c_obj()
 f = open("icosahedron.obj")
 icosahedron.load_from_file(f)
+icosahedron.create_icosahedron()
 
 xxx = 0
 yyy = 0
@@ -68,7 +69,7 @@ def display():
     color = [0.5,0,0.,0.,1.]
     glMaterialfv(GL_FRONT,GL_DIFFUSE,color)
     #glutSolidSphere(2,40,40)
-    glutSolidOctahedron()
+    #glutSolidOctahedron()
     glPopMatrix()
 
     glPushMatrix()
@@ -83,8 +84,10 @@ def display():
         glEnable(GL_TEXTURE_2D)
         glBindTexture(GL_TEXTURE_2D, texture)
         glMaterialfv(GL_FRONT,GL_DIFFUSE,[brightness*1.0,brightness*1.,brightness*1.0,1.])
+        glMaterialfv(GL_FRONT,GL_AMBIENT,[0.6,0.6,0.6,1.0])
         glPushMatrix()
         glTranslate(0,0,1)
+        glScale(1,1,1)
         try:
             icosahedron.draw_opengl_surface()
         except:
