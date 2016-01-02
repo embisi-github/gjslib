@@ -103,7 +103,7 @@ def display():
 
 def init():
     global texture
-    texture = gjslib.graphics.opengl.texture_from_png("icosahedron.png")
+    texture = gjslib.graphics.opengl.texture_from_png("test2.png")#../../1_earth_16k_div10.png")#icosahedron.png")
     icosahedron.create_opengl_surface()
     pass
 
