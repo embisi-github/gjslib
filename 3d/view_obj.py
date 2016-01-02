@@ -74,10 +74,11 @@ def display():
 
     glPushMatrix()
     global xxx, first
-    xxx += 2#0.1
+    glRotate(95,1,0,0)
+    xxx += 0.2#0.1
     brightness = 0.4
-    glRotate(xxx,1,0,1)
-    glTranslate(0.0 ,-0.75, 0.0)
+    glRotate(xxx,0,0,1)
+    #glTranslate(0.0 ,-0.75, 0.0)
 
     import traceback
     if True:
@@ -87,7 +88,7 @@ def display():
         glMaterialfv(GL_FRONT,GL_AMBIENT,[0.6,0.6,0.6,1.0])
         glPushMatrix()
         glTranslate(0,0,1)
-        glScale(1,1,1)
+        glScale(4,4,4)
         try:
             icosahedron.draw_opengl_surface()
         except:
@@ -106,7 +107,7 @@ def display():
 
 def init():
     global texture
-    texture = gjslib.graphics.opengl.texture_from_png("test2.png")#../../1_earth_16k_div10.png")#icosahedron.png")
+    texture = gjslib.graphics.opengl.texture_from_png("earth_ico.png")#../../1_earth_16k_div10.png")#icosahedron.png")
     icosahedron.create_opengl_surface()
     pass
 

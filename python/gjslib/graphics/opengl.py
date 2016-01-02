@@ -202,20 +202,28 @@ def main(init_stuff,display):
                 camera["rpy"][angle] += dirn*angle_delta            
             pass
         acceleration = 0.02
+        if key=='i': change_angle(0,+3.1415/4,angle_delta=1)
+        if key=='o': change_angle(1,+3.1415/4,angle_delta=1)
+        if key=='p': change_angle(1,+3.1415/4,angle_delta=1)
         if key=='w': change_angle(1,-1)
         if key=='s': change_angle(1, 1)
         if key=='z': change_angle(0,-1)
         if key=='c': change_angle(0,+1)
         if key=='a': change_angle(2,-1)
         if key=='d': change_angle(2,+1)
+        if key==' ': camera["speed"] = 0
         if key==';': camera["speed"] += acceleration
         if key=='.': camera["speed"] -= acceleration
-        if key=='r': camera["rpy"] = [0,0,0]
+        if key=='e': camera["rpy"] = [0,0,0]
         if key=='r': camera["position"] = [0,0,-10]
         if key=='r': camera["facing"] = c_quaternion.identity()
         if key=='q':sys.exit()
     glutKeyboardFunc(keypress_callback)
-    glutDisplayFunc(display)
+    def display_func():
+        display()
+        #camera["rpy"] = [0,0,0]
+        pass
+    glutDisplayFunc(display_func)
     def callback():
         global angle, angle_speed
         #angle = angle + angle_speed

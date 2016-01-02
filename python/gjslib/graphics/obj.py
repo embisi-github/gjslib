@@ -30,18 +30,23 @@ class c_obj(object):
         sc = c_spherical_coord()
         for i in range(10):
             sc.from_icos_tuv((i,0,0))
-            self.vertices.append(sc.xyz())
+            xyz = sc.xyz()
+            xyz = (xyz[0],-xyz[1],xyz[2])
+            self.vertices.append(xyz)
             pass
         self.vertices.append((0.0,0.0,1.0))
         self.vertices.append((0.0,0.0,-1.0))
         self.normals = self.vertices[:]
+        zero=0.00001
+        one=1.0-3*zero
         for i in range(20):
-            sc.from_icos_tuv((i,0,0))
+            sc.from_icos_tuv((i,zero,zero))
             self.uv_map.append( sc.tex_uv(scalex=0.5,scaley=0.2) )
-            sc.from_icos_tuv((i,1.0,0))
+            sc.from_icos_tuv((i,one,zero))
             self.uv_map.append( sc.tex_uv(scalex=0.5,scaley=0.2) )
-            sc.from_icos_tuv((i,0,1.0))
+            sc.from_icos_tuv((i,zero,one))
             self.uv_map.append( sc.tex_uv(scalex=0.5,scaley=0.2) )
+            print self.uv_map[-3:]
             pass
         for i in range(5):
             t = 2*i
@@ -52,8 +57,10 @@ class c_obj(object):
         for i in range(5):
             t  = 2*i
             t2 = (2*i+2)%10
-            self.faces.append( [self.face_of_triple(t,0,t), self.face_of_triple(t2,1,t2), self.face_of_triple(11,2,11)] )
-            self.faces.append( [self.face_of_triple(t+1,0,t+1), self.face_of_triple(t2+1,1,t2+1), self.face_of_triple(10,2,10)] )
+            t_top = 30+3*i
+            t_bottom = 45+3*i
+            self.faces.append( [self.face_of_triple(t+1,t_top+0,t+1), self.face_of_triple(t2+1,t_top+1,t2+1), self.face_of_triple(10,t_top+2,10)] )
+            self.faces.append( [self.face_of_triple(t,  t_bottom,t), self.face_of_triple(t2,t_bottom+1,t2), self.face_of_triple(11,t_bottom+2,11)] )
             pass
         pass
     def load_from_file(self, f, transform=None, translation=None):

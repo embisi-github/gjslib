@@ -10,7 +10,14 @@ xyz = sc.xyz()
 sc.from_xyz( xyz )
 print sc
 
-asd
+zero=0.000001
+one=1.0-3*zero
+sc.from_icos_tuv((11,zero,zero))
+print sc
+sc.from_icos_tuv((11,one,zero))
+print sc
+sc.from_icos_tuv((11,zero,one))
+print sc
 
 def triangle_corners(t,u,v,fraction,projection):
     """
@@ -87,6 +94,7 @@ def im_set_pixel(im,xy,c):
     if (xy[1]>=im.size[1]):return
     im.putpixel(xy,c)
     return
+#asd
 scale = 256
 im = Image.new("RGB", (scale*2,scale*5), "white")
 draw = ImageDraw.Draw(im)
@@ -98,7 +106,8 @@ for t in triangle_map:
             if (u+v>=scale):break
             p.from_icos_tuv((t,u/(scale+0.0),v/(scale+0.0)))
             xy = p.project_to_xy_patterson()
-            tex_xy = tex_coord(scale,triangle_map[t],u,v)
+            tex_xy = p.tex_uv(scalex=scale,scaley=scale)
+            tex_xy=(int(tex_xy[0]),int(tex_xy[1]))
             im_set_pixel(im,tex_xy,im_get_pixel(png,xy))
             pass
         pass
