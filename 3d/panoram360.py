@@ -58,29 +58,7 @@ for t in range(20):
     pass
 im.save("test.png")
 
-triangle_map = {}
-triangle_map[10] = (0,0,"lower",(0,0),(1,0),(0,1))
-triangle_map[11] = (0,0,"upper",(1,0),(1,1),(0,1))
-triangle_map[12] = (1,0,"lower",(0,0),(1,0),(0,1))
-triangle_map[13] = (1,0,"upper",(1,0),(1,1),(0,1))
-triangle_map[14] = (0,1,"lower",(1,0),(0,1),(0,0))
-triangle_map[ 9] = (0,1,"upper",(1,0),(0,1),(1,1))
-triangle_map[ 0] = (1,1,"lower",(0,0),(1,0),(0,1))
-triangle_map[ 1] = (1,1,"upper",(0,1),(1,1),(1,0))
-triangle_map[ 2] = (0,2,"lower",(0,0),(1,0),(0,1))
-triangle_map[ 3] = (0,2,"upper",(0,1),(1,1),(1,0))
-triangle_map[ 4] = (1,2,"lower",(1,0),(0,1),(0,0))
-triangle_map[17] = (1,2,"upper",(1,0),(0,1),(1,1))
-triangle_map[18] = (0,3,"lower",(0,0),(0,1),(1,0))
-triangle_map[19] = (0,3,"upper",(0,1),(1,1),(1,0))
-triangle_map[15] = (1,3,"lower",(0,0),(0,1),(1,0))
-triangle_map[16] = (1,3,"upper",(0,1),(1,1),(1,0))
-triangle_map[ 5] = (0,4,"lower",(0,0),(1,0),(0,1))
-triangle_map[ 6] = (0,4,"upper",(0,1),(1,1),(1,0))
-triangle_map[ 7] = (1,4,"lower",(0,0),(1,0),(0,1))
-triangle_map[ 8] = (1,4,"upper",(0,1),(1,1),(1,0))
-"""
-"""
+triangle_map = c_spherical_coord.triangle_map
 def tex_coord(scale,m,u,v):
     (tx,ty,half,uv00,uv10,uv01) = m
     tx = tx * scale

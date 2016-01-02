@@ -35,14 +35,19 @@ class c_obj(object):
         self.vertices.append((0.0,0.0,1.0))
         self.vertices.append((0.0,0.0,-1.0))
         self.normals = self.vertices[:]
-        self.uv_map.append( (0.0,0.0) )
-        self.uv_map.append( (1.0,0.0) )
-        self.uv_map.append( (0.0,1.0) )
+        for i in range(20):
+            sc.from_icos_tuv((i,0,0))
+            self.uv_map.append( sc.tex_uv(scalex=0.5,scaley=0.2) )
+            sc.from_icos_tuv((i,1.0,0))
+            self.uv_map.append( sc.tex_uv(scalex=0.5,scaley=0.2) )
+            sc.from_icos_tuv((i,0,1.0))
+            self.uv_map.append( sc.tex_uv(scalex=0.5,scaley=0.2) )
+            pass
         for i in range(5):
             t = 2*i
             t2 = (2*i+2)%10
-            self.faces.append( [self.face_of_triple(t,0,t), self.face_of_triple(t+1,2,t+1), self.face_of_triple(t2,1,t2)] )
-            self.faces.append( [self.face_of_triple(t+1,0,t+1), self.face_of_triple(t2+1,1,t2+1), self.face_of_triple(t2,2,t2)] )
+            self.faces.append( [self.face_of_triple(t,  6*i,    t), self.face_of_triple(t+1, 6*i+2, t+1), self.face_of_triple(t2,6*i+1,t2)] )
+            self.faces.append( [self.face_of_triple(t+1,6*i+3,t+1), self.face_of_triple(t2+1,6*i+4,t2+1), self.face_of_triple(t2,6*i+5,t2)] )
             pass
         for i in range(5):
             t  = 2*i
