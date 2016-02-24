@@ -50,6 +50,7 @@ def draw_triangle(im,draw,corners,fill=128):
     pass
 
 png_filename = "../../1_earth_16k_div10.png"
+png_filename = "../../1_earth_16k.jpg"
 from PIL import Image, ImageDraw
 png = Image.open(png_filename)
 im = Image.new("RGB", (512, 512), "white")
@@ -94,8 +95,8 @@ def im_set_pixel(im,xy,c):
     if (xy[1]>=im.size[1]):return
     im.putpixel(xy,c)
     return
-#asd
-scale = 256
+asd
+scale = 1024
 im = Image.new("RGB", (scale*2,scale*5), "white")
 draw = ImageDraw.Draw(im)
 p = c_spherical_coord()

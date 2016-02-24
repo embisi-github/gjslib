@@ -11,101 +11,6 @@ class c_obj(object):
         self.normals = []
         self.faces = []
         pass
-    def from_bitmap(self, image, scale_factors, is_solid=None):
-        """
-        image must have getpixel(x,y) and size = tuple (width,height)
-        scale_factors is tuple of (width, depth, height) for the object
-        """
-        if is_solid is None:
-            is_solid = lambda x:(x!=0)
-            pass
-        self.vertices = []
-        self.uv_map = []
-        self.normals = []
-        (width,height) = image.size
-        pixel_array = []
-        for y in range(height):
-            pixel_array.append([])
-            for x in range(width):
-                pixel_array[-1].append(is_solid(image.getpixel((x,y))))
-                pass
-            pass
-        self.from_pixel_array(pixel_array, scale_factors)
-        pass
-    def from_pixel_array(self, pixel_array, scale_factors):
-        self.vertices = []
-        self.uv_map = []
-        self.normals = []
-        height = len(pixel_array)
-        width  = len(pixel_array[0])
-        faces_required = {}
-        def add_required_face(x,y,face,flip):
-            k = (x,y,face)
-            if k in faces_required:
-                del(faces_required[k])
-                return
-            faces_required[k] = flip
-            pass
-        for y in range(height):
-            for x in range(width):
-                if pixel_array[y][x]:
-                    add_required_face(x,y,"top",False)
-                    add_required_face(x,y,"bottom",True)
-                    add_required_face(x,y,"left",True)
-                    add_required_face(x,y,"back",True)
-                    add_required_face(x+1,y,"left",False)
-                    add_required_face(x,y+1,"back",False)
-                    pass
-                pass
-            pass
-        for k in faces_required:
-            (x,y,face) = k
-            self.add_pixel_face(x,y,face,width,height,scale_factors,faces_required[k])
-            pass
-        pass
-    def add_pixel_face(self, x,y,face,width,height,scale_factors,flip=False):
-        vi = len(self.vertices)
-        vni = len(self.normals)
-        vti = len(self.uv_map)
-        deltas = [(0,0), (0,1), (1,0), (1,1)]
-        if flip:
-            deltas = [(0,0), (1,0), (0,1), (1,1)]
-            pass
-        def uv(x,y,width=width,height=height):
-            return ((x+0.0)/width, (y+0.0)/height)
-        def xyz(x,y,dx,dy,face,scale_factors=scale_factors,width=width,height=height):
-            if face in ["top"]:
-                (x,y,z)  = (x+dx,y+dy,0.0)
-            elif face in ["bottom"]:
-                (x,y,z)  = (x+dx,y+dy,1.0)
-                pass
-            elif face in ["left"]:
-                (x,y,z)  = (x,y+dx,1.0-float(dy))
-                pass
-            elif face in ["back"]:
-                (x,y,z)  = (x+dy,y,1.0-float(dx))
-                pass
-            return (x*scale_factors[0]/width, z*scale_factors[1], (y*scale_factors[2])/height)
-        if face in ["top"]:   n = (0.0,-1.0,0.0)
-        if face in ["bottom"]:n = (0.0,1.0,0.0)
-        if face in ["left"]:  n = (1.0,0.0,0.0)
-        if face in ["back"]:  n = (0.0,0.0,1.0)
-        for (dx,dy) in deltas:
-            self.vertices.append( xyz(x,y,dx,dy,face) )
-            self.normals.append( n )
-            self.uv_map.append( uv(x+dx,y+dy) )
-            pass
-        face = []
-        face.append(self.face_of_triple(vi,vti,vni,0))
-        face.append(self.face_of_triple(vi,vti,vni,1))
-        face.append(self.face_of_triple(vi,vti,vni,2))
-        self.faces.append( face )
-        face = []
-        face.append(self.face_of_triple(vi,vti,vni,1))
-        face.append(self.face_of_triple(vi,vti,vni,3))
-        face.append(self.face_of_triple(vi,vti,vni,2))
-        self.faces.append( face )
-        pass
     def face_of_triple(self, vi,vti,vni,delta=0):
         vi = int(vi)
         vni = int(vni)
@@ -116,20 +21,6 @@ class c_obj(object):
             vti = None
             pass
         return (vi+delta,vti+delta,vni+delta)
-    def add_rectangle(self,xyz,dxyz0,dxyz1,uv=(0.0,0.0),duv0=(1.0,0.0),duv1=(0.0,1.0)):
-        nv = len(self.vertices)
-        self.vertices.append(xyz)
-        self.vertices.append( (xyz[0]+dxyz0[0], xyz[1]+dxyz0[1], xyz[2]+dxyz0[2]))
-        self.vertices.append( (xyz[0]+dxyz0[0]+dxyz1[0], xyz[1]+dxyz0[1]+dxyz1[1], xyz[2]+dxyz0[2]+dxyz1[2]))
-        self.vertices.append( (xyz[0]+dxyz1[0], xyz[1]+dxyz1[1], xyz[2]+dxyz1[2]))
-        self.uv_map.append( uv )
-        self.uv_map.append( (uv[0]+duv0[0], uv[1]+duv0[1]) )
-        self.uv_map.append( (uv[0]+duv0[0]+duv1[0], uv[1]+duv0[1]+duv1[1]) )
-        self.uv_map.append( (uv[0]+duv1[0], uv[1]+duv1[1]) )
-        self.normals.extend(self.vertices[nv:])
-        self.faces.append( (self.face_of_triple(0,0,0,nv), self.face_of_triple(1,1,1,nv), self.face_of_triple(2,2,2,nv)) )
-        self.faces.append( (self.face_of_triple(0,0,0,nv), self.face_of_triple(2,2,2,nv), self.face_of_triple(3,3,3,nv)) )
-        pass
     def create_icosahedron(self):
         from gjslib.math.spherical_coords import c_spherical_coord
         self.vertices = []
@@ -250,24 +141,6 @@ class c_obj(object):
                     pass
                 self.faces.append(face)
                 pass
-            pass
-        pass
-    def save_to_file(self, f):
-        for v in self.vertices:
-            print >> f, "v %f %f %f"%v
-            pass
-        for n in self.normals:
-            print >> f, "vn %f %f %f"%n
-            pass
-        for uv in self.uv_map:
-            print >> f, "vt %f %f"%uv
-            pass
-        for fa in self.faces:
-            face = "f "
-            for (vi, vni,vti) in fa:
-                face += " %d/%d/%d"%(vi+1,vti+1,vni+1)
-                pass
-            print >> f, face
             pass
         pass
     def create_opengl_surface(self):

@@ -12,9 +12,14 @@ from gjslib.math.quaternion import c_quaternion
 camera = gjslib.graphics.opengl.camera
 icosahedron = gjslib.graphics.obj.c_obj()
 f = open("icosahedron.obj")
-icosahedron.load_from_file(f)
-icosahedron.create_icosahedron()
-
+#icosahedron.load_from_file(f)
+#icosahedron.create_icosahedron()
+icosahedron.create_icosphere(subdivide=4)
+from PIL import Image
+#image = Image.open("mm_willy.png")
+#icosahedron.from_bitmap(image,(1.0,0.125,1.0))
+#f = open("mm_willy.obj","w")
+#icosahedron.save_to_file(f)
 xxx = 0
 yyy = 0
 first = True
@@ -107,7 +112,9 @@ def display():
 
 def init():
     global texture
-    texture = gjslib.graphics.opengl.texture_from_png("earth_ico.png")#../../1_earth_16k_div10.png")#icosahedron.png")
+    #texture = gjslib.graphics.opengl.texture_from_png("earth_ico.png")#../../1_earth_16k_div10.png")#icosahedron.png")
+    texture = gjslib.graphics.opengl.texture_from_png("test2.png")
+    #texture = gjslib.graphics.opengl.texture_from_png("brick.png")
     icosahedron.create_opengl_surface()
     pass
 

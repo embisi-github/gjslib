@@ -12,6 +12,7 @@ camera = {"position":[0,0,-10],
           "facing":c_quaternion.identity(),
           "rpy":[0,0,0],
           "speed":0,
+          "fov":90,
           }
 angle_speed = 0.0
 delay = 40
@@ -35,6 +36,8 @@ def texture_from_png(png_filename):
 
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT)
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT)
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP)
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP)
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, png.size[0], png.size[1], 0, GL_RGB, GL_UNSIGNED_BYTE, png_data)
@@ -159,22 +162,42 @@ def stuff():
                         GL_UNSIGNED_BYTE,
                         opengl_surface["indices"] )
 
-def main(init_stuff,display):
+display_has_errored = False
+window_size = (1000,1000)
+def attach_menu(menu_name):
+    global menu_dict
+    glutSetMenu(menu_dict[menu_name]["glut"])
+    glutAttachMenu(GLUT_RIGHT_BUTTON)
+    pass
+
+def main(init_stuff,display,mouse=None,keyboard=None,menus=None):
+    global window_size, menu_dict
     glutInit(sys.argv)
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)
-    glutInitWindowSize(1000,1000)
-    glutCreateWindow(name)
+    glutInitWindowSize(window_size[0],window_size[1])
+    glutCreateWindow("opengl_main")
 
 
     print "OpenGL Version",OpenGL.GL.glGetString(OpenGL.GL.GL_VERSION)
 
-    def menu_callback( x ):
+    def menu_callback(name, x ):
         print x
         sys.exit()
-    glutCreateMenu(menu_callback)
-    glutAddMenuEntry("Blah",1)
-    glutAddMenuEntry("Blib",2)
-    glutAttachMenu(GLUT_RIGHT_BUTTON)
+        pass
+    if menus is not None:
+        menu_dict = {}
+        for (name, items) in menus:
+            m = glutCreateMenu(lambda x:menu_callback(name,x))
+            menu_dict[name] = {"glut":m}
+            for (text,item) in items:
+                if type(item)==int:
+                    glutAddMenuEntry(text,item)
+                    pass
+                else:
+                    glutAddSubMenu(text,menu_dict[item]["glut"])
+                pass
+            pass
+        pass
 
     glClearColor(0.,0.,0.,1.)
     glShadeModel(GL_SMOOTH)
@@ -192,8 +215,28 @@ def main(init_stuff,display):
 
     init_stuff()
 
+    def mouse_callback(button,state,x,y,mouse=mouse):
+        #glutGetModifiers()
+        global window_size
+        b = "left"
+        s = "up"
+        if state == GLUT_UP: s="up"
+        if state == GLUT_DOWN: s="down"
+        if button == GLUT_LEFT_BUTTON: b="left"
+        if button == GLUT_MIDDLE_BUTTON: b="middle"
+        if button == GLUT_RIGHT_BUTTON: b="right"
+        x = (2.0*x)/window_size[0]-1.0
+        y = 1.0-(2.0*y)/window_size[1]
+        if mouse:
+            mouse(b,s,x,y)
+            pass
+        pass
     def keypress_callback(key,x,y):
         global camera, angle
+        def change_fov(fov):
+            camera["fov"] += fov
+            if camera["fov"]<10: camera["fov"]=10
+            if camera["fov"]>140: camera["fov"]=140
         def change_angle( angle, dirn, camera=camera,
                           angle_delta=0.01 ):
             if (camera["rpy"][angle]*dirn)<0:
@@ -211,16 +254,29 @@ def main(init_stuff,display):
         if key=='c': change_angle(0,+1)
         if key=='a': change_angle(2,-1)
         if key=='d': change_angle(2,+1)
+        if key=='[': change_fov(-1)
+        if key==']': change_fov(+1)
         if key==' ': camera["speed"] = 0
         if key==';': camera["speed"] += acceleration
         if key=='.': camera["speed"] -= acceleration
         if key=='e': camera["rpy"] = [0,0,0]
         if key=='r': camera["position"] = [0,0,-10]
         if key=='r': camera["facing"] = c_quaternion.identity()
+        if key=='r': camera["fov"] = 90
         if key=='q':sys.exit()
+        pass
     glutKeyboardFunc(keypress_callback)
+    glutMouseFunc(mouse_callback)
     def display_func():
-        display()
+        global display_has_errored
+        if not display_has_errored:
+            try:
+                display()
+            except:
+                traceback.print_exc()
+                display_has_errored = True
+                pass
+            pass
         #camera["rpy"] = [0,0,0]
         pass
     glutDisplayFunc(display_func)
