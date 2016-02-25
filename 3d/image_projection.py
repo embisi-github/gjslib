@@ -7,7 +7,6 @@ class c_image_projection(object):
     def __init__(self,name,image_filename,size=(1.0,1.0)):
         self.name = name
         self.image_filename = image_filename
-        self.texture = None
         self.mvp = None
         self.ip = None
         self.size = size

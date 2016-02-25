@@ -15,6 +15,12 @@ class c_point_mapping(object):
         self.positions = {}
         self.images = {}
         pass
+    #f get_images
+    def get_images(self):
+        return self.images.keys()
+    #f get_image
+    def get_image(self, image_name):
+        return self.images[image_name]
     #f load_data_add_image
     def load_data_add_image(self, data):
         image_name = data[0]
