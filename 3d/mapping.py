@@ -67,34 +67,8 @@ from OpenGL.GLU import *
 from OpenGL.GL import *
 
 from gjslib.math.quaternion import c_quaternion
-from gjslib.math import matrix, vectors
+from gjslib.math import matrix, vectors, statistics
 from image_point_mapping import c_point_mapping
-
-#a Correlation
-class c_correlation(object):
-    def __init__(self):
-        self.sum_x = 0
-        self.sum_y = 0
-        self.sum_xy = 0
-        self.sum_x2 = 0
-        self.sum_y2 = 0
-        self.n = 0
-        pass
-    def add_entry(self,x,y):
-        self.sum_x += x
-        self.sum_y += y
-        self.sum_x2 += x*x
-        self.sum_y2 += y*y
-        self.sum_xy += x*y
-        self.n += 1
-        pass
-    def correlation_coefficient(self):
-        if self.n==0: return 0
-        rn = self.sum_xy*self.n - self.sum_x*self.sum_y
-        rd = ( math.sqrt(self.n*self.sum_x2 - self.sum_x*self.sum_x) *
-               math.sqrt(self.n*self.sum_y2 - self.sum_y*self.sum_y) )
-        if (rd<0.000001): return 0
-        return rn/rd
 
 #a Mapping data
 object_guess_locations = {}
@@ -452,13 +426,13 @@ class c_mapping(object):
     def __init__(self):
         self.mvp =  matrix.c_matrix4x4()
         self.camera = gjslib.graphics.opengl.camera
-        self.floatywoaty = (0.0,0.0,0.0)    
         self.aspect = 1.0
         self.zNear=1.0
         self.zFar=40.0
         self.point_mappings = c_point_mapping()
         self.image_projections = {}
         self.set_data()
+        #self.calc_total_errors()
         pass
     #f find_better_projection
     def find_better_projection(self,mappings,image_projection,projection,deltas_list,delta_scale):
@@ -469,7 +443,7 @@ class c_mapping(object):
             print
             print deltas
             e = 0
-            corr = (c_correlation(), c_correlation())
+            corr = (statistics.c_correlation(), statistics.c_correlation())
             corr[0].add_entry(0.0,0.0)
             corr[1].add_entry(0.0,0.0)
             for n in mappings:
@@ -527,7 +501,7 @@ class c_mapping(object):
             print
             print k
             e = 0
-            corr = (c_correlation(), c_correlation())
+            corr = (statistics.c_correlation(), statistics.c_correlation())
             for n in image_data["mappings"]: # Should get data from point_mappings instead
                 xy = image_data["mappings"][n]
                 e += self.image_projections[k].mapping_error(n,xy,corr)
@@ -637,12 +611,6 @@ class c_mapping(object):
                     pass
                 pass
             pass
-        glPushMatrix()
-        glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,0.3,0.3,1.0])
-        glTranslate(self.floatywoaty[0], self.floatywoaty[1], self.floatywoaty[2])
-        glScale(0.03,0.03,0.03)
-        glutSolidSphere(1,6,6)
-        glPopMatrix()
         pass
     #f display_grid
     def display_grid(self,n):
@@ -778,7 +746,7 @@ class c_mapping(object):
 
         #(k01,k02) = self.find_in_triangle((x,y), (-10.0,-10.0,0.0), (10.0,-10.0,0.0), (-10.0,10.0,0.0) )
         #print "coord in image",k01,k02,k01*4272, (1-k02)*2848
-        self.floatywoaty = point_on_plane((-10.0,-10.0,0.0), (10.0,-10.0,0.0), (-10.0,10.0,0.0),k01,k02)
+        #self.floatywoaty = point_on_plane((-10.0,-10.0,0.0), (10.0,-10.0,0.0), (-10.0,10.0,0.0),k01,k02)
         pass
     pass
 

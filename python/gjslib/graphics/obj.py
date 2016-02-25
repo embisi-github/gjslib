@@ -4,13 +4,17 @@ from OpenGL.GLU import *
 from OpenGL.GL import *
 
 import re
+
+#a c_obj
 class c_obj(object):
+    #f __init__
     def __init__(self):
         self.vertices = []
         self.uv_map = []
         self.normals = []
         self.faces = []
         pass
+    #f from_bitmap
     def from_bitmap(self, image, scale_factors, is_solid=None):
         """
         image must have getpixel(x,y) and size = tuple (width,height)
@@ -32,6 +36,7 @@ class c_obj(object):
             pass
         self.from_pixel_array(pixel_array, scale_factors)
         pass
+    #f from_pixel_array
     def from_pixel_array(self, pixel_array, scale_factors):
         self.vertices = []
         self.uv_map = []
@@ -63,6 +68,7 @@ class c_obj(object):
             self.add_pixel_face(x,y,face,width,height,scale_factors,faces_required[k])
             pass
         pass
+    #f add_pixel_face
     def add_pixel_face(self, x,y,face,width,height,scale_factors,flip=False):
         vi = len(self.vertices)
         vni = len(self.normals)
@@ -106,6 +112,7 @@ class c_obj(object):
         face.append(self.face_of_triple(vi,vti,vni,2))
         self.faces.append( face )
         pass
+    #f face_of_triple
     def face_of_triple(self, vi,vti,vni,delta=0):
         vi = int(vi)
         vni = int(vni)
@@ -116,6 +123,7 @@ class c_obj(object):
             vti = None
             pass
         return (vi+delta,vti+delta,vni+delta)
+    #f add_rectangle
     def add_rectangle(self,xyz,dxyz0,dxyz1,uv=(0.0,0.0),duv0=(1.0,0.0),duv1=(0.0,1.0)):
         nv = len(self.vertices)
         self.vertices.append(xyz)
@@ -130,6 +138,7 @@ class c_obj(object):
         self.faces.append( (self.face_of_triple(0,0,0,nv), self.face_of_triple(1,1,1,nv), self.face_of_triple(2,2,2,nv)) )
         self.faces.append( (self.face_of_triple(0,0,0,nv), self.face_of_triple(2,2,2,nv), self.face_of_triple(3,3,3,nv)) )
         pass
+    #f create_icosahedron
     def create_icosahedron(self):
         from gjslib.math.spherical_coords import c_spherical_coord
         self.vertices = []
@@ -172,6 +181,7 @@ class c_obj(object):
             self.faces.append( [self.face_of_triple(t,  t_bottom,t), self.face_of_triple(t2,t_bottom+1,t2), self.face_of_triple(11,t_bottom+2,11)] )
             pass
         pass
+    #f create_icosphere
     def create_icosphere(self,subdivide=1):
         from gjslib.math.spherical_coords import c_spherical_coord
         self.vertices = []
@@ -210,6 +220,7 @@ class c_obj(object):
                 pass
             pass
         pass
+    #f load_from_file
     def load_from_file(self, f, transform=None, translation=None):
         float_re = r"(-*\d+(?:(?:\.\d*)|))"
         triple_re = r"(\d+)/((?:\d+)|)/(\d+)"
@@ -252,6 +263,7 @@ class c_obj(object):
                 pass
             pass
         pass
+    #f save_to_file
     def save_to_file(self, f):
         for v in self.vertices:
             print >> f, "v %f %f %f"%v
@@ -270,6 +282,7 @@ class c_obj(object):
             print >> f, face
             pass
         pass
+    #f create_opengl_surface
     def create_opengl_surface(self):
         import OpenGL.arrays.vbo as vbo
         import numpy
@@ -302,6 +315,7 @@ class c_obj(object):
         self.opengl_surface["indices"].bind()
 
         pass
+    #f draw_opengl_surface
     def draw_opengl_surface(self):
         from ctypes import sizeof, c_float, c_void_p, c_uint
         glEnableClientState(GL_VERTEX_ARRAY)
