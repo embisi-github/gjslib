@@ -91,6 +91,20 @@ class c_glyph( object ):
             bezier_lists.append(beziers)
             pass
         return bezier_lists
+    def create_straight_lines(self, straightness=50):
+        lines = []
+        contours = self.create_bezier_lists()
+        for bl in contours:
+            points = []
+            lines.append(points)
+            for b in bl:
+                subbeziers = b.break_into_segments(straightness)
+                for s in subbeziers:
+                    points.append(s.pts[0])
+                    pass
+                pass
+            pass
+        return lines
     def get_mesh( self, straightness=50 ):
         if self.mesh is not None: return self.mesh
         m = mesh.c_mesh()
@@ -118,6 +132,10 @@ class c_glyph( object ):
         self.mesh = m
         return m
     def get_bbox( self ):
+        if self.glyph["xMax"] is None: return (0,0,0,0)
+        if self.glyph["xMin"] is None: return (0,0,0,0)
+        if self.glyph["yMax"] is None: return (0,0,0,0)
+        if self.glyph["yMin"] is None: return (0,0,0,0)
         lx = self.glyph["xMin"]
         w = self.glyph["xMax"] - self.glyph["xMin"]
         if w<0:
@@ -175,13 +193,39 @@ class c_font( object ):
             self.glyphs[gn].ttx_get_metrics(hmtx)
             self.glyphs[gn].ttx_get_glyph(glyf)
         return self
+    def get_glyph_names(self):
+        return self.glyphs.keys()
     def get_bbox( self, glyph_name ):
         glyph = self.glyphs[glyph_name]
         return glyph.get_bbox()
     def create_bezier_lists( self, glyph_name ):
         glyph = self.glyphs[glyph_name]
         return glyph.create_bezier_lists()
+    def create_straight_lines( self, glyph_name, straightness=50 ):
+        glyph = self.glyphs[glyph_name]
+        return glyph.create_straight_lines(straightness=straightness)
     def get_mesh( self, glyph_name, straightness=50 ):
         glyph = self.glyphs[glyph_name]
         return glyph.get_mesh( straightness=straightness )
 
+if __name__=="__main__":
+    f = c_font("fred")
+    if False:
+        c_font.convert_ttf_to_ttx(ttf_filename="../../fonts/cabin/Cabin-Bold-TTF.ttf",
+                                  ttx_filename="../../fonts/cabin-bold.ttx")
+    #f.load_from_ttx("../../fonts/cabin-bold.ttx")
+    f.load_from_ttx("../../fonts/a.ttx")
+    if False:
+        for gn in f.get_glyph_names():
+            print gn, f.get_bbox(gn)
+            pass
+        pass
+    gn =u'O'
+    print
+    print "Beziers",f.create_bezier_lists(gn)
+    lines = f.create_straight_lines(gn,straightness=100)
+    print
+    print "Straightness 100", lines
+    lines = f.create_straight_lines(gn,straightness=1)
+    print
+    print "Straightness 1", lines
