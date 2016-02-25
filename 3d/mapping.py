@@ -193,7 +193,6 @@ class c_mapping(object):
         self.image_projections = {}
         self.load_point_mapping("sidsussexbell.map")
         global image_mapping_data
-        #self.set_data(image_mapping_data)
         self.load_images(image_mapping_data)
         print self.point_mappings.get_mapping_names()
         #self.calc_total_errors()
@@ -249,42 +248,6 @@ class c_mapping(object):
                 pass
             (d,e,p) = self.find_better_projection(image_data["mappings"],self.image_projections[image_mapping_name],p,self.target_deltas,delta_scale=0.0125)
             (d,e,p) = self.find_better_projection(image_data["mappings"],self.image_projections[image_mapping_name],p,self.up_deltas,delta_scale=0.0025)
-            pass
-        pass
-    #f set_data_old
-    def set_data_old(self):
-        global image_mapping_data
-        for k in image_mapping_data:
-            #if k in ["img_1", "img_3"]: continue
-            image_data = image_mapping_data[k]
-            self.image_projections[k] = c_opengl_image_projection(name=k, image_filename=image_data["filename"], size=image_data["size"])
-            self.image_projections[k].set_projection( projection=image_data["projection"])
-            self.point_mappings.add_image(k, size=image_data["size"])
-            self.point_mappings.set_projection(k,self.image_projections[k])
-            self.point_mappings.load_data()
-            for n in image_data["mappings"]:
-                xy = image_data["mappings"][n]
-                self.point_mappings.add_named_point(n)
-                self.point_mappings.add_image_location(n,k,xy)
-                pass
-            pass
-        pass
-    #f set_data
-    def set_data(self, image_mapping_data):
-        for k in image_mapping_data:
-            image_data = image_mapping_data[k]
-            self.load_image(k,
-                            image_filename=image_data["filename"],
-                            projection=image_data["projection"],
-                            size=image_data["size"])
-            pass
-        for k in image_mapping_data:
-            image_data = image_mapping_data[k]
-            for n in image_data["mappings"]:
-                xy = image_data["mappings"][n]
-                self.point_mappings.add_named_point(n)
-                self.point_mappings.add_image_location(n,k,xy)
-                pass
             pass
         pass
     #f load_images
