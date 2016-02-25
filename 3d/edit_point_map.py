@@ -49,15 +49,41 @@ class c_edit_point_map_image(object):
 #a c_edit_point_map
 class c_edit_point_map(object):
     #f __init__
-    def __init__(self):
+    def __init__(self, og):
+        self.og = og
         self.aspect = 1.0
         self.zNear=1.0
         self.zFar=40.0
         self.images = {}
+        self.og.init_opengl()
         self.point_mappings = c_point_mapping()
         self.load_point_mapping("sidsussexbell.map")
         self.load_images()
         pass
+    #f main_loop
+    def main_loop(self):
+        self.og.main_loop( display_callback=self.display,
+                      mouse_callback = self.mouse,
+                      menu_callback = self.menu_callback)
+        pass
+    #f enable_image
+    def enable_image(self, image_name):
+        if image_name not in self.images:
+            return
+        for i in self.images:
+            self.images[i].display_options["show"] = False
+            pass
+        self.images[image_name].display_options["show"] = True
+        pass
+    #f menu_callback
+    def menu_callback(self, menu, value):
+        if type(value)==tuple:
+            if value[0]=="image":
+                self.enable_image(value[1])
+                return True
+            pass
+        print menu, value
+        return True
     #f load_point_mapping
     def load_point_mapping(self, point_map_filename):
         self.point_mappings.reset()
@@ -75,10 +101,19 @@ class c_edit_point_map(object):
     #f reset
     def reset(self):
         glutSetCursor(GLUT_CURSOR_CROSSHAIR)
+        menus = self.og.build_menu_init()
         #gjslib.graphics.opengl.attach_menu("main_menu")
-        for k in self.images:
-            self.images[k].load_texture()
+        self.og.build_menu_add_menu(menus,"images")
+        image_keys = self.images.keys()
+        for i in range(len(image_keys)):
+            k = image_keys[i]
+            self.og.build_menu_add_menu_item(menus,k,("image",k))
             pass
+        self.og.build_menu_add_menu(menus,"main_menu")
+        self.og.build_menu_add_menu_submenu(menus,"Images","images")
+        print menus
+        self.og.create_menus(menus)
+        self.og.attach_menu("main_menu")
         pass
     #f display_set_projection
     def display_set_projection(self):
@@ -257,19 +292,10 @@ class c_edit_point_map(object):
 
 #a Main
 def main():
-    m = c_edit_point_map()
-    menus = [ ("submenu",   (("a",1), ("b",2))),
-              ("main_menu", (("sub", "submenu"), ("c", 3)))
-              ]
     og = gjslib.graphics.opengl.c_opengl(window_size = (1000,1000))
-    og.init_opengl()
-    og.create_menus(menus)
-    og.attach_menu("main_menu")
-    m.camera = og.camera
+    m = c_edit_point_map(og)
     m.reset()
-    og.main_loop( display_callback=m.display,
-                  mouse_callback = m.mouse)
-                  #menu_callback = menu_callback)
+    m.main_loop()
 
 if __name__ == '__main__':
     main()

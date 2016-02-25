@@ -36,7 +36,7 @@ class c_opengl(object):
     #f __init__
     def __init__(self, window_size):
         global camera
-        self.menu_dict = {}
+        self.menu_dict = {"menus":{}, "ids":[]}
         self.window_size = window_size
         self.display_has_errored = False
         self.callbacks = {}
@@ -48,24 +48,51 @@ class c_opengl(object):
                        }
         camera = self.camera
         pass
+    #f destroy_menus
+    def destroy_menus(self):
+        if len(self.menu_dict["menus"])==0:
+            return
+        glutDetachMenu()
+        for m in self.menu_dict["menus"]:
+            glutDeleteMenu(self.menu_dict["menus"][m]["glut"])
+            pass
+        self.menu_dict = {"menus":{}, "ids":[]}
+        pass
     #f create_menus
     def create_menus(self, menus):
-        self.menu_dict = {}
+        self.destroy_menus()
         if menus is not None:
-            for (name, items) in menus:
+            self.menu_dict["ids"] = menus["ids"]
+            for (name, items) in menus["menus"]:
                 m = glutCreateMenu(lambda x:self.menu_callback(name,x))
-                self.menu_dict[name] = {"glut":m}
+                self.menu_dict["menus"][name] = {"glut":m}
                 for (text,item) in items:
                     if type(item)==int:
                         glutAddMenuEntry(text,item)
                         pass
                     else:
-                        glutAddSubMenu(text,self.menu_dict[item]["glut"])
+                        glutAddSubMenu(text,self.menu_dict["menus"][item]["glut"])
                         pass
                     pass
                 pass
             pass
         pass
+    #f build_menu_init
+    def build_menu_init(self):
+        return {"ids":[], "menus":[]}
+    #f build_menu_add_menu
+    def build_menu_add_menu(self,menus,menu_name):
+        menus["menus"].append( (menu_name,[]) )
+        pass
+    #f build_menu_add_menu_item
+    def build_menu_add_menu_item(self,menus,text,item_id):
+        menus["menus"][-1][1].append( (text,len(menus["ids"])) )
+        menus["ids"].append(item_id)
+        pass
+    #f build_menu_add_menu_submenu
+    def build_menu_add_menu_submenu(self,menus,text,menu_name):
+        menus["menus"][-1][1].append( (text,menu_name) )
+        return
     #f mouse_callback
     def mouse_callback(self, button,state,x,y):
         #glutGetModifiers()
@@ -90,11 +117,18 @@ class c_opengl(object):
         pass
     #f attach_menu
     def attach_menu(self,menu_name):
-        glutSetMenu(self.menu_dict[menu_name]["glut"])
+        glutSetMenu(self.menu_dict["menus"][menu_name]["glut"])
         glutAttachMenu(GLUT_RIGHT_BUTTON)
     pass
     #f menu_callback
     def menu_callback(self, name, x):
+        if (x>=0) and (x<=len(self.menu_dict["ids"])):
+            x = self.menu_dict["ids"][x]
+            pass
+        if ("menu" in self.callbacks) and (self.callbacks["menu"] is not None):
+            if self.callbacks["menu"](name,x):
+                return 0
+            pass
         print x
         sys.exit()
         pass
