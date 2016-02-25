@@ -73,208 +73,46 @@ from image_projection import c_image_projection
 
 #a Mapping data
 object_guess_locations = {}
-object_guess_locations["clkcenter"] = (0.0,0.0,6.5)
-object_guess_locations["lspike"] = (-3.0,0.0,8.5)
-object_guess_locations["rspike"] = ( 3.0,0.0,8.5)
+object_guess_locations["clk.center"] = (0.0,0.0,6.5)
+object_guess_locations["lspike.t"] = (-3.0,0.0,8.5)
+object_guess_locations["rspike.t"] = ( 3.0,0.0,8.5)
 faces = {}
-faces["frontleft"]  = ["tl", "flcr", "flbr", "bl"]
-faces["frontright"] = ["tr", "br", "frbl", "frcl"]
-faces["clock"]      = ["clktl", "clkmtr", "clkmtl", "clktr", "clkbr", "clkbl"]
-faces["lspike.fl"]  = ["lspikel", "lspike", "lspikef"]
-faces["lspike.fr"]  = ["lspikef", "lspike", "lspiker"]
-faces["rspike.fl"]  = ["rspikel", "rspike", "rspikef"]
-faces["rspike.fr"]  = ["rspikef", "rspike", "rspiker"]
+faces["frontleft"]  = ["tl", "fl.cr", "fl.br", "bl"]
+faces["frontright"] = ["tr", "br", "fr.bl", "fr.cl"]
+faces["clock"]      = ["clk.tl", "clk.mtr", "clk.mtl", "clk.tr", "clk.br", "clk.bl"]
+faces["lspike.fl"]  = ["lspike.l", "lspike.t", "lspike.f"]
+faces["lspike.fr"]  = ["lspike.f", "lspike.t", "lspike.r"]
+faces["rspike.fl"]  = ["rspike.l", "rspike.t", "rspike.f"]
+faces["rspike.fr"]  = ["rspike.f", "rspike.t", "rspike.r"]
 
 image_mapping_data = {}
 image_mapping_data["main"] = {}
 image_mapping_data["main"]["filename"] = "sidsussexbell.jpg"
 image_mapping_data["main"]["size"] = (4272,2848)
-image_mapping_data["main"]["projection"] = {"camera":(-6.0,-12.0,2.0),
-                                            "target":(5.0,0.0,4.0),
-                                            "up":(0.0,0.0,1.0),
-                                            "xscale":1.3,
-                                            "yscale":1.75}
-image_mapping_data["main"]["projection"] = {'xscale': 1.16, 'camera': [-6.1199999999999735, -13.125000000000012, 2.2950000000000026], 'yscale': 1.83, 'target': [5.649999999999998, -0.02500000000000001, 3.879999999999999], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["main"]["projection"] = {'xscale': 1.14, 'camera': [-5.4199999999999635, -13.300000000000015, 2.0950000000000033], 'yscale': 1.84, 'target': [5.624999999999997, 0.024999999999999994, 3.9799999999999986], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["main"]["projection"] = {'xscale': 1.12, 'camera': [-5.044999999999958, -13.350000000000016, 2.0200000000000036], 'yscale': 1.85, 'target': [5.624999999999997, 0.049999999999999996, 4.029999999999999], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["main"]["projection"] = {'xscale': 1.10, 'camera': [-4.6449999999999525, -13.400000000000016, 1.920000000000004], 'yscale': 1.87, 'target': [5.624999999999997, 0.075, 4.08], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["main"]["projection"] = {'xscale': 1.08, 'camera': [-4.144999999999945, -13.425000000000017, 1.7700000000000045], 'yscale': 1.875, 'target': [5.574999999999997, 0.075, 4.155000000000001], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["main"]["projection"] = {'xscale': 1.065, 'camera': [-3.7699999999999445, -13.400000000000016, 1.6950000000000047], 'yscale': 1.895, 'target': [5.574999999999997, 0.1, 4.205000000000002], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["main"]["projection"] = {'xscale': 1.057, 'camera': [-3.4949999999999455, -13.400000000000016, 1.620000000000005], 'yscale': 1.895, 'target': [5.574999999999997, 0.125, 4.255000000000003], 'up': (0.0, 0.0, 1.0)}
+image_mapping_data["main"]["projection"] = {"camera":(-6.0,-12.0,2.0), "target":(5.0,0.0,4.0), "up":(0.0,0.0,1.0), "xscale":1.3, "yscale":1.75}
 image_mapping_data["main"]["projection"] = {'xscale': 1.052, 'camera': [-3.319999999999946, -13.375000000000016, 1.5700000000000052], 'yscale': 1.90, 'target': [5.574999999999997, 0.15, 4.280000000000003], 'up': (0.0, 0.0, 1.0)}
 
-image_mapping_data["main"]["mappings"] = {"lspike":     ( 847, 335),
-                                          "lspikel":    (785.2,596.0),
-                                          "lspikef":    (833.2,596.5),
-                                          "lspiker":    (854.0,613),
-                                          
-                                          "rspike":     (1839, 657),
-                                          "rspikel":    (1805.2,863.2),
-                                          "rspikef":    (1848.0,861.8),
-                                          "rspiker":    (1854.0,875.2),
-
-                                          "belltl":     (1342, 207),
-                                          "belltr":     (1523, 270),
-                                          "clkcenter":  (1377, 887),
-                                          "ldrspike":   (1206,1334),
-                                          "rdrspike":   (1584,1393),
-                                          "cp":         (1400,1442),
-                                          "tr":         (2330,1064),
-                                          "br":         (2304,2163),
-                                          "ldtl":       ( 365,1630),
-                                          "ldtr":       ( 626,1656),
-                                          "ldbl":       ( 371,2160),
-                                          "ldbr":       ( 526,2158),
-
-                                          "tl":         (-96,459),
-                                          "flcr":       (1105,746),
-                                          "flbr":       (1067,2148),
-                                          "bl":         (-290,2148),
-
-                                          #"tr":         (-96,459),
-                                          "frcl":       (1597,870),
-                                          "frbl":       (1562,2158),
-                                          #"br":         (-290,2148)
-
-                                          "clktl": (1206,546.5),
-                                          "clkmtr":  (1299,589.5),
-                                          "clkmtl":  (1502,647),
-                                          "clktr":  (1583,669),
-                                          "clkbr":  (1525.5,1602),
-                                          "clkbl":  (1127,1573),
-                                          }
 
 image_mapping_data["img_1"] = {}
 image_mapping_data["img_1"]["filename"] = "sidsussexbell_1.jpg"
 image_mapping_data["img_1"]["size"] = (640,480)
-image_mapping_data["img_1"]["projection"] = {"camera":(+7.0,-6.0,6.7),
-                                            "target":(-1.0,0.0,5.5),
-                                            "up":(0.0,0.0,1.0),
-                                            "xscale":2.2,
-                                            "yscale":2.1}
-image_mapping_data["img_1"]["projection"] = {'xscale': 2.2, 'camera': [7.450000000000001, -5.575000000000011, 6.924999999999999], 'yscale': 2.1, 'target': [-1.0, 0.0, 5.449999999999999], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["img_1"]["projection"] = {'xscale': 2.0, 'camera': [7.450000000000001, -5.575000000000011, 6.924999999999999], 'yscale': 2.1, 'target': [-1.0, 0.0, 5.449999999999999], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["img_1"]["projection"] = {'xscale': 1.87, 'camera': [6.349999999999985, -7.225000000000034, 6.599999999999994], 'yscale': 2.35, 'target': [-1.0499999999999998, -0.025, 5.575000000000001], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["img_1"]["projection"] = {'xscale': 1.83, 'camera': [5.97499999999998, -7.750000000000042, 6.449999999999992], 'yscale': 2.43, 'target': [-1.0749999999999997, -0.025, 5.625000000000002], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["img_1"]["projection"] = {'xscale': 1.80, 'camera': [5.874999999999979, -7.950000000000045, 6.374999999999991], 'yscale': 2.46, 'target': [-1.0999999999999996, -0.025, 5.625000000000002], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["img_1"]["projection"] = {'xscale': 1.78, 'camera': [5.7249999999999766, -8.025000000000045, 6.349999999999991], 'yscale': 2.49, 'target': [-1.0999999999999996, -0.025, 5.650000000000002], 'up': (0.0, 0.0, 1.0)}
+image_mapping_data["img_1"]["projection"] = {"camera":(+7.0,-6.0,6.7), "target":(-1.0,0.0,5.5), "up":(0.0,0.0,1.0), "xscale":2.2, "yscale":2.1}
 image_mapping_data["img_1"]["projection"] = {'xscale': 1.78, 'camera': [5.7249999999999766, -8.050000000000045, 6.349999999999991], 'yscale': 2.495, 'target': [-1.0999999999999996, -0.025, 5.650000000000002], 'up': (0.0, 0.0, 1.0)}
 
 
-image_mapping_data["img_1"]["mappings"] = {"lspike":     ( 250, 87),
-                                          #"lspikel":    (785.2,596.0),
-                                          "lspikef":    (243.6,149.9),
-                                          "lspiker":    (256.4,151.5),
-
-                                          "rspike":     ( 550, 33),
-                                          "rspikel":    (538.6, 127.6),
-                                          "rspikef":    (545.5,126.9),
-                                          "rspiker":    (562.9,125.1),
-
-                                          "clkcenter":  ( 370, 191),
-                                          "ldrspike":   ( 301, 343),
-                                          "rdrspike":   ( 405, 360),
-                                          "cp":         ( 347, 378),
-                                          "ldtl":       ( 210, 393),
-                                          "ldtr":       ( 244, 402),
-
-                                          "tl":         (137,178),
-                                          "flcr":       (309,167),
-                                          #"flbr":       (),
-                                          "bl":         (144,461),
-
-                                          #"tr":         (-96,459),
-                                          "frcl":       (454.7,157.7),
-                                          #"frbl":       (1562,2158),
-                                          #"br":         (-290,2148)
-
-                                           "clktl": (313.3,107,0),
-                                           "clkmtr":  (336.7,104.3),
-                                           "clkmtl":  (396.3,95.3),
-                                           "clktr":  (426.0,92.3),
-                                           "clkbr":  (427.3,424.0),
-                                           "clkbl":  (318.0,400.4),
-
-                                          }
 
 image_mapping_data["img_2"] = {}
 image_mapping_data["img_2"]["filename"] = "sidsussexbell_2.jpg"
 image_mapping_data["img_2"]["size"] = (1024,772)
-image_mapping_data["img_2"]["projection"] = {"camera":(0.0,-6.0,2.0),
-                                            "target":( 0.0,0.0,7.2),
-                                            "up":(0.01,0.0,1.0),
-                                            "xscale":2.45,
-                                            "yscale":3.8}
-image_mapping_data["img_2"]["mappings"] = {"lspike":    (  72,208),
-                                          "lspikel":    (36.7,376.0),
-                                          "lspikef":    (60.0,368.7),
-                                          "lspiker":    (90.0,383.3),
-
-                                          "rspike":     ( 929,221),
-                                          "rspikel":    (920.7,385.3),
-                                          "rspikef":    (950.7,376.0),
-                                          "rspiker":    (970.7,389.3),
-
-                                          "clkcenter":  ( 515, 489),
-                                          "belltl":     ( 428,   0),
-                                          "belltr":     ( 583,   3),
-
-                                          #"tl":         (137,178),
-                                          "flcr":       (292.2,432.2),
-                                          #"flbr":       (),
-                                          #"bl":         (144,461),
-
-                                          #"tr":         (-96,459),
-                                          "frcl":       (727,435.8),
-                                          #"frbl":       (1562,2158),
-                                          #"br":         (-290,2148)
-
-                                           "clktl":  (346.5,281.5),
-                                           "clkmtr": (424.0,285.5),
-                                           "clkmtl": (598.0,288.5),
-                                           "clktr":  (675.0,288.5),
-                                           #"clkbr":  (
-                                           #"clkbl":  (
-
-                                          }
+image_mapping_data["img_2"]["projection"] = {"camera":(0.0,-6.0,2.0), "target":( 0.0,0.0,7.2), "up":(0.01,0.0,1.0), "xscale":2.45, "yscale":3.8}
 image_mapping_data["img_2"]["projection"] = {'xscale': 2.445, 'camera': (-0.2, -6.2, 2.225), 'yscale': 3.77, 'target': (0.025, 0.025, 7.2), 'up': (0.01, 0.0, 1.0)}
 
 
 image_mapping_data["img_3"] = {}
 image_mapping_data["img_3"]["filename"] = "sidsussexbell_3.jpg"
 image_mapping_data["img_3"]["size"] = (320,370)
-image_mapping_data["img_3"]["projection"] = {'xscale': 3.0, 'camera': [0.05, -9.999999999999986, -0.8000000000000006], 'yscale': 2.97, 'target': [0.25, 0.2, 4.999999999999997], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["img_3"]["projection"] = {'xscale': 3.0, 'camera': [0.05, -9.999999999999986, -0.8000000000000006], 'yscale': 2.97, 'target': [0.25, 0.2, 4.999999999999997], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["img_3"]["projection"] = {'xscale': 3.0, 'camera': [0.05, -9.999999999999986, -0.7250000000000005], 'yscale': 2.95, 'target': [0.25, 0.2, 4.999999999999997], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["img_3"]["projection"] = {'xscale': 3.0, 'camera': [0.05, -9.999999999999986, -0.6750000000000005], 'yscale': 2.94, 'target': [0.25, 0.2, 4.999999999999997], 'up': (0.0, 0.0, 1.0)}
 image_mapping_data["img_3"]["projection"] = {'xscale': 3.0, 'camera': [0.05, -9.999999999999986, -0.6500000000000005], 'yscale': 2.93, 'target': [0.25, 0.2, 4.999999999999997], 'up': (0.0, 0.0, 1.0)}
 
-image_mapping_data["img_3"]["mappings"] = {"lspike":    ( 40.5, 53.2),
-                                          "lspikel":    (33.4,95.8),
-                                          "lspikef":    (39.0,94.9),
-                                          "lspiker":    (46.5,96.3),
-
-                                          "rspike":     (259.8,56.5),
-                                          "rspikel":    (255.7,97.6),
-                                          "rspikef":    (262.6,97.5),
-                                          "rspiker":    (268.0,97.4),
-
-                                          "clkcenter":  (152.2,122.2),
-                                          "belltl":     (131.8,   0),
-                                          "belltr":     (172.2,   1),
-                                          "ldtr":       ( 16.5, 272.2),
-                                          "cp":         (153.0, 219.2),
-                                          "ldrspike":   (109.5,207.8),
-                                          "rdrspike":   (194.9,205.1),
-
-                                           "clktl":  (109.8,72.1),
-                                           "clkmtr": (129.5,71.8),
-                                           "clkmtl": (175.0,72.8),
-                                           "clktr":  (193.6,73.),
-                                           "clkbr":  (197.8,248.0),
-                                           "clkbl":  (104.9,246.9),
-
-                                          }
 
 
 #a c_opengl_image_projection
@@ -315,11 +153,11 @@ class c_opengl_image_projection(c_image_projection):
 
 #a Useful functions
 def point_on_plane(p0,p1,p2,k01,k02):
-        mp = ( (p0[0] + k01 * (p1[0]-p0[0]) + k02 * (p2[0]-p0[0])),
-               (p0[1] + k01 * (p1[1]-p0[1]) + k02 * (p2[1]-p0[1])),
-               (p0[2] + k01 * (p1[2]-p0[2]) + k02 * (p2[2]-p0[2])),
-               )
-        return mp
+    # mp = p0 + k01.(p1-p0) + k02.(p2-p0)
+    mp = vector.add(p0, p1, scale=k01 )
+    mp = vector.add(mp, p2, scale=k02 )
+    mp = vector.add(mp, p0, scale=(-k01-k02) )
+    return mp
 
 #a c_mapping
 class c_mapping(object):
@@ -353,7 +191,11 @@ class c_mapping(object):
         self.zFar=40.0
         self.point_mappings = c_point_mapping()
         self.image_projections = {}
-        self.set_data()
+        self.load_point_mapping("sidsussexbell.map")
+        global image_mapping_data
+        #self.set_data(image_mapping_data)
+        self.load_images(image_mapping_data)
+        print self.point_mappings.get_mapping_names()
         #self.calc_total_errors()
         pass
     #f load_point_mapping
@@ -409,8 +251,8 @@ class c_mapping(object):
             (d,e,p) = self.find_better_projection(image_data["mappings"],self.image_projections[image_mapping_name],p,self.up_deltas,delta_scale=0.0025)
             pass
         pass
-    #f set_data
-    def set_data(self):
+    #f set_data_old
+    def set_data_old(self):
         global image_mapping_data
         for k in image_mapping_data:
             #if k in ["img_1", "img_3"]: continue
@@ -425,6 +267,34 @@ class c_mapping(object):
                 self.point_mappings.add_named_point(n)
                 self.point_mappings.add_image_location(n,k,xy)
                 pass
+            pass
+        pass
+    #f set_data
+    def set_data(self, image_mapping_data):
+        for k in image_mapping_data:
+            image_data = image_mapping_data[k]
+            self.load_image(k,
+                            image_filename=image_data["filename"],
+                            projection=image_data["projection"],
+                            size=image_data["size"])
+            pass
+        for k in image_mapping_data:
+            image_data = image_mapping_data[k]
+            for n in image_data["mappings"]:
+                xy = image_data["mappings"][n]
+                self.point_mappings.add_named_point(n)
+                self.point_mappings.add_image_location(n,k,xy)
+                pass
+            pass
+        pass
+    #f load_images
+    def load_images(self, image_mapping_data):
+        for k in image_mapping_data:
+            image_data = image_mapping_data[k]
+            self.load_image(k,
+                            image_filename=image_data["filename"],
+                            projection=image_data["projection"],
+                            size=image_data["size"])
             pass
         pass
     #f calc_total_errors
