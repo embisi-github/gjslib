@@ -67,21 +67,8 @@ from OpenGL.GLU import *
 from OpenGL.GL import *
 
 from gjslib.math.quaternion import c_quaternion
-from gjslib.math import matrix
-
-def vector_add(a,b,scale=1.0):
-    d = []
-    for i in range(len(a)):
-        d.append(a[i]+b[i]*scale)
-        pass
-    return d
-
-def dot_product(a,b):
-    r = 0
-    for i in range(len(a)):
-        r += a[i]*b[i]
-        pass
-    return r
+from gjslib.math import matrix, vectors
+from image_point_mapping import c_point_mapping
 
 #a Correlation
 class c_correlation(object):
@@ -314,189 +301,6 @@ image_mapping_data["img_3"]["mappings"] = {"lspike":    ( 40.5, 53.2),
 
                                           }
 
-#a Closest meeting of two lines
-def closest_meeting_of_two_lines(p0, d0, p1, d1, too_close=0.0001):
-    """
-    Points on the lines are p0+s.d0 and p1+t.d1
-    The closest points are c0 and c1, with sc and tc the closest coefficients
-
-    Consider a 3D space with the axes d0, d1 and d0 x d1
-    Every point in space can be represented as (a,b,c) = a.d0 + b.d1 + c.(d0 x d1)
-    for some a,b,c for the point
-
-    Points on p0+s.d0 are expressed in this space as s'.d0 + P0b.d1 + P0c.(d0 x d1)
-    Points on p1+t.d1 are expressed in this space as P1a.d0 + t'.d1 + P1c.(d0 x d1)
-
-    A vector between these two points is then:
-    (s'-P1a).d0 + (P0b-t').d1 + (P0c-P1c).(d0 x d1)
-
-    This has minimum length when s'-P1a is zero and P0b-t' is zero (since d0 x d1 is perpendicular to d0 and d1)
-
-    Now, p0 is at P0a.d0 + P0b.d1 + P0c.(d0 x d1), and s=s'-P0a (and t=t'-P1b)
-    p0.d0 = P0a.(d0.d0) + P0b.(d1.d0)
-    p0.d1 = P0a.(d0.d1) + P0b.(d1.d1)
-    i.e. [d0.d0 d1.d0] [P0a]  = [p0.d0]
-         [d0.d1 d1.d1] [P0b]    [p0.d1]
-    and
-         [d0.d0 d1.d0] [P1a]  = [p1.d0]
-         [d0.d1 d1.d1] [P1b]    [p1.d1]
-    =>  P0a = 1/(d0.d0 . d1.d1 - d1.d0 . d0.d1) ( d1.d1 . p0.d0 - d1.d0 . p0.d1)
-    and P0b = 1/(d0.d0 . d1.d1 - d1.d0 . d0.d1) (-d1.d0 . p0.d0 + d0.d0 . p0.d1)
-    and P1a = 1/(d0.d0 . d1.d1 - d1.d0 . d0.d1) ( d1.d1 . p1.d0 - d1.d0 . p1.d1)
-    and P1b = 1/(d0.d0 . d1.d1 - d1.d0 . d0.d1) (-d1.d0 . p1.d0 + d0.d0 . p1.d1)
-
-    Now s=s'-P0a = P1a-P0a, t=t'-P1b = P0b-P1b
-    s = 1/(d0.d0 . d1.d1 - d1.d0 . d0.d1) . (d1.d1 . d0.(p1-p0) - d1.d0 . d1.(p1-p0) )
-    t = 1/(d0.d0 . d1.d1 - d1.d0 . d0.d1) . (d0.d0 . d1.(p1-p0) - d1.d0 . d0.(p1-p0) )
-    
-    If we set D = (d0.d0 . d1.d1 - d1.d0 . d0.d1) (determinant of our solution matrix)
-    we can see when the solution is degenerate
-
-    D = |d0|^2 . |d1|^2 - (|d0||d1|cos(d0d1) )^2
-    D = sin^2(d0d1) . (|d0||d1|)^2
-    If d0 and d1 are approximately unit vectors, D is then sin^2(angle) between
-    i.e. D<epsilon implies the lines are too close to parallel
-
-    We can also see how 'close' the lines are by |c1-c0|, or (c1-c0).(c1-c0)
-    Indeed, we can have a measure of 'goodness' using (c1-c0).(c1-c0) / D
-
-    """
-    p1p0 = vector_add(p1,p0,scale=-1.0)
-    d0d0 = dot_product(d0,d0)
-    d1d1 = dot_product(d1,d1)
-    d0d1 = dot_product(d0,d1)
-
-    d0p10 = dot_product(d0,p1p0)
-    d1p10 = dot_product(d1,p1p0)
-
-    D = d0d0*d1d1 - d0d1*d0d1
-
-    if D<too_close:
-        return ( (0.0,0.0), (0.0,0.0), 0.0, 1.0/too_close )
-
-    s = (d1d1*d0p10 - d0d1*d1p10) / D
-    t = (d0d1*d0p10 - d0d0*d1p10) / D
-
-    c0 = vector_add(p0,d0,scale=s)
-    c1 = vector_add(p1,d1,scale=t)
-
-    dc = vector_add(c1,c0,scale=-1.0)
-    dc2 = dot_product(dc,dc)
-
-    goodness = dc2/D
-    if goodness>1.0/too_close: goodness=1.0/too_close
-    return (c0, c1, dc2, goodness)
-
-#a c_set_of_lines
-class c_set_of_lines(object):
-    def __init__(self):
-        self.lines = []
-        pass
-    def add_line(self, pt, drn):
-        drn = list(drn)
-        matrix.normalize(drn)
-        self.lines.append( (pt,drn) )
-        pass
-    def generate_meeting_points(self, too_close=0.0001):
-        self.line_meetings = []
-        self.posn = (0.0,0.0,0.0)
-        for i in range(len(self.lines)):
-            (p0,d0) = self.lines[i]
-            for j in range(len(self.lines)):
-                if (i>j):
-                    (p1,d1) = self.lines[j]
-                    meet = closest_meeting_of_two_lines(p0,d0,p1,d1,too_close)
-                    self.line_meetings.append(meet)
-                    pass
-                pass
-            pass
-        if len(self.line_meetings)==0:
-            return
-        posn = (0.0,0.0,0.0)
-        total_weight = 0
-        for (c0,c1,dist,goodness) in self.line_meetings:
-            weight = 1/(5.0+goodness)
-            posn = vector_add(posn, c0, scale=0.5*weight)
-            posn = vector_add(posn, c1, scale=0.5*weight)
-            total_weight += weight
-            #print c0,c1,weight,total_weight,posn
-            pass
-        #print posn, total_weight
-        self.posn = vector_add((0.0,0.0,0.0), posn, scale=1/total_weight)
-        pass
-c = c_set_of_lines()
-c.add_line( (0.0,0.0,0.0), (0.0,0.0,1.0) )    
-c.add_line( (0.0,0.1,1.1), (1.0,0.0,1.0) )    
-c.generate_meeting_points()
-print c.line_meetings
-#die
-
-#a c_point_mapping
-class c_point_mapping(object):
-    #f __init__
-    def __init__(self):
-        self.mappings = {}
-        self.positions = {}
-        self.images = {}
-        pass
-    #f load_data
-    def load_data(self):
-        pass
-    #f add_named_point
-    def add_named_point(self,name):
-        if name not in self.mappings:
-            self.mappings[name] = {}
-            pass
-        pass
-    #f add_image
-    def add_image(self,image):
-        if image not in self.images:
-            self.images[image] = {}
-            self.images[image]["projection"] = None
-            pass
-        pass
-    #f add_image_location
-    def add_image_location(self,name,image,xy):
-        self.mappings[name][image] = xy
-        pass
-    #f set_projection
-    def set_projection(self,image,projection):
-        self.images[image]["projection"] = projection
-        pass
-    #f get_xy
-    def get_xy(self, name, image ):
-        if name not in self.mappings:
-            return None
-        if image not in self.mappings[name]:
-            return None
-        return self.mappings[name][image]
-    #f find_line_sets
-    def find_line_sets(self):
-        line_sets = {}
-        for n in self.mappings:
-            m = self.mappings[n]
-            line_sets[n] = c_set_of_lines()
-            for img_name in m:
-                p = self.images[img_name]["projection"]
-                if p is not None:
-                    xy = m[img_name]
-                    line = p.model_line_for_image(xy)
-                    line_sets[n].add_line(line[0],line[1])
-                    pass
-                pass
-            line_sets[n].generate_meeting_points()
-            #print n, line_sets[n].line_meetings
-            pass
-        self.line_sets = line_sets
-        pass
-    #f approximate_positions
-    def approximate_positions(self):
-        for n in self.line_sets:
-            self.positions[n] = self.line_sets[n].posn
-            pass
-        pass
-    #f Done
-    pass
 
 #a c_image_projection
 class c_image_projection(object):
@@ -519,9 +323,9 @@ class c_image_projection(object):
             yscale = projection["yscale"]
             pass
         if deltas is not None:
-            if "camera" in deltas: camera = vector_add(camera,deltas["camera"],scale=delta_scale)
-            if "target" in deltas: target = vector_add(target,deltas["target"],scale=delta_scale)
-            if "up" in deltas:     up     = vector_add(target,deltas["up"],scale=delta_scale)
+            if "camera" in deltas: camera = vectors.vector_add(camera,deltas["camera"],scale=delta_scale)
+            if "target" in deltas: target = vectors.vector_add(target,deltas["target"],scale=delta_scale)
+            if "up" in deltas:     up     = vectors.vector_add(target,deltas["up"],scale=delta_scale)
             if "xscale" in deltas: xscale = xscale * deltas["xscale"]
             if "yscale" in deltas: yscale = yscale * deltas["yscale"]
             pass

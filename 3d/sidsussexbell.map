@@ -1,0 +1,131 @@
+--Images:
+
+main,sidsussexbell.jpg,4272,2848
+img_1,sidsussexbell_1.jpg,640,480
+img_2,sidsussexbell_2.jpg,1024,772
+img_3,sidsussexbell_3.jpg,320,370
+
+--Points:
+clk.center,center dot of clock
+rspike.t,top right spike
+lspike.t,top left spike
+
+--References:
+lspike.t,-3.0,0.0,8.5
+rspike.t,3.0,0.0,8.5
+clk.center,0.0,0.0,6.5
+
+--Mapping:
+
+main,lspike.t,847,335
+main,lspike.l,785.2,596.0,
+main,lspike.f,833.2,596.5,
+main,lspike.r,854.0,613,
+                                          
+main,rspike.t,1839, 657,
+main,rspike.l,1805.2,863.2,
+main,rspike.f,1848.0,861.8,
+main,rspike.r,1854.0,875.2,
+
+main,bell.tl,1342, 207,
+main,bell.tr,1523, 270,
+main,clk.center,1377, 887,
+main,ldrspike,1206,1334,
+main,rdrspike,1584,1393,
+main,cp,1400,1442,
+main,tr,2330,1064,
+main,br,2304,2163,
+main,ld.tl, 365,1630,
+main,ld.tr, 626,1656,
+main,ld.bl, 371,2160,
+main,ld.br, 526,2158,
+
+main,tl,-96,459,
+main,fl.cr,1105,746,
+main,fl.br,1067,2148,
+main,bl,-290,2148,
+
+main,fr.cl,1597,870,
+main,fr.bl,1562,2158,
+
+main,clk.tl,1206,546.5,
+main,clk.mtr,1299,589.5,
+main,clk.mtl,1502,647,
+main,clk.tr,1583,669,
+main,clk.br,1525.5,1602,
+main,clk.bl,1127,1573,
+
+img_1,lspike.t,      250, 87,
+img_1,lspike.f,    243.6,149.9,
+img_1,lspike.r,    256.4,151.5,
+
+img_1,rspike.t,      550, 33,
+img_1,rspike.l,    538.6, 127.6,
+img_1,rspike.f,    545.5,126.9,
+img_1,rspike.r,    562.9,125.1,
+
+img_1,clk.center,   370, 191,
+img_1,ldrspike,    301, 343,
+img_1,rdrspike,    405, 360,
+img_1,cp,          347, 378,
+img_1,ld.tl,        210, 393,
+img_1,ld.tr,        244, 402,
+
+img_1,tl,         137,178,
+img_1,fl.cr,       309,167,
+img_1,bl,         144,461,
+
+img_1,fr.cl,       454.7,157.7,
+
+img_1,clk.tl, 313.3,107,0,
+img_1,clk.mtr,  336.7,104.3,
+img_1,clk.mtl,  396.3,95.3,
+img_1,clk.tr,  426.0,92.3,
+img_1,clk.br,  427.3,424.0,
+img_1,clk.bl,        318.0,400.4,
+
+img_2,lspike.t,  72,208,
+img_2,lspike.l,36.7,376.0,
+img_2,lspike.f,60.0,368.7,
+img_2,lspike.r,90.0,383.3,
+
+img_2,rspike.t, 929,221,
+img_2,rspike.l,920.7,385.3,
+img_2,rspike.f,950.7,376.0,
+img_2,rspike.r,970.7,389.3,
+
+img_2,clk.center, 515, 489,
+img_2,bell.tl, 428,   0,
+img_2,bell.tr, 583,   3,
+
+img_2,fl.cr,292.2,432.2,
+img_2,fr.cl,727,435.8,
+
+img_2,clk.tl,346.5,281.5,
+img_2,clk.mtr,424.0,285.5,
+img_2,clk.mtl,598.0,288.5,
+img_2,clk.tr,675.0,288.5,
+
+img_3,lspike.t, 40.5, 53.2,
+img_3,lspike.l,33.4,95.8,
+img_3,lspike.f,39.0,94.9,
+img_3,lspike.r,46.5,96.3,
+
+img_3,rspike.t,259.8,56.5,
+img_3,rspike.l,255.7,97.6,
+img_3,rspike.f,262.6,97.5,
+img_3,rspike.r,268.0,97.4,.
+
+img_3,clk.center,152.2,122.2,
+img_3,bell.tl,131.8,   0,
+img_3,bell.tr,172.2,   1,
+img_3,ld.tr, 16.5, 272.2,
+img_3,cp,153.0, 219.2,
+img_3,ldrspike,109.5,207.8,
+img_3,rdrspike,194.9,205.1,
+img_3,clk.tl,109.8,72.1,
+img_3,clk.mtr,129.5,71.8,
+img_3,clk.mtl,175.0,72.8,
+img_3,clk.tr,193.6,73.,
+img_3,clk.br,197.8,248.0,
+img_3,clk.bl,104.9,246.9,
