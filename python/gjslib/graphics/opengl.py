@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+
+#a Imports
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 from OpenGL.GL import *
@@ -6,23 +8,8 @@ import sys
 import math
 from gjslib.math.quaternion import c_quaternion
 
-name = 'ball_glut'
-
-camera = {"position":[0,0,-10],
-          "facing":c_quaternion.identity(),
-          "rpy":[0,0,0],
-          "speed":0,
-          "fov":90,
-          }
-angle_speed = 0.0
-delay = 40
-delay = 100
-use_primitive_restart = False
-from gjslib.math import bezier
-#import bezier
-import array
-opengl_surface = {}
-
+#a Useful functions
+#f texture_from_png
 def texture_from_png(png_filename):
     from PIL import Image
     import numpy
@@ -42,6 +29,195 @@ def texture_from_png(png_filename):
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, png.size[0], png.size[1], 0, GL_RGB, GL_UNSIGNED_BYTE, png_data)
     return texture
+
+#a Class for c_opengl
+#c c_opengl
+class c_opengl(object):
+    #f __init__
+    def __init__(self, window_size):
+        global camera
+        self.menu_dict = {}
+        self.window_size = window_size
+        self.display_has_errored = False
+        self.callbacks = {}
+        self.camera = {"position":[0,0,-10],
+                       "facing":c_quaternion.identity(),
+                       "rpy":[0,0,0],
+                       "speed":0,
+                       "fov":90,
+                       }
+        camera = self.camera
+        pass
+    #f create_menus
+    def create_menus(self, menus):
+        self.menu_dict = {}
+        if menus is not None:
+            for (name, items) in menus:
+                m = glutCreateMenu(lambda x:self.menu_callback(name,x))
+                self.menu_dict[name] = {"glut":m}
+                for (text,item) in items:
+                    if type(item)==int:
+                        glutAddMenuEntry(text,item)
+                        pass
+                    else:
+                        glutAddSubMenu(text,self.menu_dict[item]["glut"])
+                        pass
+                    pass
+                pass
+            pass
+        pass
+    #f mouse_callback
+    def mouse_callback(self, button,state,x,y):
+        #glutGetModifiers()
+        b = "left"
+        s = "up"
+        if state == GLUT_UP: s="up"
+        if state == GLUT_DOWN: s="down"
+        if button == GLUT_LEFT_BUTTON: b="left"
+        if button == GLUT_MIDDLE_BUTTON: b="middle"
+        if button == GLUT_RIGHT_BUTTON: b="right"
+        x = (2.0*x)/self.window_size[0]-1.0
+        y = 1.0-(2.0*y)/self.window_size[1]
+        if ("mouse" in self.callbacks) and (self.callbacks["mouse"] is not None):
+            self.callbacks["mouse"](b,s,x,y)
+            pass
+        pass
+    #f change_fov
+    def change_fov(self, fov):
+        self.camera["fov"] += fov
+        if self.camera["fov"]<10:  self.camera["fov"]=10
+        if self.camera["fov"]>140: self.camera["fov"]=140
+        pass
+    #f attach_menu
+    def attach_menu(self,menu_name):
+        glutSetMenu(self.menu_dict[menu_name]["glut"])
+        glutAttachMenu(GLUT_RIGHT_BUTTON)
+    pass
+    #f menu_callback
+    def menu_callback(self, name, x):
+        print x
+        sys.exit()
+        pass
+    #f change_angle
+    def change_angle(self, angle, dirn, angle_delta=0.01 ):
+        if (self.camera["rpy"][angle]*dirn)<0:
+            self.camera["rpy"][angle]=0
+            pass
+        else:
+            self.camera["rpy"][angle] += dirn*angle_delta            
+            pass
+        pass
+    #f keypress_callback
+    def keypress_callback(self, key,x,y):
+        if ("keyboard" in self.callbacks) and (self.callbacks["keyboard"] is not None):
+            if self.callbacks["keyboard"](key,x,y):
+                return
+            pass
+        acceleration = 0.02
+        if key=='i': self.change_angle(0,+3.1415/4,angle_delta=1)
+        if key=='o': self.change_angle(1,+3.1415/4,angle_delta=1)
+        if key=='p': self.change_angle(1,+3.1415/4,angle_delta=1)
+        if key=='w': self.change_angle(1,-1)
+        if key=='s': self.change_angle(1, 1)
+        if key=='z': self.change_angle(0,-1)
+        if key=='c': self.change_angle(0,+1)
+        if key=='a': self.change_angle(2,-1)
+        if key=='d': self.change_angle(2,+1)
+        if key=='[': self.change_fov(-1)
+        if key==']': self.change_fov(+1)
+        if key==' ': self.camera["speed"] = 0
+        if key==';': self.camera["speed"] += acceleration
+        if key=='.': self.camera["speed"] -= acceleration
+        if key=='e': self.camera["rpy"] = [0,0,0]
+        if key=='r': self.camera["position"] = [0,0,-10]
+        if key=='r': self.camera["facing"] = c_quaternion.identity()
+        if key=='r': self.camera["fov"] = 90
+        if key=='q':sys.exit()
+        pass
+    #f display_callback
+    def display_callback(self):
+        display = None
+        if ("display" in self.callbacks):
+            display = self.callbacks["display"]
+            pass
+        if (display is not None) and (not self.display_has_errored):
+            try:
+                display()
+            except:
+                traceback.print_exc()
+                self.display_has_errored = True
+                pass
+            pass
+        pass
+    #f init_opengl
+    def init_opengl(self):
+        glutInit(sys.argv)
+        glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)
+        glutInitWindowSize(self.window_size[0],self.window_size[1])
+        glutCreateWindow("opengl_main")
+
+        glClearColor(0.,0.,0.,1.)
+        glShadeModel(GL_SMOOTH)
+        #glEnable(GL_CULL_FACE)
+        glEnable(GL_DEPTH_TEST)
+        glEnable(GL_LIGHTING)
+
+        lightZeroPosition = [10.,4.,10.,1.]
+        lightZeroColor = [0.8,1.0,0.8,1.0] #green tinged
+        glLightfv(GL_LIGHT0, GL_POSITION, lightZeroPosition)
+        glLightfv(GL_LIGHT0, GL_DIFFUSE, lightZeroColor)
+        glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 0.1)
+        glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 0.05)
+        glEnable(GL_LIGHT0)
+        pass
+    #f idle_callback
+    def idle_callback(self):
+        if ("idle" in self.callbacks) and (self.callbacks["idle"] is not None):
+            if self.callbacks["idle"]():
+                return
+            pass
+        #global angle, angle_speed
+        #angle = angle + angle_speed
+        #glutTimerFunc(delay,callback,handle+1)
+        glutPostRedisplay()
+        pass
+    #f main_loop
+    def main_loop(self, idle_callback=None, display_callback=None, mouse_callback=None, keyboard_callback=None, menu_callback=None):
+        self.callbacks["idle"] = idle_callback
+        self.callbacks["display"] = display_callback
+        self.callbacks["mouse"] = mouse_callback
+        self.callbacks["keyboard"] = keyboard_callback
+        self.callbacks["menu"] = menu_callback
+
+        glutKeyboardFunc(self.keypress_callback)
+        glutMouseFunc(self.mouse_callback)
+        glutDisplayFunc(self.display_callback)
+        glutIdleFunc(self.idle_callback)
+        glutMainLoop()
+        
+        return
+    pass
+
+
+#a Toplevel
+
+name = 'ball_glut'
+
+camera = {"position":[0,0,-10],
+          "facing":c_quaternion.identity(),
+          "rpy":[0,0,0],
+          "speed":0,
+          "fov":90,
+          }
+angle_speed = 0.0
+delay = 40
+delay = 100
+use_primitive_restart = False
+from gjslib.math import bezier
+#import bezier
+import array
+opengl_surface = {}
+
 
 def init_stuff():
     patches = { "flat_xy_square": ( (0,0,0),     (1/3.0,0,0),     (2/3.0,0,0),   (1,0,0),
@@ -277,7 +453,6 @@ def main(init_stuff,display,mouse=None,keyboard=None,menus=None):
                 display_has_errored = True
                 pass
             pass
-        #camera["rpy"] = [0,0,0]
         pass
     glutDisplayFunc(display_func)
     def callback():
@@ -395,5 +570,10 @@ def display():
     glutSwapBuffers()
     return
 
-if __name__ == '__main__': main(init_stuff,display)
+if __name__ == '__main__':
+    a = c_opengl(window_size = (1000,1000))
+    a.init_opengl()
+    init_stuff()
+    a.main_loop(display_callback=display)
+    #main(init_stuff,display)
 

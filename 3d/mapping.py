@@ -387,6 +387,7 @@ def closest_meeting_of_two_lines(p0, d0, p1, d1, too_close=0.0001):
     if goodness>1.0/too_close: goodness=1.0/too_close
     return (c0, c1, dc2, goodness)
 
+#a c_set_of_lines
 class c_set_of_lines(object):
     def __init__(self):
         self.lines = []
@@ -432,44 +433,71 @@ print c.line_meetings
 
 #a c_point_mapping
 class c_point_mapping(object):
+    #f __init__
     def __init__(self):
         self.mappings = {}
         self.positions = {}
+        self.images = {}
         pass
+    #f load_data
+    def load_data(self):
+        pass
+    #f add_named_point
     def add_named_point(self,name):
         if name not in self.mappings:
             self.mappings[name] = {}
             pass
         pass
-    def add_image_location(self,name,projection,image,xy):
-        self.mappings[name][image] = (projection,xy)
+    #f add_image
+    def add_image(self,image):
+        if image not in self.images:
+            self.images[image] = {}
+            self.images[image]["projection"] = None
+            pass
         pass
+    #f add_image_location
+    def add_image_location(self,name,image,xy):
+        self.mappings[name][image] = xy
+        pass
+    #f set_projection
+    def set_projection(self,image,projection):
+        self.images[image]["projection"] = projection
+        pass
+    #f get_xy
     def get_xy(self, name, image ):
         if name not in self.mappings:
             return None
         if image not in self.mappings[name]:
             return None
-        return self.mappings[name][image][1]
+        return self.mappings[name][image]
+    #f find_line_sets
     def find_line_sets(self):
         line_sets = {}
         for n in self.mappings:
             m = self.mappings[n]
             line_sets[n] = c_set_of_lines()
             for img_name in m:
-                (p,xy) = m[img_name]
-                line = p.model_line_for_image(xy)
-                line_sets[n].add_line(line[0],line[1])
+                p = self.images[img_name]["projection"]
+                if p is not None:
+                    xy = m[img_name]
+                    line = p.model_line_for_image(xy)
+                    line_sets[n].add_line(line[0],line[1])
+                    pass
                 pass
             line_sets[n].generate_meeting_points()
             #print n, line_sets[n].line_meetings
             pass
         self.line_sets = line_sets
         pass
+    #f approximate_positions
     def approximate_positions(self):
         for n in self.line_sets:
             self.positions[n] = self.line_sets[n].posn
             pass
         pass
+    #f Done
+    pass
+
 #a c_image_projection
 class c_image_projection(object):
     #f __init__
@@ -538,7 +566,7 @@ class c_image_projection(object):
     #f add_point_mapping
     def add_point_mapping(self, pm, name, xy):
         scaled_xy = (-1.0+2.0*xy[0]/(self.size[0]+0.0), 1.0-2.0*xy[1]/(self.size[1]+0.0))
-        pm.add_image_location(name, self, self.name, scaled_xy)
+        pm.add_image_location(name, self.name, scaled_xy)
         pass
     #f mapping_error
     def mapping_error(self, name, xy, corr=None):
@@ -671,28 +699,44 @@ class c_mapping(object):
     def set_data(self):
         global image_mapping_data
         for k in image_mapping_data:
+            #if k in ["img_1", "img_3"]: continue
             image_data = image_mapping_data[k]
             self.image_projections[k] = c_image_projection(k, image_data["filename"], size=image_data["size"])
             self.image_projections[k].set_projection( projection=image_data["projection"])
-
-            print
-            print k
-            e = 0
-            corr = (c_correlation(), c_correlation())
+            self.point_mappings.add_image(k)
+            self.point_mappings.set_projection(k,self.image_projections[k])
+            self.point_mappings.load_data()
             for n in image_data["mappings"]:
                 xy = image_data["mappings"][n]
                 self.point_mappings.add_named_point(n)
                 self.image_projections[k].add_point_mapping(self.point_mappings,n,xy)
+                pass
+            pass
+        pass
+    #f calc_total_errors
+    def calc_total_errors(self):
+        global image_mapping_data
+        # Should get data from point_mappings instead
+        for k in image_mapping_data:
+            #if k in ["img_1", "img_3"]: continue
+            image_data = image_mapping_data[k]
+            print
+            print k
+            e = 0
+            corr = (c_correlation(), c_correlation())
+            for n in image_data["mappings"]: # Should get data from point_mappings instead
+                xy = image_data["mappings"][n]
                 e += self.image_projections[k].mapping_error(n,xy,corr)
                 pass
             print "Total error",e,1-corr[0].correlation_coefficient(), 1-corr[1].correlation_coefficient()
             pass
+        pass
         #self.blah("img_3")
         pass
     #f reset
     def reset(self):
         global image_mapping_data
-        gjslib.graphics.opengl.attach_menu("main_menu")
+        #gjslib.graphics.opengl.attach_menu("main_menu")
         self.camera["position"] = [0.0,10.0,-2.0]
         self.camera["facing"] = c_quaternion.identity()
         self.camera["facing"] = c_quaternion.pitch(-1*3.1415/2).multiply(self.camera["facing"])
@@ -940,7 +984,15 @@ def main():
     menus = [ ("submenu",   (("a",1), ("b",2))),
               ("main_menu", (("sub", "submenu"), ("c", 3)))
               ]
-    gjslib.graphics.opengl.main(m.reset, m.display, mouse=m.mouse, menus=menus)
+    og = gjslib.graphics.opengl.c_opengl(window_size = (1000,1000))
+    og.init_opengl()
+    og.create_menus(menus)
+    og.attach_menu("main_menu")
+    m.camera = og.camera
+    m.reset()
+    og.main_loop( display_callback=m.display,
+                  mouse_callback = m.mouse)
+                  #menu_callback = menu_callback)
 
 if __name__ == '__main__':
     main()
