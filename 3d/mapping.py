@@ -69,6 +69,7 @@ from OpenGL.GL import *
 from gjslib.math.quaternion import c_quaternion
 from gjslib.math import matrix, vectors, statistics
 from image_point_mapping import c_point_mapping
+from image_projection import c_image_projection
 
 #a Mapping data
 object_guess_locations = {}
@@ -276,93 +277,14 @@ image_mapping_data["img_3"]["mappings"] = {"lspike":    ( 40.5, 53.2),
                                           }
 
 
-#a c_image_projection
-class c_image_projection(object):
+#a c_opengl_image_projection
+class c_opengl_image_projection(c_image_projection):
     #f __init__
-    def __init__(self,name,image_filename,size=(1.0,1.0)):
-        self.name = name
-        self.image_filename = image_filename
+    def __init__(self, **kwargs):
         self.texture = None
-        self.mvp = None
-        self.ip = None
-        self.size = size
+        self.object = None
+        c_image_projection.__init__(self, **kwargs)
         pass
-    #f set_projection
-    def set_projection(self, projection=None, deltas=None, camera=(0.0,0.0,0.0), target=(0.0,0.0,0.0), up=(0.0,0.0,1.0), xscale=1.0, yscale=1.0, delta_scale=1.0, resultant_projection=None ):
-        if projection is not None:
-            camera = projection["camera"]
-            target = projection["target"]
-            up     = projection["up"]
-            xscale = projection["xscale"]
-            yscale = projection["yscale"]
-            pass
-        if deltas is not None:
-            if "camera" in deltas: camera = vectors.vector_add(camera,deltas["camera"],scale=delta_scale)
-            if "target" in deltas: target = vectors.vector_add(target,deltas["target"],scale=delta_scale)
-            if "up" in deltas:     up     = vectors.vector_add(target,deltas["up"],scale=delta_scale)
-            if "xscale" in deltas: xscale = xscale * deltas["xscale"]
-            if "yscale" in deltas: yscale = yscale * deltas["yscale"]
-            pass
-        self.mvp = matrix.c_matrix4x4( r0=(xscale,0.0,0.0,0.0),
-                                       r1=(0.0,yscale,0.0,0.0),
-                                       r2=(0.0,0.0,1.0,0.0),
-                                       r3=(0.0,0.0,-1.0,0.0),)
-        m = matrix.c_matrix3x3()
-        self.camera = camera[:]
-        self.target = target[:]
-        self.scales = (xscale,yscale)
-        self.projection = { "camera":camera[:],
-                            "target":target[:],
-                            "up":    up[:],
-                            "xscale":xscale,
-                            "yscale":yscale}
-        m.lookat( camera, target, up )
-        #print m
-        self.mvp.mult3x3(m=m)
-        self.mvp.translate(camera, scale=-1)
-        #print self.mvp
-        self.ip = self.mvp.projection()
-        self.ip.invert()
-        if resultant_projection is not None:
-            resultant_projection["camera"] = camera[:]
-            resultant_projection["target"] = target[:]
-            resultant_projection["up"]     = up[:]
-            resultant_projection["xscale"] = xscale
-            resultant_projection["yscale"] = yscale
-            pass
-        pass
-    #f image_of_model
-    def image_of_model(self,xyz):
-        xy = self.mvp.apply(xyz,perspective=True)
-        img_xy = ((1.0+xy[0])/2.0*self.size[0], (1.0-xy[1])/2.0*self.size[1])
-        return (xy,img_xy)
-    #f model_line_for_image
-    def model_line_for_image(self,xy):
-        dirn = [xy[0],xy[1],-1]
-        dirn = self.ip.apply(dirn)
-        return (self.camera, dirn)
-    #f add_point_mapping
-    def add_point_mapping(self, pm, name, xy):
-        scaled_xy = (-1.0+2.0*xy[0]/(self.size[0]+0.0), 1.0-2.0*xy[1]/(self.size[1]+0.0))
-        pm.add_image_location(name, self.name, scaled_xy)
-        pass
-    #f mapping_error
-    def mapping_error(self, name, xy, corr=None):
-        scaled_xy = (-1.0+2.0*xy[0]/(self.size[0]+0.0), 1.0-2.0*xy[1]/(self.size[1]+0.0))
-        abs_error = 0
-        if name in object_guess_locations:
-            img_of_model = self.image_of_model(object_guess_locations[name])
-            abs_error += ( (scaled_xy[0]-img_of_model[0][0])*(scaled_xy[0]-img_of_model[0][0]) +
-                          (scaled_xy[1]-img_of_model[0][1])*(scaled_xy[1]-img_of_model[0][1]))
-            xscale = scaled_xy[0] / img_of_model[0][0] * self.scales[0]
-            yscale = scaled_xy[1] / img_of_model[0][1] * self.scales[1]
-            if corr is not None:
-                corr[0].add_entry(scaled_xy[0], img_of_model[0][0])
-                corr[1].add_entry(scaled_xy[1], img_of_model[0][1])
-                pass
-            print name, xscale,yscale, xy, scaled_xy, img_of_model
-            pass
-        return abs_error
     #f load_texture
     def load_texture(self):
         self.texture = gjslib.graphics.opengl.texture_from_png(self.image_filename)
@@ -434,6 +356,20 @@ class c_mapping(object):
         self.set_data()
         #self.calc_total_errors()
         pass
+    #f load_point_mapping
+    def load_point_mapping(self, point_map_filename):
+        self.point_mappings.reset()
+        self.point_mappings.load_data(point_map_filename)
+        pass
+    #f load_image
+    def load_image(self, name, image_filename, projection, size):
+        self.image_projections[name] = c_opengl_image_projection(name=name,
+                                                                 image_filename=image_filename,
+                                                                 size=size)
+        self.image_projections[name].set_projection(projection=projection)
+        self.point_mappings.add_image(name, size=size)
+        self.point_mappings.set_projection(name, self.image_projections[name])
+        pass
     #f find_better_projection
     def find_better_projection(self,mappings,image_projection,projection,deltas_list,delta_scale):
         smallest_error = (None,10000)
@@ -479,15 +415,15 @@ class c_mapping(object):
         for k in image_mapping_data:
             #if k in ["img_1", "img_3"]: continue
             image_data = image_mapping_data[k]
-            self.image_projections[k] = c_image_projection(k, image_data["filename"], size=image_data["size"])
+            self.image_projections[k] = c_opengl_image_projection(name=k, image_filename=image_data["filename"], size=image_data["size"])
             self.image_projections[k].set_projection( projection=image_data["projection"])
-            self.point_mappings.add_image(k)
+            self.point_mappings.add_image(k, size=image_data["size"])
             self.point_mappings.set_projection(k,self.image_projections[k])
             self.point_mappings.load_data()
             for n in image_data["mappings"]:
                 xy = image_data["mappings"][n]
                 self.point_mappings.add_named_point(n)
-                self.image_projections[k].add_point_mapping(self.point_mappings,n,xy)
+                self.point_mappings.add_image_location(n,k,xy)
                 pass
             pass
         pass
@@ -557,8 +493,8 @@ class c_mapping(object):
             f = faces[n]
             pts = []
             for pt in f:
-                if pt in self.point_mappings.positions:
-                    pts.append(self.point_mappings.positions[pt])
+                if pt in self.point_mappings.get_mapping_names():
+                    pts.append(self.point_mappings.get_approx_position(pt))
                     pass
                 pass
             if len(pts)>=3:
@@ -576,8 +512,8 @@ class c_mapping(object):
                 glEnd()
                 pass
             pass
-        for n in self.point_mappings.mappings:
-            (xyz) = self.point_mappings.line_sets[n].posn
+        for n in self.point_mappings.get_mapping_names():
+            (xyz) = self.point_mappings.get_approx_position(n)
             glPushMatrix()
             glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,0.3,0.3,1.0])
             glTranslate(xyz[0],xyz[1],xyz[2])
