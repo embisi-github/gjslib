@@ -185,9 +185,31 @@ class c_draw_buffer(object):
             y += 1<<resolution_bits
             pass
         pass
+    #f string_scale
+    def string_scale(self,scale=1):
+        w = self.size[0]/scale
+        h = self.size[1]/scale
+        r = ""
+        for y in range(h):
+            l = ""
+            for x in range(w):
+                v = 0
+                for i in range(scale):
+                    for j in range(scale):
+                        v += self.pixel(x*scale+i,y*scale+j)
+                        pass
+                    pass
+                v = v / (scale*scale)
+                if (v>255):v=255
+                v = v/64
+                l += " -+#"[v]
+                pass
+            r += l + "\n"
+            pass
+        return r
     #f __repr__
     def __repr__(self):
-        r = "draw_buffer\n"
+        r = ""
         for y in range(self.size[1]):
             l = ""
             for x in range(self.size[0]):

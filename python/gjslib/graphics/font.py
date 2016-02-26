@@ -1,21 +1,27 @@
 #!/usr/bin/env python
 
+#a Imports
 import gjslib.math.bezier as bezier
 import gjslib.math.mesh as mesh
 
+#c Classes
+#c c_glyph
 class c_glyph( object ):
+    #f __init__
     def __init__( self, name ):
         self.name = name
         self.metrics = {}
         self.glyph = {}
         self.mesh = None
         pass
+    #f ttx_get_element_by_name
     def ttx_get_element_by_name( self, node, tag_name, name ):
         for m in node.getElementsByTagName(tag_name):
             if m.getAttribute("name")==name:
                 return m
             pass
         return None
+    #f ttx_get_int_attributes
     def ttx_get_int_attributes( self, node, names ):
         r = {}
         for t in names:
@@ -26,12 +32,14 @@ class c_glyph( object ):
                 r[t] = None
             pass
         return r
+    #f ttx_get_metrics
     def ttx_get_metrics( self, hmtx ):
         glyph = self.ttx_get_element_by_name(hmtx,"mtx",self.name)
         if glyph is None:
             return
         self.metrics = self.ttx_get_int_attributes(glyph, ("width", "lsb"))
         return
+    #f ttx_get_glyph
     def ttx_get_glyph( self, glyf ):
         """
         Get contours for a glyph and any other components
@@ -75,6 +83,7 @@ class c_glyph( object ):
         r["contours"] = contours
         self.glyph = r
         pass
+    #f create_bezier_lists
     def create_bezier_lists( self ):
         bezier_lists = []
         for c in self.glyph["contours"]:
@@ -91,6 +100,7 @@ class c_glyph( object ):
             bezier_lists.append(beziers)
             pass
         return bezier_lists
+    #f create_straight_lines
     def create_straight_lines(self, straightness=50):
         lines = []
         contours = self.create_bezier_lists()
@@ -105,6 +115,7 @@ class c_glyph( object ):
                 pass
             pass
         return lines
+    #f get_mesh
     def get_mesh( self, straightness=50 ):
         if self.mesh is not None: return self.mesh
         m = mesh.c_mesh()
@@ -131,6 +142,7 @@ class c_glyph( object ):
         #m.check_consistent()
         self.mesh = m
         return m
+    #f get_bbox
     def get_bbox( self ):
         if self.glyph["xMax"] is None: return (0,0,0,0)
         if self.glyph["xMin"] is None: return (0,0,0,0)
@@ -149,11 +161,30 @@ class c_glyph( object ):
             by = self.glyph["xMin"]
             pass
         return (lx,by,w,h)
-
+    #f draw
+    def draw(self, size=(60,60), bbox=(0.0,0.0,600.0,600.0), straightness=100):
+        import draw
+        d = draw.c_draw_buffer(size=size,bytes_per_pixel=1)
+        lines = self.create_straight_lines(straightness=straightness)
+        scale = (size[0]/float(bbox[2]), size[1]/float(bbox[3]))
+        offset = (-float(bbox[0])*scale[0], -float(bbox[1])*scale[1])
+        scale = (scale[0],-scale[1])
+        offset = (offset[0],size[1]-offset[1])
+        paths = []
+        for l in lines:
+            paths.append([])
+            for p in l:
+                paths[-1].append(p.get_coords(offset=offset,scale=scale))
+                pass
+            pass
+        d.fill_paths(paths=paths,value=255)
+        return d
+    #f __repr__
     def __repr__( self ):
         result = "glyph '%s' : %s : %s"%(self.name,str(self.metrics),str(self.glyph))
         return result
 
+#c c_font
 class c_font( object ):
     """
     A simple font class to permit font handling particularly for OpenGL
@@ -165,17 +196,20 @@ class c_font( object ):
     Many TTF fonts are available, and OSX and Windows use TTF.
     No hinting support is provided in this class, as the rendering is expected to be used in OpenGL (for which hints are pointless)
     """
+    #f convert_ttf_to_ttx
     @staticmethod
     def convert_ttf_to_ttx( ttf_filename, ttx_filename ):
         import fontTools.ttLib
         tt = fontTools.ttLib.TTFont(ttf_filename)
         tt.saveXML(ttx_filename)
         pass
+    #f __init__
     def __init__( self, font_name ):
         self.font_name = font_name
         self.glyphs = {}
         self.map = {}
         pass
+    #f load_from_ttx
     def load_from_ttx( self, ttx_filename ):
         from xml.dom.minidom import parse
         ttx = parse(ttx_filename)
@@ -193,21 +227,40 @@ class c_font( object ):
             self.glyphs[gn].ttx_get_metrics(hmtx)
             self.glyphs[gn].ttx_get_glyph(glyf)
         return self
+    #f get_glyph_names
     def get_glyph_names(self):
         return self.glyphs.keys()
-    def get_bbox( self, glyph_name ):
+    #f get_bbox
+    def get_bbox( self, glyph_name=None, glyph_name_list=None ):
+        if glyph_name_list is not None:
+            glyph_names = self.get_glyph_names()
+            bbox = [0,0,0,0]
+            for g in glyph_name_list:
+                if g in glyph_names:
+                    b = self.glyphs[g].get_bbox()
+                    if (b[0]<bbox[0]): bbox[0]=b[0]
+                    if (b[1]<bbox[1]): bbox[1]=b[1]
+                    if (b[2]>bbox[2]): bbox[2]=b[2]
+                    if (b[3]>bbox[3]): bbox[3]=b[3]
+                    pass
+                pass
+            return bbox
         glyph = self.glyphs[glyph_name]
         return glyph.get_bbox()
+    #f create_bezier_lists
     def create_bezier_lists( self, glyph_name ):
         glyph = self.glyphs[glyph_name]
         return glyph.create_bezier_lists()
+    #f create_straight_lines
     def create_straight_lines( self, glyph_name, straightness=50 ):
         glyph = self.glyphs[glyph_name]
         return glyph.create_straight_lines(straightness=straightness)
+    #f get_mesh
     def get_mesh( self, glyph_name, straightness=50 ):
         glyph = self.glyphs[glyph_name]
         return glyph.get_mesh( straightness=straightness )
 
+#a Toplevel
 if __name__=="__main__":
     f = c_font("fred")
     if False:
@@ -217,15 +270,41 @@ if __name__=="__main__":
     f.load_from_ttx("../../fonts/a.ttx")
     if False:
         for gn in f.get_glyph_names():
-            print gn, f.get_bbox(gn)
+            print gn, f.get_bbox(glyph_name=gn)
             pass
         pass
-    gn =u'O'
-    print
-    print "Beziers",f.create_bezier_lists(gn)
-    lines = f.create_straight_lines(gn,straightness=100)
-    print
-    print "Straightness 100", lines
-    lines = f.create_straight_lines(gn,straightness=1)
-    print
-    print "Straightness 1", lines
+    gn =u'D'
+    if False:
+        print
+        print "Beziers",f.create_bezier_lists(gn)
+        lines = f.create_straight_lines(gn,straightness=100)
+        print
+        print "Straightness 100", lines
+        lines = f.create_straight_lines(gn,straightness=1)
+        print
+        print "Straightness 1", lines
+        pass
+    if False:
+        import draw
+        d = draw.c_draw_buffer(size=(60,60),bytes_per_pixel=1)
+        print
+        print "Beziers",f.create_bezier_lists(gn)
+        lines = f.create_straight_lines(gn,straightness=100)
+        paths = []
+        for l in lines:
+            paths.append([])
+            for p in l:
+                paths[-1].append(p.get_coords(offset=(0.0,55.0),scale=(60.0/700.0,-60.0/700.0)))
+                pass
+            pass
+        print paths
+        d.fill_paths(paths=paths,value=255)
+        print d
+    if True:
+        names = (u'A', u'B', u'C', u'D', u'E', u'F', u'Q', u'M')
+        bbox = f.get_bbox(glyph_name_list=names)
+        for gn in names:
+            d = f.glyphs[gn].draw(size=(120,120),bbox=bbox)
+            print d.string_scale(2)
+            pass
+        
