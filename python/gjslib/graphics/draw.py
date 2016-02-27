@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 #a Imports
+from PIL import Image
 
 #a Classes
 #c c_line
@@ -30,31 +31,27 @@ class c_line(object):
 #c c_draw_buffer
 class c_draw_buffer(object):
     #f __init__
-    def __init__(self, size=(100,100), bytes_per_pixel=1):
-        self.size = size
-        self.bytes_per_pixel = bytes_per_pixel
-        self.buffer = bytearray(size[0]*size[1]*bytes_per_pixel)
+    def __init__(self, mode="RGB", size=(10,10), color=None, filename=None):
+        self.image = None
+        if filename is not None:
+            self.image = Image.open(png_filename)
+            self.size = self.image.size
+            self.mode = self.image.mode
+            pass
+        else:
+            self.image = Image.new(mode,size,color)
+            self.size = size
+            self.mode = mode
+            pass
         pass
     #f pixel - get pixel value at (x,y)
     def pixel(self,x,y):
-        v = 0
         if (x<0) or (y<0) or (x>=self.size[0]) or (y>=self.size[1]): return 0
-        p = (y*self.size[0]+x)*self.bytes_per_pixel
-        for i in range(self.bytes_per_pixel):
-            v = (v<<8) | self.buffer[p]
-            p += 1
-            pass
-        return v
+        return self.image.getpixel((x,y))
     #f set_pixel - set pixel value at (x,y)
     def set_pixel(self,x,y,value=255):
-        v = 0
         if (x<0) or (y<0) or (x>=self.size[0]) or (y>=self.size[1]): return
-        p = (y*self.size[0]+x)*self.bytes_per_pixel
-        for i in range(self.bytes_per_pixel):
-            self.buffer[p] = value&0xff
-            value = value>>8
-            p += 1
-            pass
+        self.image.putpixel((x,y), value)
         return
     #f draw_line - draw zero-width line
     def draw_line(self,l,resolution_bits=16,value=255):
@@ -232,12 +229,12 @@ class c_draw_buffer(object):
 
 #a Toplevel
 if __name__=="__main__":
-    d = c_draw_buffer(size=(80,80),bytes_per_pixel=1)
+    d = c_draw_buffer(mode="1",size=(80,80))
     d.set_pixel(16,16)
     d.fill_paths( [((10,10), (70,10), (70,70), (10,70)),
                    ((40,10), (10,40), (40,70), (70,40)),
                    ],value=64 )
-    if False:
+    if True:
         d.draw_line( (0,0,80,0), value=64 )
         d.draw_line( (0,0,0,80), value=64 )
         d.draw_line( (79,0,79,79), value=64 )

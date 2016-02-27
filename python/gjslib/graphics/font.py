@@ -164,7 +164,7 @@ class c_glyph( object ):
     #f draw
     def draw(self, size=(60,60), bbox=(0.0,0.0,600.0,600.0), straightness=100):
         import draw
-        d = draw.c_draw_buffer(size=size,bytes_per_pixel=1)
+        d = draw.c_draw_buffer(size=size,mode="1")
         lines = self.create_straight_lines(straightness=straightness)
         scale = (size[0]/float(bbox[2]), size[1]/float(bbox[3]))
         offset = (-float(self.glyph["xMin"])*scale[0], -float(self.glyph["yMin"])*scale[1])
