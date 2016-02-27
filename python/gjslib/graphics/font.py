@@ -24,22 +24,24 @@ class c_glyph( object ):
             pass
         return None
     #f ttx_get_int_attributes
-    def ttx_get_int_attributes( self, node, names ):
+    def ttx_get_int_attributes( self, node, name_map ):
         r = {}
-        for t in names:
+        for t in name_map:
             x = node.getAttribute(t)
             try:
-                if x is not None: r[t] = int(x)
+                if x is not None: r[name_map[t]] = int(x)
             except:
-                r[t] = None
+                r[name_map[t]] = None
             pass
         return r
     #f ttx_get_metrics
     def ttx_get_metrics( self, hmtx ):
+        # lsb is left-side-bearing;
+        # advance width is x-addition to next glyph
         glyph = self.ttx_get_element_by_name(hmtx,"mtx",self.name)
         if glyph is None:
             return
-        self.metrics = self.ttx_get_int_attributes(glyph, ("width", "lsb"))
+        self.metrics = self.ttx_get_int_attributes(glyph, {"width":"advance_width", "lsb":"left_side_bearing"})
         return
     #f ttx_get_glyph
     def ttx_get_glyph( self, glyf ):
@@ -55,7 +57,11 @@ class c_glyph( object ):
         glyph = self.ttx_get_element_by_name( glyf, "TTGlyph", self.name )
         if glyph is None:
             return None
-        r = self.ttx_get_int_attributes( glyph, ("xMin", "yMin", "xMax", "yMax") )
+        r = self.ttx_get_int_attributes( glyph, {"xMin":"xMin", "yMin":"yMin", "xMax":"xMax", "yMax":"yMax"} )
+        self.metrics["xMin"] = r["xMin"]
+        self.metrics["xMax"] = r["xMax"]
+        self.metrics["yMin"] = r["yMin"]
+        self.metrics["yMax"] = r["yMax"]
         contours = []
         for c in glyph.getElementsByTagName("contour"):
             pts = []
@@ -163,12 +169,34 @@ class c_glyph( object ):
             by = self.glyph["xMin"]
             pass
         return (lx,by,w,h)
+    #f get_metrics
+    def get_metrics( self ):
+        r = {"lx":0, "by":0, "w":0, "h":0, "advance_width":0, "left_side_bearing":0}
+        if "xMin" in self.metrics:
+            r["lx"] = self.metrics["xMin"]
+            if "xMax" in self.metrics:
+                r["w"] = self.metrics["xMax"] - self.metrics["xMin"]
+                pass
+            pass
+        if "yMin" in self.metrics:
+            r["by"] = self.metrics["yMin"]
+            if "yMax" in self.metrics:
+                r["h"] = self.metrics["yMax"] - self.metrics["yMin"]
+                pass
+            pass
+        if "advance_width" in self.metrics:
+            r["advance_width"] = self.metrics["advance_width"]
+            pass
+        if "left_side_bearing" in self.metrics:
+            r["left_side_bearing"] = self.metrics["left_side_bearing"]
+            pass
+        return r
     #f draw
-    def draw(self, size=(60,60), bbox=(0.0,0.0,600.0,600.0), straightness=100):
+    def draw(self, size=(60,60), metrics={"MaxWidth":1.0, "MaxHeight":1.0}, straightness=100):
         import draw
         d = draw.c_draw_buffer(size=size,mode="1")
         lines = self.create_straight_lines(straightness=straightness)
-        scale = (size[0]/float(bbox[2]), size[1]/float(bbox[3]))
+        scale = (size[0]/float(metrics["MaxWidth"]), size[1]/float(metrics["MaxHeight"]))
         offset = (-float(self.glyph["xMin"])*scale[0], -float(self.glyph["yMin"])*scale[1])
         scale = (scale[0],-scale[1])
         offset = (offset[0],size[1]-offset[1])
@@ -200,6 +228,7 @@ class c_bitmap_font(object):
         self.image = None
         self.fontname = "font"
         self.glyph_data = {}
+        self.glyph_names = []
         pass
     #f offset
     def offset(self, offset):
@@ -277,6 +306,7 @@ class c_bitmap_font(object):
         self.glyph_size = [0,0]
         self.array_size = [0,0]
         self.glyph_data = {}
+        self.glyph_names = []
         offset = self.offset(0)
         (offset, self.fontname)      = self.header_read_string(offset, 64)
         (offset, num_glyphs)         = self.header_read_int(offset, 2)
@@ -284,21 +314,28 @@ class c_bitmap_font(object):
         (offset, self.glyph_size[1]) = self.header_read_int(offset, 1)
         (offset, self.array_size[0]) = self.header_read_int(offset, 1)
         (offset, self.array_size[1]) = self.header_read_int(offset, 1)
+        (offset, self.ascent)        = self.header_read_signed_int(offset, 2)
+        (offset, self.descent)       = self.header_read_signed_int(offset, 2)
+        (offset, self.line_gap)      = self.header_read_int(offset, 2)
+        (offset, self.line_spacing)  = self.header_read_int(offset, 2)
         #offset = self.header_write_int(offset, 1<<14, 2)
         for i in range(num_glyphs):
             offset = self.offset(128 + 16*i)
             gd = {}
-            gd["bbox"] = [0,0,0,0]
+            gd["metrics"] = {"lx":0,"by":0,"w":0,"h":0, "advance_width":0, "left_side_bearing":0}
             (offset,gn)            = self.header_read_unicode(offset)
-            (offset,gd["index"])   = self.header_read_int(offset,2)
-            (offset,gd["bbox"][0]) = self.header_read_signed_int(offset,2)
-            (offset,gd["bbox"][1]) = self.header_read_signed_int(offset,2)
-            (offset,gd["bbox"][2]) = self.header_read_signed_int(offset,2)
-            (offset,gd["bbox"][3]) = self.header_read_signed_int(offset,2)
+            (offset,gd["metrics"]["lx"]) = self.header_read_signed_int(offset,2)
+            (offset,gd["metrics"]["by"]) = self.header_read_signed_int(offset,2)
+            (offset,gd["metrics"]["w"]) = self.header_read_int(offset,2)
+            (offset,gd["metrics"]["h"]) = self.header_read_int(offset,2)
+            (offset,gd["metrics"]["advance_width"]) = self.header_read_signed_int(offset,2)
+            (offset,gd["metrics"]["left_side_bearing"]) = self.header_read_signed_int(offset,2)
+            self.glyph_names.append(gn)
+            gd["index"] = i
             gd["gx"] = self.glyph_size[0] * (  gd["index"]%self.array_size[0])
             gd["gy"] = self.glyph_size[1] * (1+gd["index"]/self.array_size[0])
             self.glyph_data[gn] = gd
-            print gn, gd
+            #print gn, gd
             pass
         pass
     #f set_header
@@ -310,17 +347,22 @@ class c_bitmap_font(object):
         offset = self.header_write_int(offset, self.glyph_size[1], 1)
         offset = self.header_write_int(offset, self.array_size[0], 1)
         offset = self.header_write_int(offset, self.array_size[1], 1)
+        offset = self.header_write_int(offset, self.ascent, 2)
+        offset = self.header_write_int(offset, self.descent, 2)
+        offset = self.header_write_int(offset, self.line_gap, 2)
+        offset = self.header_write_int(offset, self.line_spacing, 2)
         offset = self.header_write_int(offset, 1<<14, 2)
         i = 0
-        for gn in self.glyph_data:
+        for gn in self.glyph_names:
             offset = self.offset(128 + 16*i)
             gd = self.glyph_data[gn]
             offset = self.header_write_unicode(offset, gn)
-            offset = self.header_write_int(offset,gd["index"],2)
-            offset = self.header_write_int(offset,gd["bbox"][0],2)
-            offset = self.header_write_int(offset,gd["bbox"][1],2)
-            offset = self.header_write_int(offset,gd["bbox"][2],2)
-            offset = self.header_write_int(offset,gd["bbox"][3],2)
+            offset = self.header_write_int(offset,gd["metrics"]["lx"],2)
+            offset = self.header_write_int(offset,gd["metrics"]["by"],2)
+            offset = self.header_write_int(offset,gd["metrics"]["w"],2)
+            offset = self.header_write_int(offset,gd["metrics"]["h"],2)
+            offset = self.header_write_int(offset,gd["metrics"]["advance_width"],2)
+            offset = self.header_write_int(offset,gd["metrics"]["left_side_bearing"],2)
             i += 1
             pass
         pass
@@ -336,8 +378,9 @@ class c_bitmap_font(object):
         self.image.save(filename+".png")
         pass
     #f new_from_glyphs
-    def new_from_glyphs(self, fontname="font", glyph_names=('a'), glyph_size=(32,32) ):
+    def new_from_glyphs(self, fontname="font", font_metrics={}, glyph_names=('a'), glyph_size=(32,32) ):
         self.fontname = fontname
+        self.glyph_names = glyph_names
         n = len(glyph_names)
         header_byte_size = 128 + 16*n
         glyph_byte_size = glyph_size[0]*glyph_size[1]
@@ -346,6 +389,12 @@ class c_bitmap_font(object):
             gw = 1+((header_byte_size-1)/glyph_byte_size)
             pass
         gh = 2+(len(glyph_names)-1)/gw
+        ysc = float(glyph_size[1]) / font_metrics["MaxHeight"]
+        xsc = float(glyph_size[0]) / font_metrics["MaxWidth"]
+        self.line_gap = int(font_metrics["line_gap"] * ysc)
+        self.ascent   = int(font_metrics["ascent"] * ysc)
+        self.descent  = int(font_metrics["descent"] * ysc)
+        self.line_spacing = int((font_metrics["line_gap"]+font_metrics["ascent"]-font_metrics["descent"]) * ysc)
         self.array_size = (gw, gh)
         self.glyph_size = glyph_size
         self.image_size = (gw*glyph_size[0], gh*glyph_size[1])
@@ -362,7 +411,7 @@ class c_bitmap_font(object):
             pass
         pass
     #f set_glyph
-    def set_glyph(self, glyph_name, image=None, bbox=(0,0,0,0)):
+    def set_glyph(self, glyph_name, image=None, metrics={"lx":0,"by":0,"w":0,"h":0, "advance_width":0, "left_side_bearing":0}):
         if glyph_name not in self.glyph_data:
             raise Exception("Glyph '%s' not in font"%glyph_name)
 
@@ -372,7 +421,7 @@ class c_bitmap_font(object):
         if image is not None:
             self.image.paste(image,(tlx,tly))
             pass
-        self.glyph_data[glyph_name]["bbox"] = bbox
+        self.glyph_data[glyph_name]["metrics"] = metrics
         pass
 
     #f blit_glyph
@@ -380,17 +429,18 @@ class c_bitmap_font(object):
         if glyph_name not in self.glyph_data:
             return baseline_xy
         gd = self.glyph_data[glyph_name]
-        bbox = gd["bbox"]
+        metrics = gd["metrics"]
+        #print glyph_name, gd["index"],metrics
         tgt_pixels = image.load()
         tgt_size = image.size
-        tgt_x = baseline_xy[0]
-        tgt_y = baseline_xy[1]-(bbox[3]+bbox[1])*scale[1]
-        tgt_w = int(bbox[2]*scale[0])
-        tgt_h = int(bbox[3]*scale[1])
+        tgt_x = baseline_xy[0] + metrics["left_side_bearing"]*scale[0]
+        tgt_y = baseline_xy[1]-(metrics["h"]+metrics["by"])*scale[1]
+        tgt_w = int(metrics["w"]*scale[0])
+        tgt_h = int(metrics["h"]*scale[1])
 
         src_pixels = self.image.load()
         src_x = gd["gx"]
-        src_y = gd["gy"] + self.glyph_size[1]-bbox[3]
+        src_y = gd["gy"] + self.glyph_size[1]-metrics["h"]
         #print glyph_name, self.image_size, src_x, src_y, tgt_x, tgt_y, tgt_size
         for dy in range(tgt_h):
             if tgt_y+dy<0: continue
@@ -404,16 +454,16 @@ class c_bitmap_font(object):
                     pass
                 pass
             pass
-        return (baseline_xy[0]+tgt_w, baseline_xy[1])
+        return (baseline_xy[0]+int(metrics["advance_width"]*scale[0]), baseline_xy[1])
     #f blit_string
-    def blit_string(self, text, image, baseline_xy, scale=(1.0,1.0), interletter_spacing=0.0625, interword_spacing=0.25):
+    def blit_string(self, text, image, baseline_xy, scale=(1.0,1.0), interword_spacing=0.25):
         for u in text:
             if u == " ":
                 baseline_xy = (baseline_xy[0]+int(self.glyph_size[0]*scale[0]*interword_spacing),baseline_xy[1])
                 continue
             else:
                 baseline_xy = self.blit_glyph(u, image, baseline_xy, scale=scale)
-                baseline_xy = (baseline_xy[0]+int(self.glyph_size[0]*scale[0]*interletter_spacing),baseline_xy[1])
+                #baseline_xy = (baseline_xy[0]+int(self.glyph_size[0]*scale[0]*interletter_spacing),baseline_xy[1])
             pass
         return baseline_xy
     #f All done
@@ -442,7 +492,30 @@ class c_font( object ):
         self.font_name = font_name
         self.glyphs = {}
         self.map = {}
+        self.metrics = {}
         pass
+    #f ttx_get_metrics
+    def ttx_get_metrics( self, hhea ):
+        #<ascent value="965"/>
+        #<descent value="-250"/>
+        #<lineGap value="0"/>
+        ascent   = hhea.getElementsByTagName("ascent")[0]
+        descent  = hhea.getElementsByTagName("descent")[0]
+        line_gap = hhea.getElementsByTagName("lineGap")[0]
+        self.metrics["ascent"] = int(ascent.getAttribute("value"))
+        self.metrics["descent"] = int(descent.getAttribute("value"))
+        self.metrics["line_gap"] = int(line_gap.getAttribute("value"))
+        return
+    #f ttx_get_map
+    def ttx_get_map( self, ttx ):
+        #<cmap, cmap_format_4, map code="hex unicode" name=glyph_name
+        cmap = ttx.getElementsByTagName("cmap")[0]
+        cmap = cmap.getElementsByTagName("cmap_format_4")[0]
+        for m in cmap.getElementsByTagName("map"):
+            glyph_char = unichr(int(m.getAttribute("code")))
+            glyph_name = m.getAttribute("name")
+            pass
+        return
     #f load_from_ttx
     def load_from_ttx( self, ttx_filename ):
         from xml.dom.minidom import parse
@@ -453,9 +526,11 @@ class c_font( object ):
             self.glyphs[i.getAttribute("name")] = None
             pass
         # cmap is the actual character map?
+        hhea = ttx.getElementsByTagName("hhea").item(0)
         hmtx = ttx.getElementsByTagName("hmtx").item(0)
         glyf = ttx.getElementsByTagName("glyf").item(0)
 
+        self.ttx_get_metrics(hhea)
         for gn in self.glyphs.keys():
             self.glyphs[gn] = c_glyph(gn)
             self.glyphs[gn].ttx_get_metrics(hmtx)
@@ -464,23 +539,31 @@ class c_font( object ):
     #f get_glyph_names
     def get_glyph_names(self):
         return self.glyphs.keys()
-    #f get_bbox
-    def get_bbox( self, glyph_name=None, glyph_name_list=None ):
-        if glyph_name_list is not None:
-            glyph_names = self.get_glyph_names()
-            bbox = [1000,1000,0,0]
-            for g in glyph_name_list:
-                if g in glyph_names:
-                    b = self.glyphs[g].get_bbox()
-                    if (b[0]<bbox[0]): bbox[0]=b[0]
-                    if (b[1]<bbox[1]): bbox[1]=b[1]
-                    if (bbox[2]<b[2]): bbox[2]=b[2]
-                    if (bbox[3]<b[3]): bbox[3]=b[3]
-                    pass
-                pass
-            return bbox
+    #f get_glyph_bbox
+    def get_glyph_bbox( self, glyph_name ):
         glyph = self.glyphs[glyph_name]
         return glyph.get_bbox()
+    #f get_glyph_metrics
+    def get_glyph_metrics( self, glyph_name ):
+        glyph = self.glyphs[glyph_name]
+        return glyph.get_metrics()
+    #f get_metrics
+    def get_metrics( self, glyph_name_list=None ):
+        metrics = {}
+        metrics["MaxWidth"] = 0
+        metrics["MaxHeight"] = 0
+        metrics["ascent"]   = self.metrics["ascent"]
+        metrics["descent"]  = self.metrics["descent"]
+        metrics["line_gap"] = self.metrics["line_gap"]
+        glyph_names = self.get_glyph_names()
+        for g in glyph_name_list:
+            if g in glyph_names:
+                b = self.glyphs[g].get_bbox()
+                if b[2] > metrics["MaxWidth"]: metrics["MaxWidth"] = b[2]
+                if b[3] > metrics["MaxHeight"]: metrics["MaxHeight"] = b[3]
+                pass
+            pass
+        return metrics
     #f create_bezier_lists
     def create_bezier_lists( self, glyph_name ):
         glyph = self.glyphs[glyph_name]
@@ -494,38 +577,54 @@ class c_font( object ):
         glyph = self.glyphs[glyph_name]
         return glyph.get_mesh( straightness=straightness )
     #f generate_bitmap
-    def generate_bitmap(self, size=(64,64), glyph_names=('a', 'b'), straightness=10):
+    def generate_bitmap(self, size=(64,64), glyph_names='ab', straightness=10):
+        font_glyph_names = self.get_glyph_names()
+        accepted_glyph_names = []
+        for gn in glyph_names:
+            if gn in font_glyph_names:
+                accepted_glyph_names.append(gn)
+                pass
+            pass
+        glyph_names = accepted_glyph_names
+        font_metrics = self.get_metrics(glyph_name_list=glyph_names)
         bitmap_font = c_bitmap_font()
         bitmap_font.new_from_glyphs(fontname="font",
+                                    font_metrics = font_metrics,
                                     glyph_names=glyph_names,
                                     glyph_size=size
                                     )
-        font_bbox = self.get_bbox(glyph_name_list=glyph_names)
         for gn in glyph_names:
-            glyph_bbox = self.get_bbox(gn)
-            d = self.glyphs[gn].draw(size=size, bbox=font_bbox, straightness=straightness)
-            glyph_bbox = ( size[0]*glyph_bbox[0]/font_bbox[2],
-                           size[1]*glyph_bbox[1]/font_bbox[3],
-                           size[0]*glyph_bbox[2]/font_bbox[2],
-                           size[1]*glyph_bbox[3]/font_bbox[3])
-            bitmap_font.set_glyph(gn, image=d.get_image(), bbox=glyph_bbox)
+            if gn not in self.glyphs:
+                continue
+            glyph_metrics = self.get_glyph_metrics(gn)
+            d = self.glyphs[gn].draw(size=size, metrics=font_metrics, straightness=straightness)
+            glyph_metrics = {"advance_width":size[0]*glyph_metrics["advance_width"]/font_metrics["MaxWidth"],
+                             "left_side_bearing":size[0]*glyph_metrics["left_side_bearing"]/font_metrics["MaxWidth"],
+                             "lx":size[0]*glyph_metrics["lx"]/font_metrics["MaxWidth"],
+                             "by":size[1]*glyph_metrics["by"]/font_metrics["MaxHeight"],
+                             "w":size[0]*glyph_metrics["w"]/font_metrics["MaxWidth"],
+                             "h":size[1]*glyph_metrics["h"]/font_metrics["MaxHeight"],}
+            bitmap_font.set_glyph(gn, image=d.get_image(), metrics=glyph_metrics)
             pass
         return bitmap_font
 
 #a Test functions
+#f test_convert_ttx_to_ttf    
 def test_convert_ttx_to_ttf(ttf_filename="../../fonts/cabin/Cabin-Bold-TTF.ttf",
                             ttx_filename="../../fonts/cabin-bold.ttx"):
     return c_font.convert_ttf_to_ttx(ttf_filename=ttf_filename,
                                   ttx_filename=ttx_filename)
 
+#f test_show_glyph_data
 def test_show_glyph_data(ttx_filename):
     f = c_font("fred")
     f.load_from_ttx(ttx_filename)
     for gn in f.get_glyph_names():
-        print gn, f.get_bbox(glyph_name=gn)
+        print gn, f.get_glyph_bbox(glyph_name=gn)
         pass
     pass
 
+#f test_get_bezier
 def test_get_bezier(ttx_filename, gn):
     f = c_font("fred")
     f.load_from_ttx(ttx_filename)
@@ -539,6 +638,7 @@ def test_get_bezier(ttx_filename, gn):
     print "Straightness 1", lines
     pass
 
+#f test_draw_glyph
 def test_draw_glyph(ttx_filename, gn):
     import draw
     f = c_font("fred")
@@ -559,18 +659,20 @@ def test_draw_glyph(ttx_filename, gn):
     print d
     pass
 
+#f test_draw_glyph_set
 def test_draw_glyph_set(ttx_filename, names):
     import draw
     f = c_font("fred")
     f.load_from_ttx(ttx_filename)
     d = draw.c_draw_buffer(size=(60,60))
-    bbox = f.get_bbox(glyph_name_list=names)
+    metrics = f.get_metrics(glyph_name_list=names)
     for gn in names:
-        d = f.glyphs[gn].draw(size=(120,120),bbox=bbox)
+        d = f.glyphs[gn].draw(size=(120,120),metrics=metrics)
         print d.string_scale(2)
         pass
     pass
 
+#f test_create_bitmap_font
 def test_create_bitmap_font(ttx_filename, glyph_names, bitmap_filename):
     f = c_font("fred")
     f.load_from_ttx(ttx_filename)
@@ -578,6 +680,7 @@ def test_create_bitmap_font(ttx_filename, glyph_names, bitmap_filename):
     bf.save(bitmap_filename)
     pass
 
+#f test_use_bitmap_font
 def test_use_bitmap_font(bitmap_filename, text="Test text"):
     import draw
     d = draw.c_draw_buffer(size=(1024,1024),mode="L")
@@ -588,7 +691,7 @@ def test_use_bitmap_font(bitmap_filename, text="Test text"):
     ln = 0
     for l in lines:
         l.rstrip()
-        bf.blit_string(l, d.get_image(), (8,64+128*ln*scale[1]), scale=scale)
+        bf.blit_string(l, d.get_image(), (8,64+bf.line_spacing*ln*scale[1]), scale=scale)
         ln += 1
         pass
     print d.string_scale(8)
@@ -629,8 +732,8 @@ if __name__=="__main__":
                        "bitmap_name":"beneg"}
 
     fd = font_data["cabin-bold"]
-    fd = font_data["sf"]
-    fd = font_data["beneg"]
+    #fd = font_data["sf"]
+    #fd = font_data["beneg"]
     ttf_name = fd["ttf_name"]
     ttx_name = fd["ttx_name"]
     bitmap_name = fd["bitmap_name"]
@@ -652,15 +755,9 @@ if __name__=="__main__":
         pass
     if True:
         test_create_bitmap_font(ttx_filename=font_dir+ttx_name,
-                                glyph_names=(u'A', u'B', u'C', u'D', u'E', u'F', 
-                                             u'G', u'H', u'I', u'J', u'K', u'L', u'M',
-                                             u'N', u'O', u'P', u'Q', u'R', u'S', 
-                                             u'T', u'U', u'V', u'W', u'X', u'Y', u'Z',
-                                             u'a', u'b', u'c', u'd', u'e', u'f', 
-                                             u'g', u'h', u'i', u'j', u'k', u'l', u'm',
-                                             u'n', u'o', u'p', u'q', u'r', u's', 
-                                             u't', u'u', u'v', u'w', u'x', u'y', u'z',
-                                             ),
+                                glyph_names=("abcdefghijklmnopqrstuvwxyz"+
+                                             "ABCDEFGHIJKLMNOPQRSTUVWXYZ"+
+                                             "0123456789_-+*="),
                                 bitmap_filename=bitmap_name)
         pass
     if True:
