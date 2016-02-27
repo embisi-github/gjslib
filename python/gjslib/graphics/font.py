@@ -167,7 +167,7 @@ class c_glyph( object ):
         d = draw.c_draw_buffer(size=size,bytes_per_pixel=1)
         lines = self.create_straight_lines(straightness=straightness)
         scale = (size[0]/float(bbox[2]), size[1]/float(bbox[3]))
-        offset = (-float(bbox[0])*scale[0], -float(bbox[1])*scale[1])
+        offset = (-float(self.glyph["xMin"])*scale[0], -float(self.glyph["yMin"])*scale[1])
         scale = (scale[0],-scale[1])
         offset = (offset[0],size[1]-offset[1])
         paths = []
@@ -234,14 +234,14 @@ class c_font( object ):
     def get_bbox( self, glyph_name=None, glyph_name_list=None ):
         if glyph_name_list is not None:
             glyph_names = self.get_glyph_names()
-            bbox = [0,0,0,0]
+            bbox = [1000,1000,0,0]
             for g in glyph_name_list:
                 if g in glyph_names:
                     b = self.glyphs[g].get_bbox()
                     if (b[0]<bbox[0]): bbox[0]=b[0]
                     if (b[1]<bbox[1]): bbox[1]=b[1]
-                    if (b[2]>bbox[2]): bbox[2]=b[2]
-                    if (b[3]>bbox[3]): bbox[3]=b[3]
+                    if (bbox[2]<b[2]): bbox[2]=b[2]
+                    if (bbox[3]<b[3]): bbox[3]=b[3]
                     pass
                 pass
             return bbox
@@ -259,6 +259,51 @@ class c_font( object ):
     def get_mesh( self, glyph_name, straightness=50 ):
         glyph = self.glyphs[glyph_name]
         return glyph.get_mesh( straightness=straightness )
+    #f generate_bitmap
+    def generate_bitmap(self, size=(64,64), glyph_names=None, straightness=10):
+        """
+        Font metric data needs a header with a font name (64 characters), glyph size w,h (8-bits each, pixels), glyph bbox aspect ratio (2.14 fixed point), glyphs wide and glyphs high (8 bits each),  and number of glyphs (16 bits)
+        Then a list of glyphs with 16B per glyph
+        This is 32-bit unicode, glyph number in bitmap, X,Y pixel offset of (0,0) in glyph space (2.14 fixed point), and (w,h) in pixels
+        Total size is 128 for first header (generous) and 16B per glyph
+        If the smallest image is 16x16 then a character is 32B of storage
+        """
+        if glyph_names is None:
+            glyph_names = (u'A', u'B', u'C', u'D', u'E', u'F', u'Q', u'M')
+        
+        n = len(glyph_names)
+        import math
+        header_byte_size = 128 + 16*n
+        glyph_byte_size = size[0]*size[1]/8
+        print header_byte_size, glyph_byte_size, 1+((header_byte_size-1)/glyph_byte_size)
+        gw = 1+int(math.sqrt(n))
+        if gw < 1+((header_byte_size-1)/glyph_byte_size):
+            gw = 1+((header_byte_size-1)/glyph_byte_size)
+            pass
+        gh = 2+(len(glyph_names)-1)/gw
+        texture_w = gw*size[0]
+        texture_h = gh*size[1]
+        from PIL import Image
+        im = Image.new("L",(texture_w,texture_h),"black")
+        im_data = im.load()
+        bbox = self.get_bbox(glyph_name_list=glyph_names)
+        glyphs = {}
+        i = 0
+        for gn in glyph_names:
+            tlx = (i%gw)*size[0]
+            tly = (1+(i/gw))*size[1]
+            d = self.glyphs[gn].draw(size=size,bbox=bbox,straightness=straightness)
+            glyphs[gn] = {"bitmap":d, "bbox":self.get_bbox(gn)}
+            for y in range(size[1]):
+                for x in range(size[0]):
+                    im_data[tlx+x,tly+y] = d.pixel(x,y)
+                    pass
+                pass
+            i += 1
+            pass
+        im.save("blah.png")
+        pass
+
 
 #a Toplevel
 if __name__=="__main__":
@@ -266,8 +311,8 @@ if __name__=="__main__":
     if False:
         c_font.convert_ttf_to_ttx(ttf_filename="../../fonts/cabin/Cabin-Bold-TTF.ttf",
                                   ttx_filename="../../fonts/cabin-bold.ttx")
-    #f.load_from_ttx("../../fonts/cabin-bold.ttx")
-    f.load_from_ttx("../../fonts/a.ttx")
+    f.load_from_ttx("../../fonts/cabin-bold.ttx")
+    #f.load_from_ttx("../../fonts/a.ttx")
     if False:
         for gn in f.get_glyph_names():
             print gn, f.get_bbox(glyph_name=gn)
@@ -300,11 +345,22 @@ if __name__=="__main__":
         print paths
         d.fill_paths(paths=paths,value=255)
         print d
-    if True:
+    if False:
         names = (u'A', u'B', u'C', u'D', u'E', u'F', u'Q', u'M')
         bbox = f.get_bbox(glyph_name_list=names)
         for gn in names:
             d = f.glyphs[gn].draw(size=(120,120),bbox=bbox)
             print d.string_scale(2)
             pass
-        
+    if True:
+        names = (u'A', u'B', u'C', u'D', u'E', u'F', 
+                 u'G', u'H', u'I', u'J', u'K', u'L', u'M',
+                 u'N', u'O', u'P', u'Q', u'R', u'S', 
+                 u'T', u'U', u'V', u'W', u'X', u'Y', u'Z',
+                 u'a', u'b', u'c', u'd', u'e', u'f', 
+                 u'g', u'h', u'i', u'j', u'k', u'l', u'm',
+                 u'n', u'o', u'p', u'q', u'r', u's', 
+                 u't', u'u', u'v', u'w', u'x', u'y', u'z',
+                 )
+        f.generate_bitmap(size=(128,128), glyph_names=names)
+        pass
