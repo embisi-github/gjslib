@@ -9,11 +9,27 @@ import math
 #c Classes
 #c c_glyph
 class c_glyph( object ):
+    """
+    An outline font glyph has the following attributes:
+
+    name - name of the glyph, not used internally
+    unichr - unicode character that the glyph represents
+    metrics - dictionary of key->value, keys of
+      advance_width     - amount to move X on after the glyph is rendered
+      left_side_bearing - X displacement for rendering (e.g. letter y may have -ve value)
+      xMin              - X bounding box minimum value
+      xMax              - X bounding box maximum value
+      yMin              - Y bounding box minimum value
+      yMax              - Y bounding box maximum value
+    glyph - contours making the outline
+    mesh - mesh of triangles created from bezier curves
+    """
     #f __init__
-    def __init__( self, name ):
+    def __init__( self, unichr, name ):
         self.name = name
+        self.unichr = unichr
         self.metrics = {}
-        self.glyph = {}
+        self.glyph = None
         self.mesh = None
         pass
     #f ttx_get_element_by_name
@@ -54,7 +70,7 @@ class c_glyph( object ):
           <component glyphName="grave" x="189" y="-164" flags="0x4"/>
         </TTGlyph>
         """
-        glyph = self.ttx_get_element_by_name( glyf, "TTGlyph", self.name )
+        glyph = self.ttx_get_element_by_name(glyf, "TTGlyph", self.name)
         if glyph is None:
             return None
         r = self.ttx_get_int_attributes( glyph, {"xMin":"xMin", "yMin":"yMin", "xMax":"xMax", "yMax":"yMax"} )
@@ -88,13 +104,12 @@ class c_glyph( object ):
             last = add_point( first_point[0], first_point[1], first_point[2], last )
             contours.append(pts)
             pass
-        r["contours"] = contours
-        self.glyph = r
+        self.glyph = contours
         pass
     #f create_bezier_lists
     def create_bezier_lists( self ):
         bezier_lists = []
-        for c in self.glyph["contours"]:
+        for c in self.glyph:
             beziers = []
             i = 0
             p0 = c0 = p1 = None
@@ -152,21 +167,21 @@ class c_glyph( object ):
         return m
     #f get_bbox
     def get_bbox( self ):
-        if self.glyph["xMax"] is None: return (0,0,0,0)
-        if self.glyph["xMin"] is None: return (0,0,0,0)
-        if self.glyph["yMax"] is None: return (0,0,0,0)
-        if self.glyph["yMin"] is None: return (0,0,0,0)
-        lx = self.glyph["xMin"]
-        w = self.glyph["xMax"] - self.glyph["xMin"]
+        if self.metrics["xMax"] is None: return (0,0,0,0)
+        if self.metrics["xMin"] is None: return (0,0,0,0)
+        if self.metrics["yMax"] is None: return (0,0,0,0)
+        if self.metrics["yMin"] is None: return (0,0,0,0)
+        lx = self.metrics["xMin"]
+        w = self.metrics["xMax"] - self.metrics["xMin"]
         if w<0:
             w=-w
-            lx = self.glyph["xMax"]
+            lx = self.metrics["xMax"]
             pass
-        by = self.glyph["yMin"]
-        h = self.glyph["yMax"] - self.glyph["yMin"]
+        by = self.metrics["yMin"]
+        h = self.metrics["yMax"] - self.metrics["yMin"]
         if h<0:
             h=-h
-            by = self.glyph["xMin"]
+            by = self.metrics["xMin"]
             pass
         return (lx,by,w,h)
     #f get_metrics
@@ -197,7 +212,7 @@ class c_glyph( object ):
         d = draw.c_draw_buffer(size=size,mode="1")
         lines = self.create_straight_lines(straightness=straightness)
         scale = (size[0]/float(metrics["MaxWidth"]), size[1]/float(metrics["MaxHeight"]))
-        offset = (-float(self.glyph["xMin"])*scale[0], -float(self.glyph["yMin"])*scale[1])
+        offset = (-float(self.metrics["xMin"])*scale[0], -float(self.metrics["yMin"])*scale[1])
         scale = (scale[0],-scale[1])
         offset = (offset[0],size[1]-offset[1])
         paths = []
@@ -211,7 +226,7 @@ class c_glyph( object ):
         return d
     #f __repr__
     def __repr__( self ):
-        result = "glyph '%s' : %s : %s"%(self.name,str(self.metrics),str(self.glyph))
+        result = "glyph '%s' ('%s') : %s : %s"%(self.unichr,self.name,str(self.metrics),str(self.glyph))
         return result
 
 #c c_bitmap_font
@@ -479,6 +494,10 @@ class c_font( object ):
 
     Many TTF fonts are available, and OSX and Windows use TTF.
     No hinting support is provided in this class, as the rendering is expected to be used in OpenGL (for which hints are pointless)
+
+    A c_font has the following attributes:
+    glyphs: dictionary of unicode -> c_glyph
+    
     """
     #f convert_ttf_to_ttx
     @staticmethod
@@ -507,59 +526,69 @@ class c_font( object ):
         self.metrics["line_gap"] = int(line_gap.getAttribute("value"))
         return
     #f ttx_get_map
-    def ttx_get_map( self, ttx ):
+    def ttx_get_map(self, ttx):
         #<cmap, cmap_format_4, map code="hex unicode" name=glyph_name
+        unicode_to_name_map = {}
         cmap = ttx.getElementsByTagName("cmap")[0]
         cmap = cmap.getElementsByTagName("cmap_format_4")[0]
         for m in cmap.getElementsByTagName("map"):
-            glyph_char = unichr(int(m.getAttribute("code")))
+            s = m.getAttribute("code")
+            if s[0:2]=="0x":
+                u = int(s[2:],16)
+                pass
+            else:
+                u=int(s)
+                pass
+            glyph_char = unichr(u)
             glyph_name = m.getAttribute("name")
+            unicode_to_name_map[glyph_char] = glyph_name
             pass
-        return
+        return unicode_to_name_map
     #f load_from_ttx
     def load_from_ttx( self, ttx_filename ):
         from xml.dom.minidom import parse
         ttx = parse(ttx_filename)
+        unicode_to_name_map = self.ttx_get_map(ttx)
         glyph_order = ttx.getElementsByTagName("GlyphOrder").item(0)
-        self.glyphs = {}
-        for i in glyph_order.getElementsByTagName("GlyphID"):
-            self.glyphs[i.getAttribute("name")] = None
-            pass
-        # cmap is the actual character map?
+
         hhea = ttx.getElementsByTagName("hhea").item(0)
         hmtx = ttx.getElementsByTagName("hmtx").item(0)
         glyf = ttx.getElementsByTagName("glyf").item(0)
 
+        self.glyphs = {}
         self.ttx_get_metrics(hhea)
-        for gn in self.glyphs.keys():
-            self.glyphs[gn] = c_glyph(gn)
-            self.glyphs[gn].ttx_get_metrics(hmtx)
-            self.glyphs[gn].ttx_get_glyph(glyf)
+        for (gu,gn) in unicode_to_name_map.iteritems():
+            self.glyphs[gu] = c_glyph(gu,gn)
+            self.glyphs[gu].ttx_get_metrics(hmtx)
+            self.glyphs[gu].ttx_get_glyph(glyf)
+            pass
+
         return self
-    #f get_glyph_names
-    def get_glyph_names(self):
+    #f get_glyph_unichrs
+    def get_glyph_unichrs(self):
         return self.glyphs.keys()
     #f get_glyph_bbox
-    def get_glyph_bbox( self, glyph_name ):
-        glyph = self.glyphs[glyph_name]
+    def get_glyph_bbox( self, glyph_unichr ):
+        glyph = self.glyphs[glyph_unichr]
         return glyph.get_bbox()
     #f get_glyph_metrics
     def get_glyph_metrics( self, glyph_name ):
         glyph = self.glyphs[glyph_name]
         return glyph.get_metrics()
     #f get_metrics
-    def get_metrics( self, glyph_name_list=None ):
+    def get_metrics( self, glyph_unichrs=None ):
         metrics = {}
         metrics["MaxWidth"] = 0
         metrics["MaxHeight"] = 0
         metrics["ascent"]   = self.metrics["ascent"]
         metrics["descent"]  = self.metrics["descent"]
         metrics["line_gap"] = self.metrics["line_gap"]
-        glyph_names = self.get_glyph_names()
-        for g in glyph_name_list:
-            if g in glyph_names:
-                b = self.glyphs[g].get_bbox()
-                if b[2] > metrics["MaxWidth"]: metrics["MaxWidth"] = b[2]
+
+        font_glyph_unichrs = self.get_glyph_unichrs()
+        for gu in glyph_unichrs:
+            if gu in font_glyph_unichrs:
+                b = self.glyphs[gu].get_bbox()
+                if b[2] > metrics["MaxWidth"]:  metrics["MaxWidth"] = b[2]
                 if b[3] > metrics["MaxHeight"]: metrics["MaxHeight"] = b[3]
                 pass
             pass
@@ -577,23 +606,24 @@ class c_font( object ):
         glyph = self.glyphs[glyph_name]
         return glyph.get_mesh( straightness=straightness )
     #f generate_bitmap
-    def generate_bitmap(self, size=(64,64), glyph_names='ab', straightness=10):
-        font_glyph_names = self.get_glyph_names()
-        accepted_glyph_names = []
-        for gn in glyph_names:
-            if gn in font_glyph_names:
-                accepted_glyph_names.append(gn)
+    def generate_bitmap(self, size=(64,64), glyphs='ab', straightness=10):
+        font_glyphs = self.get_glyph_unichrs()
+        accepted_glyphs = []
+        for gu in glyphs:
+            if gu in font_glyphs:
+                accepted_glyphs.append(gu)
                 pass
             pass
-        glyph_names = accepted_glyph_names
-        font_metrics = self.get_metrics(glyph_name_list=glyph_names)
+        glyphs = accepted_glyphs
+
+        font_metrics = self.get_metrics(glyph_unichrs=glyphs)
         bitmap_font = c_bitmap_font()
         bitmap_font.new_from_glyphs(fontname="font",
                                     font_metrics = font_metrics,
-                                    glyph_names=glyph_names,
+                                    glyph_names=glyphs,
                                     glyph_size=size
                                     )
-        for gn in glyph_names:
+        for gn in glyphs:
             if gn not in self.glyphs:
                 continue
             glyph_metrics = self.get_glyph_metrics(gn)
@@ -619,8 +649,8 @@ def test_convert_ttx_to_ttf(ttf_filename="../../fonts/cabin/Cabin-Bold-TTF.ttf",
 def test_show_glyph_data(ttx_filename):
     f = c_font("fred")
     f.load_from_ttx(ttx_filename)
-    for gn in f.get_glyph_names():
-        print gn, f.get_glyph_bbox(glyph_name=gn)
+    for gu in f.get_glyph_unichrs():
+        print gn, f.get_glyph_bbox(glyph_unichr=gu)
         pass
     pass
 
@@ -665,7 +695,7 @@ def test_draw_glyph_set(ttx_filename, names):
     f = c_font("fred")
     f.load_from_ttx(ttx_filename)
     d = draw.c_draw_buffer(size=(60,60))
-    metrics = f.get_metrics(glyph_name_list=names)
+    metrics = f.get_metrics(glyph_unichrs=names)
     for gn in names:
         d = f.glyphs[gn].draw(size=(120,120),metrics=metrics)
         print d.string_scale(2)
@@ -673,10 +703,10 @@ def test_draw_glyph_set(ttx_filename, names):
     pass
 
 #f test_create_bitmap_font
-def test_create_bitmap_font(ttx_filename, glyph_names, bitmap_filename):
+def test_create_bitmap_font(ttx_filename, glyphs, bitmap_filename):
     f = c_font("fred")
     f.load_from_ttx(ttx_filename)
-    bf = f.generate_bitmap(size=(128,128), glyph_names=glyph_names)
+    bf = f.generate_bitmap(size=(128,128), glyphs=glyphs)
     bf.save(bitmap_filename)
     pass
 
@@ -732,8 +762,8 @@ if __name__=="__main__":
                        "bitmap_name":"beneg"}
 
     fd = font_data["cabin-bold"]
-    #fd = font_data["sf"]
-    #fd = font_data["beneg"]
+    fd = font_data["sf"]
+    fd = font_data["beneg"]
     ttf_name = fd["ttf_name"]
     ttx_name = fd["ttx_name"]
     bitmap_name = fd["bitmap_name"]
@@ -755,7 +785,7 @@ if __name__=="__main__":
         pass
     if True:
         test_create_bitmap_font(ttx_filename=font_dir+ttx_name,
-                                glyph_names=("abcdefghijklmnopqrstuvwxyz"+
+                                glyphs=("abcdefghijklmnopqrstuvwxyz"+
                                              "ABCDEFGHIJKLMNOPQRSTUVWXYZ"+
                                              "0123456789_-+*="),
                                 bitmap_filename=bitmap_name)
