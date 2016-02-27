@@ -3,6 +3,8 @@
 #a Imports
 import gjslib.math.bezier as bezier
 import gjslib.math.mesh as mesh
+from PIL import Image
+import math
 
 #c Classes
 #c c_glyph
@@ -183,6 +185,40 @@ class c_glyph( object ):
     def __repr__( self ):
         result = "glyph '%s' : %s : %s"%(self.name,str(self.metrics),str(self.glyph))
         return result
+
+#c c_bitmap_font
+class c_bitmap_font(object):
+    def __init__(self):
+        self.image = None
+        self.glyph_names = None
+        pass
+    def new_from_glyphs(self, fontname="font", glyph_names=('a'), glyph_size=(32,32) ):
+        n = len(glyph_names)
+        header_byte_size = 128 + 16*n
+        glyph_byte_size = size[0]*size[1]
+        gw = 1+int(math.sqrt(n))
+        if gw < 1+((header_byte_size-1)/glyph_byte_size):
+            gw = 1+((header_byte_size-1)/glyph_byte_size)
+            pass
+        gh = 2+(len(glyph_names)-1)/gw
+        self.array_size = (gw, gh)
+        self.glyph_size = glyph_size
+        self.image_size = (gw*glyph_size[0], gh*glyph_size[1])
+        self.image = Image.new(mode="L",size=self.image_size,color="black")
+        self.bitmap = self.image.load()
+        pass
+    def set_glyph(self, glyph_name, image=None, bbox=(0,0,0,0)):
+        if glyph_name not in self.glyph_names:
+            raise Exception("Glyph '%s' not in font"%glyph_name)
+
+        glyph_index = self.glyph_names.index(glyph_name)
+        tlx = self.glyph_size[0] * (glyph_index%self.array_size[0])
+        tly = self.glyph_size[1] * (1+(glyph_index/self.array_size[0]))
+        if image is not None:
+            self.image.paste(image,(tlx,tly))
+            pass
+        self.glyph_data[glyph_name] = {"bbox":bbox}
+        pass
 
 #c c_font
 class c_font( object ):
