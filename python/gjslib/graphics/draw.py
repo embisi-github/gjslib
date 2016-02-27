@@ -48,8 +48,8 @@ class c_draw_buffer(object):
     def get_image(self):
         return self.image
     #f save
-    def save(self, **kwargs):
-        return self.image(**kwargs)
+    def save(self, filename, format=None):
+        return self.image.save(filename)
     #f pixel - get pixel value at (x,y)
     def pixel(self,x,y):
         if (x<0) or (y<0) or (x>=self.size[0]) or (y>=self.size[1]): return 0
