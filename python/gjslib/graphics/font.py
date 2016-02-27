@@ -783,7 +783,7 @@ if __name__=="__main__":
     if False:
         test_draw_glyph_set(ttx_filename=font_dir+ttx_name, names = (u'A', u'B', u'C', u'D', u'E', u'F', u'Q', u'M'))
         pass
-    if True:
+    if False:
         test_create_bitmap_font(ttx_filename=font_dir+ttx_name,
                                 glyphs=("abcdefghijklmnopqrstuvwxyz"+
                                              "ABCDEFGHIJKLMNOPQRSTUVWXYZ"+
