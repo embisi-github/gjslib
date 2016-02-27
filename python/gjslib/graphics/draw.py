@@ -44,6 +44,12 @@ class c_draw_buffer(object):
             self.mode = mode
             pass
         pass
+    #f get_image
+    def get_image(self):
+        return self.image
+    #f save
+    def save(self, **kwargs):
+        return self.image(**kwargs)
     #f pixel - get pixel value at (x,y)
     def pixel(self,x,y):
         if (x<0) or (y<0) or (x>=self.size[0]) or (y>=self.size[1]): return 0

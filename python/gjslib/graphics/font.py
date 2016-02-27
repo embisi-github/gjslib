@@ -294,11 +294,7 @@ class c_font( object ):
             tly = (1+(i/gw))*size[1]
             d = self.glyphs[gn].draw(size=size,bbox=bbox,straightness=straightness)
             glyphs[gn] = {"bitmap":d, "bbox":self.get_bbox(gn)}
-            for y in range(size[1]):
-                for x in range(size[0]):
-                    im_data[tlx+x,tly+y] = d.pixel(x,y)
-                    pass
-                pass
+            im.paste(d.get_image(),(tlx,tly))
             i += 1
             pass
         im.save("blah.png")
