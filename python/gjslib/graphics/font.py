@@ -6,7 +6,7 @@ import gjslib.math.mesh as mesh
 from PIL import Image
 import math
 
-#c Classes
+#a Classes
 #c c_glyph
 class c_glyph( object ):
     """
@@ -245,6 +245,9 @@ class c_bitmap_font(object):
         self.glyph_data = {}
         self.glyph_names = []
         pass
+    #f get_bitmap_data
+    def get_bitmap_data(self):
+        return self.image.getdata()
     #f offset
     def offset(self, offset):
         return (offset%self.image_size[0], offset/self.image_size[0])
@@ -439,6 +442,32 @@ class c_bitmap_font(object):
         self.glyph_data[glyph_name]["metrics"] = metrics
         pass
 
+    #f map_char
+    def map_char(self, unichar, baseline_xy, scale=(1.0,1.0)):
+        r = {}
+        #r["src_uv"] = (x,y,w,h)
+        #r["tgt_xy"] = (x,y,w,h)
+        #r["adv"] =
+        if unichar not in self.glyph_data:
+            return {"src_uv":None, "tgt_xy":None, "adv":self.ascent/4*scale[0]}
+        gd = self.glyph_data[unichar]
+        metrics = gd["metrics"]
+        tgt_x = baseline_xy[0] + metrics["left_side_bearing"]*scale[0]
+        tgt_y = baseline_xy[1]-(metrics["h"]+metrics["by"])*scale[1]
+        tgt_w = metrics["w"]*scale[0]
+        tgt_h = metrics["h"]*scale[1]
+        src_u = gd["gx"]
+        src_v = gd["gy"] + self.glyph_size[1]-metrics["h"]
+        src_w = metrics["w"]
+        src_h = metrics["h"]
+        src_u = src_u / float(self.glyph_size[0]*self.array_size[0])
+        src_v = src_v / float(self.glyph_size[1]*self.array_size[1])
+        src_w = src_w / float(self.glyph_size[0]*self.array_size[0])
+        src_h = src_h / float(self.glyph_size[1]*self.array_size[1])
+        r["tgt_xy"] = (tgt_x, tgt_y, tgt_w, tgt_h)
+        r["src_uv"] = (src_u, src_v, src_w, src_h)
+        r["adv"] = metrics["advance_width"]*scale[0]
+        return r
     #f blit_glyph
     def blit_glyph(self, glyph_name, image, baseline_xy, scale=(1.0,1.0)):
         if glyph_name not in self.glyph_data:
@@ -762,8 +791,8 @@ if __name__=="__main__":
                        "bitmap_name":"beneg"}
 
     fd = font_data["cabin-bold"]
-    fd = font_data["sf"]
-    fd = font_data["beneg"]
+    #fd = font_data["sf"]
+    #fd = font_data["beneg"]
     ttf_name = fd["ttf_name"]
     ttx_name = fd["ttx_name"]
     bitmap_name = fd["bitmap_name"]
@@ -783,14 +812,14 @@ if __name__=="__main__":
     if False:
         test_draw_glyph_set(ttx_filename=font_dir+ttx_name, names = (u'A', u'B', u'C', u'D', u'E', u'F', u'Q', u'M'))
         pass
-    if False:
+    if True:
         test_create_bitmap_font(ttx_filename=font_dir+ttx_name,
                                 glyphs=("abcdefghijklmnopqrstuvwxyz"+
                                              "ABCDEFGHIJKLMNOPQRSTUVWXYZ"+
                                              "0123456789_-+*="),
-                                bitmap_filename=bitmap_name)
+                                bitmap_filename=font_dir+bitmap_name)
         pass
     if True:
-        test_use_bitmap_font(bitmap_filename=bitmap_name,
+        test_use_bitmap_font(bitmap_filename=font_dir+bitmap_name,
                              text = test_text)
         pass

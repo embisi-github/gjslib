@@ -21,6 +21,7 @@ class c_edit_point_map_image(object):
         self.texture = None
         self.object = None
         self.display_options = {"show":False}
+        #self.display_options = {"show":True}
         pass
     #f load_texture
     def load_texture(self):
@@ -29,7 +30,7 @@ class c_edit_point_map_image(object):
             pass
         if self.object is None:
             self.object = gjslib.graphics.obj.c_obj()
-            self.object.add_rectangle( (-1.0,1.0,0.0), (2.0,0.0,0.0), (0.0,-2.0,0.0) )
+            self.object.add_rectangle( (-1.0,1.0,0.0), (1.0,0.0,0.0), (0.0,-1.0,0.0) )
             self.object.create_opengl_surface()
             pass
         pass
@@ -114,6 +115,20 @@ class c_edit_point_map(object):
         print menus
         self.og.create_menus(menus)
         self.og.attach_menu("main_menu")
+
+        image_list = ""
+        for i in self.images:
+            image_list += i+"\n"
+            pass
+        self.image_list_obj = gjslib.graphics.obj.c_text_page()
+        self.image_list_obj.add_text(image_list, self.og.fonts["font"][0], (-1.0+0.02,-0.1),(0.001/3,-0.001/3))
+        self.image_list_obj.create_opengl_surface()
+
+        for k in self.images:
+            if k not in ["main"]:
+                self.images[k].load_texture()
+                pass
+            pass
         pass
     #f display_set_projection
     def display_set_projection(self):
@@ -122,6 +137,11 @@ class c_edit_point_map(object):
 
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
+        self.og.camera["facing"] = c_quaternion.roll(self.og.camera["rpy"][0]).multiply(self.og.camera["facing"])
+        self.og.camera["facing"] = c_quaternion.pitch(self.og.camera["rpy"][1]).multiply(self.og.camera["facing"])
+        self.og.camera["facing"] = c_quaternion.yaw(self.og.camera["rpy"][2]).multiply(self.og.camera["facing"])
+        m = self.og.camera["facing"].get_matrix()
+        glMultMatrixf(m)
         pass
     #f display_image_points
     def display_image_points(self):
@@ -224,16 +244,23 @@ class c_edit_point_map(object):
         glVertex3f( 0.0, 0.0,  12.0 )
         glEnd()
         pass
+    #f display_info
+    def display_info(self):
+        glPushMatrix()
+        glMaterialfv(GL_FRONT,GL_DIFFUSE,[1.0,1.0,1.0,1.0])
+        glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,1.0,1.0,1.0])
+        glBindTexture(GL_TEXTURE_2D, self.og.fonts["font"][1])
+        self.image_list_obj.draw_opengl_surface(draw=True)
+        glPopMatrix()
+        pass
     #f display_images
     def display_images(self):
         brightness = 1.0
-        glEnable(GL_TEXTURE_2D)
         glMaterialfv(GL_FRONT,GL_DIFFUSE,[brightness*1.0,brightness*1.,brightness*1.0,1.])
         glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,1.0,1.0,1.0])
         for image in self.images:
             self.images[image].display()
             pass
-        glDisable(GL_TEXTURE_2D)
         pass
     #f display
     def display(self):
@@ -244,9 +271,11 @@ class c_edit_point_map(object):
         ambient_lightZeroColor = [1.0,1.0,1.0,1.0]
         glLightfv(GL_LIGHT1, GL_AMBIENT, ambient_lightZeroColor)
         glEnable(GL_LIGHT1)
+        glEnable(GL_TEXTURE_2D)
 
-        self.display_grid(3)
+        #self.display_grid(3)
         #self.display_image_points()
+        self.display_info()
         self.display_images()
    
         glutSwapBuffers()
@@ -291,9 +320,30 @@ class c_edit_point_map(object):
     pass
 
 #a Main
+test_text  = "It is a period of civil war.\n"
+test_text += "Rebel spaceships, striking\n"
+test_text += "from a hidden base, have won\n"
+test_text += "their first victory against\n"
+test_text += "the evil Galactic Empire.\n"
+test_text += "\n"
+test_text += "During the battle, Rebel spies\n"
+test_text += "managed to steal secret plans\n"
+test_text += "to the Empire's ultimate weapon,\n"
+test_text += "the DEATH STAR, an armored space\n"
+test_text += "station with enough power to\n"
+test_text += "destroy an entire planet.\n"
+test_text += "\n"
+test_text += "Pursued by the Empire's sinister\n"
+test_text += "agents, Princess Leia races\n"
+test_text += "home aboard her starship,\n"
+test_text += "custodian of the stolen plans\n"
+test_text += "that can save her people and\n"
+test_text += "restore freedom to the galaxy...."
 def main():
     og = gjslib.graphics.opengl.c_opengl(window_size = (1000,1000))
+    font_dir = "../../fonts/"
     m = c_edit_point_map(og)
+    og.load_font(font_dir+"cabin-bold")
     m.reset()
     m.main_loop()
 

@@ -7,6 +7,7 @@ from OpenGL.GL import *
 import sys
 import math
 from gjslib.math.quaternion import c_quaternion
+from gjslib.graphics.font import c_bitmap_font
 
 #a Useful functions
 #f texture_from_png
@@ -28,6 +29,7 @@ def texture_from_png(png_filename):
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, png.size[0], png.size[1], 0, GL_RGB, GL_UNSIGNED_BYTE, png_data)
+    glFlush()
     return texture
 
 #a Class for c_opengl
@@ -47,6 +49,7 @@ class c_opengl(object):
                        "fov":90,
                        }
         camera = self.camera
+        self.fonts = {}
         pass
     #f destroy_menus
     def destroy_menus(self):
@@ -215,6 +218,27 @@ class c_opengl(object):
         #glutTimerFunc(delay,callback,handle+1)
         glutPostRedisplay()
         pass
+    #f load_font
+    def load_font(self, bitmap_filename):
+        import numpy
+        bf = c_bitmap_font()
+        bf.load(bitmap_filename)
+
+        png_data = numpy.array(list(bf.image.getdata()), numpy.uint8)
+        texture = glGenTextures(1)
+        glPixelStorei(GL_UNPACK_ALIGNMENT,1)
+        glBindTexture(GL_TEXTURE_2D, texture)
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT)
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT)
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP)
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP)
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, bf.image_size[0], bf.image_size[1], 0, GL_RED, GL_UNSIGNED_BYTE, png_data)
+        glFlush()
+        self.fonts[bf.fontname] = (bf, texture)
+        print self.fonts
+        return bf
     #f main_loop
     def main_loop(self, idle_callback=None, display_callback=None, mouse_callback=None, keyboard_callback=None, menu_callback=None):
         self.callbacks["idle"] = idle_callback

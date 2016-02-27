@@ -311,27 +311,62 @@ class c_obj(object):
         self.opengl_surface["vectors"] = vectors
         self.opengl_surface["indices"] = indices
 
-        self.opengl_surface["vectors"].bind()
-        self.opengl_surface["indices"].bind()
-
         pass
     #f draw_opengl_surface
-    def draw_opengl_surface(self):
+    def draw_opengl_surface(self, draw=True):
         from ctypes import sizeof, c_float, c_void_p, c_uint
         glEnableClientState(GL_VERTEX_ARRAY)
         glEnableClientState(GL_NORMAL_ARRAY)
         glEnableClientState(GL_TEXTURE_COORD_ARRAY)
 
+        self.opengl_surface["vectors"].bind()
+        self.opengl_surface["indices"].bind()
+
         glVertexPointer( 3, GL_FLOAT,   8*sizeof(c_float), c_void_p(0) )
         glNormalPointer( GL_FLOAT,      8*sizeof(c_float), c_void_p(3*sizeof(c_float)) )
         glTexCoordPointer( 2, GL_FLOAT, 8*sizeof(c_float), c_void_p(6*sizeof(c_float)) )
 
-        self.opengl_surface["vectors"].bind()
-        self.opengl_surface["indices"].bind()
-
-        if True:
+        if draw:
             glDrawElements( GL_TRIANGLES,
                             len(self.opengl_surface["indices"]),
                             GL_UNSIGNED_SHORT,
                             self.opengl_surface["indices"] )
             pass
+        self.opengl_surface["vectors"].unbind()
+        self.opengl_surface["indices"].unbind()
+        pass
+
+#a c_text_page
+class c_text_page(c_obj):
+    def __init__(self):
+        c_obj.__init__(self)
+        pass
+    def add_glyph(self, unichar, bitmap_font, baseline_xy, scale=(1.0,1.0) ):
+        r = bitmap_font.map_char(unichar, baseline_xy, scale)
+        #r["src_uv"] = (x,y,w,h)
+        #r["tgt_xy"] = (x,y,w,h)
+        #r["adv"] = tgt x+
+        if r["tgt_xy"] is None:
+            return (baseline_xy[0]+r["adv"], baseline_xy[1])
+        tgt_xyz = (r["tgt_xy"][0],
+                   r["tgt_xy"][1],
+                   0.0)
+        tgt_dxyz0 = (r["tgt_xy"][2], 0.0, 0.0)
+        tgt_dxyz1 = (0.0, r["tgt_xy"][3], 0.0)
+        src_uv = (r["src_uv"][0], r["src_uv"][1])
+        src_duv0 = (r["src_uv"][2],0.0)
+        src_duv1 = (0.0,r["src_uv"][3])
+        self.add_rectangle( xyz=tgt_xyz, dxyz0=tgt_dxyz0, dxyz1=tgt_dxyz1,
+                            uv=src_uv, duv0=src_duv0, duv1=src_duv1 )
+        return (baseline_xy[0]+r["adv"], baseline_xy[1])
+        pass
+    def add_text(self, text, bitmap_font, baseline_xy, scale=(1.0,1.0) ):
+        ln_baseline_xy = baseline_xy
+        for l in text.split("\n"):
+            baseline_xy = ln_baseline_xy
+            ln_baseline_xy = (baseline_xy[0], baseline_xy[1]+scale[1]*bitmap_font.line_spacing)
+            for u in l:
+                baseline_xy = self.add_glyph(u, bitmap_font, baseline_xy, scale=scale)
+                pass
+            pass
+        return baseline_xy
