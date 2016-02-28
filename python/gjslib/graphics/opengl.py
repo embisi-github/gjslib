@@ -7,6 +7,7 @@ from OpenGL.GL import *
 import sys
 import math
 from gjslib.math.quaternion import c_quaternion
+from gjslib.math import matrix
 from gjslib.graphics.font import c_bitmap_font
 
 #a Useful functions
@@ -32,6 +33,124 @@ def texture_from_png(png_filename):
     glFlush()
     return texture
 
+#f transformation
+def transformation(translation=None, scale=None, rotation=None, map_xywh=None, inv_map_xywh=None):
+    """
+    First, map xywh to another xywh
+    For this, use ( (ix,iy,iw,ih) -> (ox,oy,ow,oh) ) (input -> output)
+
+    Then apply roll, pitch, yaw
+
+    Then scale by scale (float or 2/3-tuple of floats)
+
+    Then translate by 2/3-tuple
+
+    Return column-major matrix for OpenGL operations; can use glMultMatrixf(m)...
+
+    Note that the operations are applied to the object in bottom-up order
+    """
+    m = matrix.c_matrix4x4()
+    if map_xywh is not None:
+        if len(map_xywh)==2:
+            (inv_map_xywh, map_xywh) = map_xywh
+            pass
+        pass
+    if map_xywh is not None:
+        (x,y,w,h) = map_xywh
+        # Map (-1,-1) to (x,y); map (1,1) to (x+w, y+h)
+        # So translate by +1,+1; then scale by w/2, h/2; then translate by x,y
+        # Operations are reversed (as last is applied first to our object)
+        m.translate(xyz=(x,y,0.0))
+        m.scale(scale=(w/2.0,h/2.0,1.0))
+        m.translate(xyz=(1.0,1.0,0.0))
+        pass
+    if inv_map_xywh is not None:
+        (x,y,w,h) = inv_map_xywh
+        # Map (x,y) to (-1,-1); map (x+w, y+h) to (1,1)
+        # So translate by -x,-y; then scale by 2/w, 2/h; then translate by -1,-1
+        # Operations are reversed (as last is applied first to our object)
+        m.translate(xyz=(-1.0,-1.0,0.0))
+        m.scale(scale=(2.0/w,2.0/h,1.0))
+        m.translate(xyz=(-x,-y,0.0))
+        pass
+    q = c_quaternion.identity()
+    if rotation is not None:
+        for (k,f) in [("roll", c_quaternion.roll),
+                      ("pitch", c_quaternion.pitch),
+                      ("yaw", c_quaternion.yaw)]:
+            if k in rotation: q = f(rotation["k"]).multiply(q)
+            pass
+        pass
+    m.mult4x4(q.get_matrix4())
+    if scale is not None:
+        scale_matrix = matrix.c_matrix4x4()
+        scale_matrix.scale(scale)
+        m.mult4x4(scale_matrix)
+        pass
+    if translation is not None:
+        if len(translation)==2: translation=(translation[0], translation[1], 0.0)
+        m.translate(xyz=translation)
+        pass
+    return m.get_matrix(row_major=False)
+    
+#a Base useful classes
+#c c_depth_contents_iter
+class c_depth_contents_iter(object):
+    def __init__(self, dc):
+        self.dc = dc
+        self.depths = dc.contents.keys()
+        self.content_index = 0
+        pass
+    def next(self):
+        if len(self.depths)==0:
+            raise StopIteration()
+        d = self.depths[0]
+        if d not in self.dc.contents:
+            raise StopIteration()
+        if self.content_index<len(self.dc.contents[d]):
+            self.content_index += 1
+            return self.dc.contents[d][self.content_index-1]
+        self.content_index = 0
+        self.depths.pop(0)
+        return self.next()
+        
+#c c_depth_contents
+class c_depth_contents(object):
+    #f __init__
+    def __init__(self):
+        self.contents = {}
+        pass
+    pass
+    #f clear_contents
+    def clear_contents(self, depth=None):
+        if depth is None:
+            self.contents = {}
+            return
+        if depth in self.contents:
+            self.contents[depth] = []
+            pass
+        pass
+    #f add_contents
+    def add_contents(self, content, depth=0):
+        if depth not in self.contents:
+            self.contents[depth] = []
+            pass
+        self.contents[depth].append(content)
+        pass
+    #f remove_contents
+    def remove_contents(self, content, depth=None):
+        for d in self.contents:
+            if (depth is not None) and (d!=depth):
+                continue
+            self.contents[d].remove(content)
+            return
+        raise Exception("Failed to find content to remove (at specified depth)")
+    #f __iter__
+    def __iter__(self):
+        return c_depth_contents_iter(self)
+    #f All done
+    pass
+
 #a Class for c_opengl
 #c c_opengl
 class c_opengl(object):
@@ -51,6 +170,9 @@ class c_opengl(object):
         camera = self.camera
         self.fonts = {}
         pass
+    #f window_xy
+    def window_xy(self, xy):
+        return ((xy[0]+1.0)*self.window_size[0]/2, (xy[1]+1.0)*self.window_size[1]/2)
     #f destroy_menus
     def destroy_menus(self):
         if len(self.menu_dict["menus"])==0:
@@ -98,7 +220,7 @@ class c_opengl(object):
         return
     #f mouse_callback
     def mouse_callback(self, button,state,x,y):
-        #glutGetModifiers()
+        m = glutGetModifiers()
         b = "left"
         s = "up"
         if state == GLUT_UP: s="up"
@@ -109,7 +231,7 @@ class c_opengl(object):
         x = (2.0*x)/self.window_size[0]-1.0
         y = 1.0-(2.0*y)/self.window_size[1]
         if ("mouse" in self.callbacks) and (self.callbacks["mouse"] is not None):
-            self.callbacks["mouse"](b,s,x,y)
+            self.callbacks["mouse"](b,s,m,x,y)
             pass
         pass
     #f change_fov
@@ -146,8 +268,9 @@ class c_opengl(object):
         pass
     #f keypress_callback
     def keypress_callback(self, key,x,y):
+        m = glutGetModifiers()
         if ("keyboard" in self.callbacks) and (self.callbacks["keyboard"] is not None):
-            if self.callbacks["keyboard"](key,x,y):
+            if self.callbacks["keyboard"](key,m,x,y):
                 return
             pass
         acceleration = 0.02
@@ -218,6 +341,12 @@ class c_opengl(object):
         #glutTimerFunc(delay,callback,handle+1)
         glutPostRedisplay()
         pass
+    #f get_font
+    def get_font(self, fontname):
+        if fontname not in self.fonts:
+            fontname = self.fonts.keys()[0]
+            pass
+        return self.fonts[fontname]
     #f load_font
     def load_font(self, bitmap_filename):
         import numpy
@@ -237,7 +366,6 @@ class c_opengl(object):
         glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, bf.image_size[0], bf.image_size[1], 0, GL_RED, GL_UNSIGNED_BYTE, png_data)
         glFlush()
         self.fonts[bf.fontname] = (bf, texture)
-        print self.fonts
         return bf
     #f main_loop
     def main_loop(self, idle_callback=None, display_callback=None, mouse_callback=None, keyboard_callback=None, menu_callback=None):

@@ -481,7 +481,7 @@ class c_mapping(object):
             (k01,k02) = find_better_point(k01, k02)
         return (k01,k02)
     #f mouse
-    def mouse(self,b,s,x,y):
+    def mouse(self,b,s,m,x,y):
         print "button, state, window x/y",b,s,x,y
         ip = self.mvp.projection()
         ip.invert()

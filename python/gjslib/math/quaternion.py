@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import math
+from matrix import c_matrix4x4
 
 class c_quaternion( object ):
     fmt = "%7.4f"
@@ -34,6 +35,13 @@ class c_quaternion( object ):
     def get_matrix( self ):
         if self.matrix is None: self.create_matrix()
         return self.matrix
+    def get_matrix4( self ):
+        m = self.get_matrix()
+        m4 = c_matrix4x4( r0=(m[0][0], m[0][1], m[0][2], 0.0),
+                                 r1=(m[1][0], m[1][1], m[1][2], 0.0),
+                                 r2=(m[2][0], m[2][1], m[2][2], 0.0),
+                                 r3=(0.0, 0.0, 0.0, 1.0) )
+        return m4
     def create_matrix( self ):
         # From http://www.gamasutra.com/view/feature/131686/rotating_objects_using_quaternions.php?page=2
         # calculate coefficients

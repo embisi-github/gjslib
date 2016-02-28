@@ -96,7 +96,19 @@ class c_point_mapping(object):
             pass
         pass
     #f add_image_location
-    def add_image_location(self,name,image,xy):
+    def add_image_location(self,name,image,xy,uniform=False,verbose=False):
+        if uniform:
+            if uniform: xy = ((xy[0]+1.0)/2.0, (1.0-xy[1])/2.0)
+            size = self.images[image]["size"]
+            xy = (xy[0]*size[0],xy[1]*size[1])
+            pass
+        if verbose:
+            v = "Setting point %s in image %s to %s"
+            if image in self.image_mappings[name]:
+                v = "Moving point %s in image %s to %s"
+                pass
+            print v%(name,image,str(xy))
+            pass
         self.image_mappings[name][image] = xy
         pass
     #f set_projection

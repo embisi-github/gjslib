@@ -4,68 +4,19 @@
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 from OpenGL.GL import *
-#from gjslib.graphics.opengl import opengl
+from gjslib.graphics import opengl
+
+#a Useful functions
+def in_rectangle(xy, xywh):
+    if xy[0]-xywh[0]<0: return False
+    if xy[1]-xywh[1]<0: return False
+    if xy[0]-xywh[0]>=xywh[2]: return False
+    if xy[1]-xywh[1]>=xywh[3]: return False
+    return True
 
 #a Class for c_opengl_layer
-#c c_depth_contents_iter
-class c_depth_contents_iter(object):
-    def __init__(self, dc):
-        self.dc = dc
-        self.depths = dc.contents.keys()
-        self.content_index = 0
-        pass
-    def next(self):
-        if len(self.depths)==0:
-            raise StopIteration()
-        d = self.depths[0]
-        if d not in self.dc.contents:
-            raise StopIteration()
-        if self.content_index<len(self.dc.contents[d]):
-            self.content_index += 1
-            return self.dc.contents[d][self.content_index-1]
-        self.content_index = 0
-        self.depths.pop(0)
-        return self.next()
-        
-#c c_depth_contents
-class c_depth_contents(object):
-    #f __init__
-    def __init__(self):
-        self.contents = {}
-        pass
-    pass
-    #f clear_contents
-    def clear_contents(self, depth=None):
-        if depth is None:
-            self.contents = {}
-            return
-        if depth in self.contents:
-            self.contents[depth] = []
-            pass
-        pass
-    #f add_contents
-    def add_contents(self, content, depth=0):
-        if depth not in self.contents:
-            self.contents[depth] = []
-            pass
-        self.contents[depth].append(content)
-        pass
-    #f remove_contents
-    def remove_contents(self, content, depth=None):
-        for d in self.contents:
-            if (depth is not None) and (d!=depth):
-                continue
-            self.contents[d].remove(content)
-            return
-        raise Exception("Failed to find content to remove (at specified depth)")
-    #f __iter__
-    def __iter__(self):
-        return c_depth_contents_iter(self)
-    #f All done
-    pass
-
 #c c_opengl_layer
-class c_opengl_layer(c_depth_contents):
+class c_opengl_layer(opengl.c_depth_contents):
     """
     An OpenGL layer is used in the opengl GUI
     A layer has a window viewport (x,y,w,h), and so must be rectangular
@@ -91,7 +42,7 @@ class c_opengl_layer(c_depth_contents):
     def __init__(self, xywh, autoclear="depth" ):
         self.xywh = xywh
         self.autoclear = autoclear
-        c_depth_contents.__init__(self)
+        opengl.c_depth_contents.__init__(self)
         pass
     #f display_init
     def display_init(self):
@@ -125,14 +76,22 @@ class c_opengl_layer(c_depth_contents):
             c.display()
         glDisable(GL_SCISSOR_TEST)
         pass
+    #f scaled_xy
+    def scaled_xy(self, xy):
+        """
+        Return (xy) in 0->1 range for a given layer set xy
+        """
+        return ((xy[0]-self.xywh[0])/float(self.xywh[2]),
+                (xy[1]-self.xywh[1])/float(self.xywh[3]))
     #f All done
     pass
 
 #c c_opengl_layer_set
-class c_opengl_layer_set(c_depth_contents):
+class c_opengl_layer_set(opengl.c_depth_contents):
     """
     Layers in a layer set are displayed back-to-front
     """
+    #f new_layer
     def new_layer(self,xywh,depth=0,**kwargs):
         layer = c_opengl_layer(xywh, **kwargs)
         self.add_contents(depth=depth, content=layer)
@@ -142,3 +101,12 @@ class c_opengl_layer_set(c_depth_contents):
         for l in self:
             l.display()
         pass
+    #f find_layers_at_xy
+    def find_layers_at_xy(self,xy):
+        r = []
+        for l in self:
+            if in_rectangle(xy, l.xywh):
+                r.append(l)
+                pass
+            pass
+        return r

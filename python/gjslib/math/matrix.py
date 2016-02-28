@@ -137,6 +137,31 @@ class c_matrix4x4(object):
         m = c_matrix4x4()
         m.matrix = self.matrix[:]
         return m
+    #f transpose
+    def transpose(self):
+        m = self.matrix
+        self.matrix = [m[0], m[4], m[8], m[12],
+                       m[1], m[5], m[9], m[13],
+                       m[2], m[6], m[10], m[14],
+                       m[3], m[7], m[11], m[15]]
+        pass
+    #f scale
+    def scale(self, scale):
+        if type(scale)==int:
+            scale = float(scale)
+            pass
+        if type(scale)==float:
+            scale = (scale, scale, scale)
+            pass
+        if len(scale)==2:
+            scale = (scale[0], scale[1], 1.0)
+            pass
+        m = c_matrix4x4( r0=(scale[0],0.0,0.0,0.0),
+                         r1=(0.0,scale[1],0.0,0.0),
+                         r2=(0.0,0.0,scale[2],0.0),
+                         r3=(0.0,0.0,0.0,1.0) )
+        self.mult4x4(m)
+        pass
     #f perspective
     def perspective(self,fov,aspect,zFar,zNear):
         f = 1/math.tan(fov*3.14159265/180.0/2)
@@ -181,16 +206,41 @@ class c_matrix4x4(object):
         self.mult4x4(m)
         pass
     #f mult4x4
-    def mult4x4(self,m):
+    def mult4x4(self,m, premult=False):
         """
         Multiply by a 4x4 matrix as row-major 16-element m
         """
+        if premult:
+            return self.premult4x4(m)
+        if type(m)==c_matrix4x4:
+            m=m.matrix
+            pass
         r = []
         for i in range(4):
             for j in range(4):
                 v = 0
                 for k in range(4):
                     v += self.matrix[4*i+k]*m[4*k+j]
+                    pass
+                r.append(v)
+                pass
+            pass
+        self.matrix = r
+        pass
+    #f premult4x4
+    def premult4x4(self,m):
+        """
+        Premultiply by a 4x4 matrix as row-major 16-element m
+        """
+        if type(m)==c_matrix4x4:
+            m=m.matrix
+            pass
+        r = []
+        for i in range(4):
+            for j in range(4):
+                v = 0
+                for k in range(4):
+                    v += m[4*i+k]*self.matrix[4*k+j]
                     pass
                 r.append(v)
                 pass
@@ -229,6 +279,20 @@ class c_matrix4x4(object):
                 pass
             pass
         return r
+    #f get_matrix
+    def get_matrix(self, linear=True, row_major=True):
+        m = self.matrix
+        if not row_major:
+            m = self.copy()
+            m.transpose()
+            m = m.matrix
+            pass
+        if linear:
+            return m
+        return [ [m[0],  m[1],   m[2],  m[3]],
+                 [m[4],  m[5],   m[6],  m[7]],
+                 [m[8],  m[9],  m[10], m[11]],
+                 [m[12], m[13], m[14], m[15]] ]
     #f __repr__
     def __repr__(self):
         r = ""

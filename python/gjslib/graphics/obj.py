@@ -13,6 +13,7 @@ class c_obj(object):
         self.uv_map = []
         self.normals = []
         self.faces = []
+        self.opengl_surface = {}
         pass
     #f from_bitmap
     def from_bitmap(self, image, scale_factors, is_solid=None):
@@ -280,6 +281,16 @@ class c_obj(object):
                 face += " %d/%d/%d"%(vi+1,vti+1,vni+1)
                 pass
             print >> f, face
+            pass
+        pass
+    #f destroy_opengl_surface
+    def destroy_opengl_surface(self):
+        # Be explicit about deleting the vectors and indices - OpenGL.arrays.vbo should do glDeleteBuffers
+        if "vectors" in self.opengl_surface:
+            del(self.opengl_surface["vectors"])
+            pass
+        if "indices" in self.opengl_surface:
+            del(self.opengl_surface["indices"])
             pass
         pass
     #f create_opengl_surface

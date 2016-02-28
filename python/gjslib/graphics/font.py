@@ -816,7 +816,7 @@ if __name__=="__main__":
         test_create_bitmap_font(ttx_filename=font_dir+ttx_name,
                                 glyphs=("abcdefghijklmnopqrstuvwxyz"+
                                              "ABCDEFGHIJKLMNOPQRSTUVWXYZ"+
-                                             "0123456789_-+*="),
+                                             "0123456789.,!?_-+*="),
                                 bitmap_filename=font_dir+bitmap_name)
         pass
     if True:
