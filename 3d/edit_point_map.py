@@ -4,6 +4,8 @@
 #a Imports
 import gjslib.graphics.obj
 import gjslib.graphics.opengl
+from gjslib.graphics import opengl_layer, opengl_widget
+
 import math
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
@@ -16,36 +18,58 @@ from image_point_mapping import c_point_mapping
 #a c_edit_point_map_image
 class c_edit_point_map_image(object):
     #f __init__
-    def __init__(self, filename):
+    def __init__(self, filename=None, epm=None):
         self.filename = filename
         self.texture = None
         self.object = None
-        self.display_options = {"show":False}
-        #self.display_options = {"show":True}
+        self.epm = epm
         pass
     #f load_texture
     def load_texture(self):
-        if (self.texture is None) and self.display_options["show"]:
+        if (self.texture is None):
             self.texture = gjslib.graphics.opengl.texture_from_png(self.filename)
             pass
         if self.object is None:
             self.object = gjslib.graphics.obj.c_obj()
-            self.object.add_rectangle( (-1.0,1.0,0.0), (1.0,0.0,0.0), (0.0,-1.0,0.0) )
+            self.object.add_rectangle( (-1.0,1.0,0.0), (2.0,0.0,0.0), (0.0,-2.0,0.0) )
             self.object.create_opengl_surface()
             pass
         pass
     #f display
     def display(self):
-        if not self.display_options["show"]:
-            return
         self.load_texture()
         if self.texture is None:
             return
+        m = self.camera["facing"].get_matrix()
         glPushMatrix()
+        glMultMatrixf(m)
         glBindTexture(GL_TEXTURE_2D, self.texture)
         self.object.draw_opengl_surface()
         glPopMatrix()
         pass
+    #f All done
+    pass
+
+#a c_edit_point_map_info
+class c_edit_point_map_info(object):
+    #f __init__
+    def __init__(self, epm=None):
+        self.epm = epm
+        pass
+    #f set_image_list
+    def set_image_list(self, image_list):
+        self.image_list = image_list
+        self.image_list_obj = gjslib.graphics.obj.c_text_page()
+        self.image_list_obj.add_text(str(image_list), self.epm.og.fonts["font"][0], (-1.0+0.02,-0.1),(0.001/3,-0.001/3))
+        self.image_list_obj.create_opengl_surface()
+        pass
+    #f display
+    def display(self):
+        glBindTexture(GL_TEXTURE_2D, self.epm.og.fonts["font"][1])
+        self.image_list_obj.draw_opengl_surface(draw=True)
+        pass
+    #f All done
+    pass
 
 #a c_edit_point_map
 class c_edit_point_map(object):
@@ -59,28 +83,21 @@ class c_edit_point_map(object):
         self.og.init_opengl()
         self.point_mappings = c_point_mapping()
         self.load_point_mapping("sidsussexbell.map")
+        self.epm_info = c_edit_point_map_info(epm=self)
         self.load_images()
         pass
     #f main_loop
     def main_loop(self):
         self.og.main_loop( display_callback=self.display,
-                      mouse_callback = self.mouse,
-                      menu_callback = self.menu_callback)
-        pass
-    #f enable_image
-    def enable_image(self, image_name):
-        if image_name not in self.images:
-            return
-        for i in self.images:
-            self.images[i].display_options["show"] = False
-            pass
-        self.images[image_name].display_options["show"] = True
+                           mouse_callback = self.mouse,
+                           menu_callback = self.menu_callback)
         pass
     #f menu_callback
     def menu_callback(self, menu, value):
         if type(value)==tuple:
             if value[0]=="image":
-                self.enable_image(value[1])
+                self.image_layers[0].clear_contents()
+                self.image_layers[0].add_contents(self.images[value[1]])
                 return True
             pass
         print menu, value
@@ -95,9 +112,8 @@ class c_edit_point_map(object):
         image_names = self.point_mappings.get_images()
         for k in image_names:
             image_data = self.point_mappings.get_image(k)
-            self.images[k] = c_edit_point_map_image(filename=image_data["filename"])
+            self.images[k] = c_edit_point_map_image(epm=self, filename=image_data["filename"])
             pass
-        self.images[k].display_options["show"] = True
         pass
     #f reset
     def reset(self):
@@ -116,32 +132,18 @@ class c_edit_point_map(object):
         self.og.create_menus(menus)
         self.og.attach_menu("main_menu")
 
-        image_list = ""
+        self.epm_info.set_image_list(self.images.keys())
         for i in self.images:
-            image_list += i+"\n"
+            self.images[i].camera = self.og.camera
             pass
-        self.image_list_obj = gjslib.graphics.obj.c_text_page()
-        self.image_list_obj.add_text(image_list, self.og.fonts["font"][0], (-1.0+0.02,-0.1),(0.001/3,-0.001/3))
-        self.image_list_obj.create_opengl_surface()
 
-        for k in self.images:
-            if k not in ["main"]:
-                self.images[k].load_texture()
-                pass
-            pass
-        pass
-    #f display_set_projection
-    def display_set_projection(self):
-        glMatrixMode(GL_PROJECTION)
-        glLoadIdentity()
-
-        glMatrixMode(GL_MODELVIEW)
-        glLoadIdentity()
-        self.og.camera["facing"] = c_quaternion.roll(self.og.camera["rpy"][0]).multiply(self.og.camera["facing"])
-        self.og.camera["facing"] = c_quaternion.pitch(self.og.camera["rpy"][1]).multiply(self.og.camera["facing"])
-        self.og.camera["facing"] = c_quaternion.yaw(self.og.camera["rpy"][2]).multiply(self.og.camera["facing"])
-        m = self.og.camera["facing"].get_matrix()
-        glMultMatrixf(m)
+        self.layers = opengl_layer.c_opengl_layer_set()
+        self.image_layers = (self.layers.new_layer( (0,500,500,500), depth=10),
+                             self.layers.new_layer( (500,500,500,500), depth=10 ))
+        self.info_layer = self.layers.new_layer( (0,0,1000,500), depth=1 )
+        self.image_layers[0].add_contents(self.images["img_1"])
+        self.image_layers[1].add_contents(self.images["img_2"])
+        self.info_layer.add_contents(self.epm_info)
         pass
     #f display_image_points
     def display_image_points(self):
@@ -244,101 +246,22 @@ class c_edit_point_map(object):
         glVertex3f( 0.0, 0.0,  12.0 )
         glEnd()
         pass
-    #f display_info
-    def display_info(self):
-        glPushMatrix()
-        glMaterialfv(GL_FRONT,GL_DIFFUSE,[1.0,1.0,1.0,1.0])
-        glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,1.0,1.0,1.0])
-        glBindTexture(GL_TEXTURE_2D, self.og.fonts["font"][1])
-        self.image_list_obj.draw_opengl_surface(draw=True)
-        glPopMatrix()
-        pass
-    #f display_images
-    def display_images(self):
-        brightness = 1.0
-        glMaterialfv(GL_FRONT,GL_DIFFUSE,[brightness*1.0,brightness*1.,brightness*1.0,1.])
-        glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,1.0,1.0,1.0])
-        for image in self.images:
-            self.images[image].display()
-            pass
-        pass
     #f display
     def display(self):
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
-
-        self.display_set_projection()
-
-        ambient_lightZeroColor = [1.0,1.0,1.0,1.0]
-        glLightfv(GL_LIGHT1, GL_AMBIENT, ambient_lightZeroColor)
-        glEnable(GL_LIGHT1)
-        glEnable(GL_TEXTURE_2D)
-
-        #self.display_grid(3)
-        #self.display_image_points()
-        self.display_info()
-        self.display_images()
-   
+        self.og.camera["facing"] = c_quaternion.roll(self.og.camera["rpy"][0]).multiply(self.og.camera["facing"])
+        self.og.camera["facing"] = c_quaternion.pitch(self.og.camera["rpy"][1]).multiply(self.og.camera["facing"])
+        self.og.camera["facing"] = c_quaternion.yaw(self.og.camera["rpy"][2]).multiply(self.og.camera["facing"])
+        self.layers.display()
         glutSwapBuffers()
         pass
     #f mouse
     def mouse(self,b,s,x,y):
         print "button, state, window x/y",b,s,x,y
-        ip = self.mvp.projection()
-        ip.invert()
-
-        p0 = [0,0,0]
-        p1 = [x,y,(self.zFar+self.zNear)/(self.zFar-self.zNear)]
-        p0 = ip.apply(p0)
-        p1 = ip.apply(p1)
-        for i in range(3):
-            p0[i] += self.camera["position"][i]
-            p1[i] += self.camera["position"][i]
-            pass
-        print p0, p1
-        # The plane going through p with normal n has points p' such that (p'-p).n = 0
-        # The line p0 -> p1 has points px = p0 + k(p1-p0)
-        # this intersects a plane in model space that is -10,-10,0 with unit normal 0,0,1
-        # We know that (p0 + k(p1-p0) - p).n = 0
-        # i.e. k(p1-p0).n = (p-p0).n
-        n = (0.0,0.0,1.0)
-        p = (0.0,0.0,0.0)
-        p10n = (p1[0]-p0[0])*n[0] + (p1[1]-p0[1])*n[1] + (p1[2]-p0[2])*n[2]
-        pp0n = (p[0]-p0[0])*n[0]  + (p[1]-p0[1])*n[1]  + (p[2]-p0[2])*n[2]
-        k = pp0n/p10n
-        p = (p0[0] + k*(p1[0]-p0[0]),
-             p0[1] + k*(p1[1]-p0[1]),
-             p0[2] + k*(p1[2]-p0[2]))
-        print p
-        k01 = (10-p[0])/20.0
-        k02 = (10-p[1])/20.0
-        print "proj coord in image",k01,k02,k01*4272, (1-k02)*2848
-
-        #(k01,k02) = self.find_in_triangle((x,y), (-10.0,-10.0,0.0), (10.0,-10.0,0.0), (-10.0,10.0,0.0) )
-        #print "coord in image",k01,k02,k01*4272, (1-k02)*2848
-        #self.floatywoaty = point_on_plane((-10.0,-10.0,0.0), (10.0,-10.0,0.0), (-10.0,10.0,0.0),k01,k02)
         pass
     pass
 
 #a Main
-test_text  = "It is a period of civil war.\n"
-test_text += "Rebel spaceships, striking\n"
-test_text += "from a hidden base, have won\n"
-test_text += "their first victory against\n"
-test_text += "the evil Galactic Empire.\n"
-test_text += "\n"
-test_text += "During the battle, Rebel spies\n"
-test_text += "managed to steal secret plans\n"
-test_text += "to the Empire's ultimate weapon,\n"
-test_text += "the DEATH STAR, an armored space\n"
-test_text += "station with enough power to\n"
-test_text += "destroy an entire planet.\n"
-test_text += "\n"
-test_text += "Pursued by the Empire's sinister\n"
-test_text += "agents, Princess Leia races\n"
-test_text += "home aboard her starship,\n"
-test_text += "custodian of the stolen plans\n"
-test_text += "that can save her people and\n"
-test_text += "restore freedom to the galaxy...."
 def main():
     og = gjslib.graphics.opengl.c_opengl(window_size = (1000,1000))
     font_dir = "../../fonts/"
