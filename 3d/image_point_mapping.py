@@ -77,6 +77,47 @@ class c_point_mapping(object):
             pass
         f.close()
         pass
+    #f save_data
+    def save_data(self, data_filename):
+        f = open(data_filename,"w")
+
+        point_names = self.image_mappings.keys()
+        point_names.sort()
+
+        image_names = self.images.keys()
+        image_names.sort()
+
+        print >>f, "--Images:"
+        for name in image_names:
+            image = self.images[name]
+            print >>f,"%s,%s,%d,%d"%(name,image["filename"],image["size"][0],image["size"][1])
+            pass
+        print >>f, "\n"
+
+        print >>f, "--Points:"
+        for name in point_names:
+            desc = ""
+            if name in self.descriptions:
+                desc = self.descriptions[name]
+            print >>f, "%s,%s"%(name,desc)
+            pass
+        print >>f, "\n"
+
+        print >>f, "--References:"
+        print >>f, "\n"
+
+        print >>f, "--Mapping:"
+        for name in point_names:
+            for image in image_names:
+                if image in self.image_mappings[name]:
+                    xy = self.image_mappings[name][image]
+                    print >>f, "%s,%s,%f,%f"%(image,name,xy[0],xy[1])
+                    pass
+                pass
+            pass
+        print >>f, "\n"
+        f.close()
+        pass
     #f add_named_point
     def add_named_point(self,name,description=None):
         if name not in self.image_mappings:

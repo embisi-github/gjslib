@@ -136,6 +136,7 @@ class c_opengl_image_projection(c_image_projection):
         if self.texture is not None:
             glBindTexture(GL_TEXTURE_2D, self.texture)
             self.object.draw_opengl_surface()
+            glPopMatrix()
             return
         glPushMatrix()
         glTranslate(self.camera[0],self.camera[1],self.camera[2])
@@ -184,6 +185,7 @@ class c_mapping(object):
                   {}]
     #f __init__
     def __init__(self):
+        self.first_pass = True
         self.mvp =  matrix.c_matrix4x4()
         self.camera = gjslib.graphics.opengl.camera
         self.aspect = 1.0
@@ -289,7 +291,7 @@ class c_mapping(object):
         self.camera["facing"] = c_quaternion.pitch(-1*3.1415/2).multiply(self.camera["facing"])
         self.camera["facing"] = c_quaternion.roll(0*3.1415).multiply(self.camera["facing"])
         for k in image_mapping_data:
-            #self.image_projections[k].load_texture()
+            self.image_projections[k].load_texture()
             pass
         self.point_mappings.find_line_sets()
         self.point_mappings.approximate_positions()
@@ -319,15 +321,26 @@ class c_mapping(object):
         self.mvp.mult3x3(m3=m)
         self.mvp.translate(self.camera["position"])
         pass
-    #f display_image_points
-    def display_image_points(self):
+    #f display_image_faces
+    def display_image_faces(self):
         global faces
+        glPushMatrix()
+        glEnable(GL_TEXTURE_2D)
+        glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,1.0,1.0,1.0])
+        proj = self.image_projections["main"]
+        if proj.texture is not None:
+            glBindTexture(GL_TEXTURE_2D, proj.texture)
+            pass
         for n in faces:
             f = faces[n]
             pts = []
+            tex_pts = []
             for pt in f:
                 if pt in self.point_mappings.get_mapping_names():
-                    pts.append(self.point_mappings.get_approx_position(pt))
+                    pt_xyz = self.point_mappings.get_approx_position(pt)
+                    pts.append(pt_xyz)
+                    (xyzw,img_xy) = proj.image_of_model(pt_xyz)
+                    tex_pts.append( (0.5+xyzw[0]*0.5, 0.5-xyzw[1]*0.5) )
                     pass
                 pass
             if len(pts)>=3:
@@ -335,9 +348,11 @@ class c_mapping(object):
                 j = len(pts)-1
                 glBegin(GL_TRIANGLE_STRIP)
                 while (j>=i):
+                    glTexCoord2f(tex_pts[i][0],tex_pts[i][1])
                     glVertex3f(pts[i][0],pts[i][1],pts[i][2])
                     i += 1
                     if (i<=j):
+                        glTexCoord2f(tex_pts[j][0],tex_pts[j][1])
                         glVertex3f(pts[j][0],pts[j][1],pts[j][2])
                         pass
                     j -= 1
@@ -345,6 +360,12 @@ class c_mapping(object):
                 glEnd()
                 pass
             pass
+        glDisable(GL_TEXTURE_2D)
+        glPopMatrix()
+        self.first_pass = False
+        pass
+    #f display_image_points
+    def display_image_points(self):
         for n in self.point_mappings.get_mapping_names():
             (xyz) = self.point_mappings.get_approx_position(n)
             glPushMatrix()
@@ -442,6 +463,7 @@ class c_mapping(object):
         glEnable(GL_LIGHT1)
 
         self.display_grid(3)
+        self.display_image_faces()
         self.display_image_points()
         self.display_images()
    
@@ -527,6 +549,13 @@ def main():
               ]
     og = gjslib.graphics.opengl.c_opengl(window_size = (1000,1000))
     og.init_opengl()
+    menus = og.build_menu_init()
+    og.build_menu_add_menu(menus,"submenu")
+    og.build_menu_add_menu_item(menus,"a",("a",1))
+    og.build_menu_add_menu_item(menus,"b",("b",2))
+    og.build_menu_add_menu(menus,"main_menu")
+    og.build_menu_add_menu_submenu(menus,"Sub","submenu")
+    og.build_menu_add_menu_item(menus,"c","Item c")
     og.create_menus(menus)
     og.attach_menu("main_menu")
     m.camera = og.camera

@@ -205,8 +205,16 @@ class c_edit_point_map(object):
                            mouse_callback = self.mouse_callback,
                            menu_callback = self.menu_callback)
         pass
+    #f save_point_mapping
+    def save_point_mapping(self, point_map_filename):
+        if point_map_filename == self.original_point_map_filename:
+            import os, time
+            os.rename(self.original_point_map_filename, self.original_point_map_filename+(".bkp_%d"%int(time.time())))
+        self.point_mappings.save_data(point_map_filename)
+        pass
     #f load_point_mapping
     def load_point_mapping(self, point_map_filename):
+        self.original_point_map_filename = point_map_filename
         self.point_mappings.reset()
         self.point_mappings.load_data(point_map_filename)
         self.point_mapping_names = self.point_mappings.get_mapping_names()
@@ -227,8 +235,8 @@ class c_edit_point_map(object):
     #f reset
     def reset(self):
         glutSetCursor(GLUT_CURSOR_CROSSHAIR)
+
         menus = self.og.build_menu_init()
-        #gjslib.graphics.opengl.attach_menu("main_menu")
         self.og.build_menu_add_menu(menus,"images")
         image_keys = self.images.keys()
         for i in range(len(image_keys)):
@@ -237,7 +245,7 @@ class c_edit_point_map(object):
             pass
         self.og.build_menu_add_menu(menus,"main_menu")
         self.og.build_menu_add_menu_submenu(menus,"Images","images")
-        print menus
+        self.og.build_menu_add_menu_item(menus,"Save",("save",0))
         self.og.create_menus(menus)
         self.og.attach_menu("main_menu")
 
@@ -403,6 +411,9 @@ class c_edit_point_map(object):
                 self.displayed_images[self.focus_image] = value[1]
                 self.image_layers[self.focus_image].clear_contents()
                 self.image_layers[self.focus_image].add_contents(self.images[value[1]])
+                return True
+            if value[0]=="save":
+                self.save_point_mapping("sidsussexbell.map")
                 return True
             pass
         print menu, value
