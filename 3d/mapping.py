@@ -60,7 +60,7 @@ We can also assume the model positions are all perfect, and adjust Pimg and Timg
 
 #a Imports
 import gjslib.graphics.obj
-from gjslib.graphics import opengl, opengl_mesh
+from gjslib.graphics import opengl, opengl_utils, opengl_mesh
 import math
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
@@ -387,7 +387,7 @@ class c_opengl_image_projection(c_image_projection):
         pass
     #f load_texture
     def load_texture(self):
-        self.texture = opengl.texture_from_png(self.image_filename)
+        self.texture = opengl_utils.texture_from_png(self.image_filename)
         self.object = gjslib.graphics.obj.c_obj()
         self.object.add_rectangle( (-10.0,10.0,0.0), (20.0,0.0,0.0), (0.0,-20.0,0.0) )
         self.object.create_opengl_surface()

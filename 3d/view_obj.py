@@ -4,6 +4,7 @@
 #a Imports
 import gjslib.graphics.obj
 import gjslib.graphics.opengl
+import gjslib.graphics.opengl_utils
 
 import math
 from OpenGL.GLUT import *
@@ -90,7 +91,7 @@ class c_view_obj(object):
         return
     #f init
     def init(self, texture_filename):
-        self.texture = gjslib.graphics.opengl.texture_from_png(texture_filename)
+        self.texture = gjslib.graphics.opengl_utils.texture_from_png(texture_filename)
         self.obj.create_opengl_surface()
         pass
     #f All done

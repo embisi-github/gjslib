@@ -5,7 +5,7 @@ from OpenGL.GLUT import *
 from OpenGL.GLU import *
 from OpenGL.GL import *
 import gjslib.graphics.obj
-from gjslib.graphics import opengl
+from gjslib.graphics import opengl_utils
 
 #a Class for c_opengl_widget
 #c c_opengl_widget
@@ -50,7 +50,7 @@ class c_opengl_simple_text_widget(object):
     pass
 
 #c c_opengl_container_widget
-class c_opengl_container_widget(c_opengl_widget, opengl.c_depth_contents):
+class c_opengl_container_widget(c_opengl_widget, opengl_utils.c_depth_contents):
     """
     This widget is a container for stuff
     Stuff is an ordered list of things to display - "front" to "back"
@@ -61,13 +61,13 @@ class c_opengl_container_widget(c_opengl_widget, opengl.c_depth_contents):
     """
     #f __init__
     def __init__(self, **kwargs):
-        opengl.c_depth_contents.__init__(self, **kwargs)
+        opengl_utils.c_depth_contents.__init__(self, **kwargs)
         c_opengl_widget.__init__(self, **kwargs)
         pass
     #f add_widget
     def add_widget(self, widget, depth=0, **kwargs):
         content = {"widget":widget,
-                   "transformation":opengl.transformation(**kwargs),}
+                   "transformation":opengl_utils.transformation(**kwargs),}
         self.add_contents(content=content,
                           depth=depth)
         pass

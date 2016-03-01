@@ -4,7 +4,7 @@
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 from OpenGL.GL import *
-from gjslib.graphics import opengl
+from gjslib.graphics import opengl_utils
 
 #a Useful functions
 def in_rectangle(xy, xywh):
@@ -16,7 +16,7 @@ def in_rectangle(xy, xywh):
 
 #a Class for c_opengl_layer
 #c c_opengl_layer
-class c_opengl_layer(opengl.c_depth_contents):
+class c_opengl_layer(opengl_utils.c_depth_contents):
     """
     An OpenGL layer is used in the opengl GUI
     A layer has a window viewport (x,y,w,h), and so must be rectangular
@@ -42,7 +42,7 @@ class c_opengl_layer(opengl.c_depth_contents):
     def __init__(self, xywh, autoclear="depth" ):
         self.xywh = xywh
         self.autoclear = autoclear
-        opengl.c_depth_contents.__init__(self)
+        opengl_utils.c_depth_contents.__init__(self)
         pass
     #f display_init
     def display_init(self):
@@ -89,7 +89,7 @@ class c_opengl_layer(opengl.c_depth_contents):
     pass
 
 #c c_opengl_layer_set
-class c_opengl_layer_set(opengl.c_depth_contents):
+class c_opengl_layer_set(opengl_utils.c_depth_contents):
     """
     Layers in a layer set are displayed back-to-front
     """

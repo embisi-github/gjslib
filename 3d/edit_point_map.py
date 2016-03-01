@@ -4,7 +4,7 @@
 #a Imports
 import gjslib.graphics.obj
 import gjslib.graphics.opengl
-from gjslib.graphics import opengl_layer, opengl_widget
+from gjslib.graphics import opengl_layer, opengl_widget, opengl_utils
 
 import math
 from OpenGL.GLUT import *
@@ -94,7 +94,7 @@ class c_edit_point_map_image(object):
         This is done in a lazy fashion - only create the image etc when required
         """
         if (self.texture is None):
-            self.texture = gjslib.graphics.opengl.texture_from_png(self.filename)
+            self.texture = opengl_utils.texture_from_png(self.filename)
             pass
         if self.object is None:
             self.object = gjslib.graphics.obj.c_obj()
