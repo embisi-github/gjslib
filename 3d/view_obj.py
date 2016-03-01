@@ -2,47 +2,34 @@
 # PYTHONPATH=`pwd`/../python:$PYTHONPATH ./view_obj.py
 
 #a Imports
-import gjslib.graphics.obj
-import gjslib.graphics.opengl
-import gjslib.graphics.opengl_utils
+from gjslib.graphics import opengl_app, opengl_utils, opengl_obj
 
 import math
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 from OpenGL.GL import *
-from gjslib.math.quaternion import c_quaternion
 
 #a Classes
 #c c_view_obj
-class c_view_obj(object):
+class c_view_obj(opengl_app.c_opengl_camera_app):
     #f __init__
-    def __init__(self, obj):
-        self.camera = None
+    def __init__(self, obj, texture_filename, **kwargs):
+        opengl_app.c_opengl_camera_app.__init__(self, **kwargs)
         self.obj = obj
-        self.xxx = 0
-        self.yyy = 0
+        self.xxx = 0.0
+        self.yyy = 0.0
+        self.window_title = "Viewing object"
+        self.texture_filename = texture_filename
+        pass
+    #f opengl_post_init
+    def opengl_post_init(self):
+        self.texture = opengl_utils.texture_from_png(self.texture_filename)
+        self.obj.create_opengl_surface()
         pass
     #f display
     def display(self):
-        glMatrixMode(GL_PROJECTION)
-        glLoadIdentity()
-        gluPerspective(40.,1.,1.,40.)
-        glMatrixMode(GL_MODELVIEW)
-        glLoadIdentity()
+        opengl_app.c_opengl_camera_app.display(self)
 
-        
-        self.camera["facing"] = c_quaternion.roll(self.camera["rpy"][0]).multiply(self.camera["facing"])
-        self.camera["facing"] = c_quaternion.pitch(self.camera["rpy"][1]).multiply(self.camera["facing"])
-        self.camera["facing"] = c_quaternion.yaw(self.camera["rpy"][2]).multiply(self.camera["facing"])
-        m = self.camera["facing"].get_matrix()
-        glMultMatrixf(m)
-        self.camera["position"][0] += self.camera["speed"]*m[0][2]
-        self.camera["position"][1] += self.camera["speed"]*m[1][2]
-        self.camera["position"][2] += self.camera["speed"]*m[2][2]
-        #glRotate(angle*180.0/3.14159,0,1,0)
-        glTranslate(self.camera["position"][0],self.camera["position"][1],self.camera["position"][2])
-
-        glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
         self.yyy += 0.03
         lightZeroPosition = [4.+3*math.sin(self.yyy),4.,4.-3*math.cos(self.yyy),1.]
         lightZeroColor = [0.7,1.0,0.7,1.0] #white
@@ -89,39 +76,33 @@ class c_view_obj(object):
 
         glutSwapBuffers()
         return
-    #f init
-    def init(self, texture_filename):
-        self.texture = gjslib.graphics.opengl_utils.texture_from_png(texture_filename)
-        self.obj.create_opengl_surface()
-        pass
     #f All done
     pass
 
 #a Top level
 #f test_object
 def test_object():
-    obj = gjslib.graphics.obj.c_obj()
-    #f = open("icosahedron.obj")
-    #obj.load_from_file(f)
-    #obj.create_icosahedron()
-    obj.create_icosphere(subdivide=4)
+    obj = opengl_obj.c_obj()
 
-    m = c_view_obj(obj)
-    og = gjslib.graphics.opengl.c_opengl(window_size = (1000,1000))
-    og.init_opengl()
-    #og.create_menus(menus)
-    #og.attach_menu("main_menu")
     #texture_filename = "earth_ico.png"
     #texture_filename = "../../1_earth_16k_div10.png"
     #texture_filename = "icosahedron.png"
     #texture_filename = "test2.png"
     texture_filename = "brick.png"
-    m.init(texture_filename=texture_filename)
-    m.camera = og.camera
-    og.main_loop( display_callback = m.display,
-                  #mouse_callback   = m.mouse,
-                  #menu_callback = menu_callback,
-                  )
+
+    #f = open("icosahedron.obj")
+    #obj.load_from_file(f)
+    #obj.create_icosahedron()
+    obj.create_icosphere(subdivide=4)
+
+    og = c_view_obj(obj=obj,
+                    texture_filename=texture_filename,
+                    window_size=(1000,1000))
+    og.init_opengl()
+    #og.create_menus(menus)
+    #og.attach_menu("main_menu")
+    og.main_loop()
+
 #f Main
 if __name__ == '__main__':
     test_object()
