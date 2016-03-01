@@ -290,10 +290,11 @@ class c_plane(object):
 
 #a Mapping data
 object_guess_locations = {}
-object_guess_locations["clk.center"] = (0.0,0.0,6.5)
+object_guess_locations["clk.center"] = (0.0,0.5,6.5)
 object_guess_locations["lspike.t"] = (-3.0,0.0,8.5)
 object_guess_locations["rspike.t"] = ( 3.0,0.0,8.5)
-object_guess_locations["ld.bl"] = ( -4.5,0.0,0.0)
+#object_guess_locations["ld.bl"] = ( -4.75,0.5,0.0)
+
 faces = {}
 faces["frontleft"]  = ("img_1",
                        ( ["tl",
@@ -304,7 +305,7 @@ faces["frontleft"]  = ("img_1",
                           "fl.cr5.bl", "fl.cr5.tl", "fl.cr5.tr", "fl.cr5.br",
                           "fl.cr6.bl", "fl.cr6.br", 
                           "fl.cr", "fl.crt","fl.crtr",
-                          "fl.br", "bl"],
+                          ],#"fl.br", "bl"],
                          ["fl.win1.bl","fl.win1.br","fl.win1.tr","fl.win1.tl"],
                          ["fl.win2.bl","fl.win2.br","fl.win2.tr","fl.win2.tl"],
                          ["fl.win3.bl","fl.win3.br","fl.win3.tr","fl.win3.tl"],
@@ -333,16 +334,10 @@ image_mapping_data["main"] = {}
 image_mapping_data["main"]["filename"] = "sidsussexbell.jpg"
 image_mapping_data["main"]["size"] = (4272,2848)
 image_mapping_data["main"]["projection"] = {"camera":(-6.0,-12.0,2.0), "target":(5.0,0.0,4.0), "up":(0.0,0.0,1.0), "xscale":1.052, "yscale":1.9}
-image_mapping_data["main"]["projection"] = {'xscale': 1.052, 'camera': [-2.5249999999999773, -13.525000000000022, 1.300000000000003], 'yscale': 1.9, 'target': [5.350000000000005, 0.0, 4.225000000000003], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["main"]["projection"] = {'xscale': 1.052, 'camera': [-3.8249999999999726, -14.82500000000004, 2.0500000000000003], 'yscale': 1.85, 'target': [5.900000000000041, 0.0, 3.750000000000001], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["main"]["projection"] = {'xscale': 1.03, 'camera': [-4.324999999999976, -14.500000000000036, 2.2249999999999996], 'yscale': 1.80, 'target': [5.925000000000042, 0.0, 3.700000000000001], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["main"]["projection"] = {'xscale': 1.03, 'camera': [-4.299999999999976, -14.250000000000032, 2.374999999999999], 'yscale': 1.8, 'target': [5.950000000000042, 0.0, 3.6500000000000012], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["main"]["projection"] = {'xscale': 1.03, 'camera': [-4.299999999999976, -14.250000000000032, 2.374999999999999], 'yscale': 1.8, 'target': [5.950000000000042, 0.0, 3.6500000000000012], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["main"]["projection"] = {'xscale': 1.03, 'camera': [-5.549999999999994, -14.05000000000003, 2.674999999999998], 'yscale': 1.8, 'target': [6.425000000000049, 0.0, 3.5750000000000015], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["main"]["projection"] = {'xscale': 1.03, 'camera': [-4.59999999999998, -13.700000000000024, 1.8750000000000009], 'yscale': 1.8, 'target': [6.125000000000044, 0.0, 3.8750000000000004], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["main"]["projection"] = {'xscale': 1.03, 'camera': [-3.474999999999974, -13.875000000000027, 1.6500000000000017], 'yscale': 1.75, 'target': [5.775000000000039, 0.0, 3.8750000000000004], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["main"]["projection"] = {'xscale': 1.02, 'camera': [-3.8999999999999724, -13.575000000000022, 1.850000000000001], 'yscale': 1.70, 'target': [5.775000000000039, 0.0, 3.8250000000000006], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["main"]["projection"] = {'xscale': 1.02, 'camera': [-4.024999999999972, -13.300000000000018, 2.0000000000000004], 'yscale': 1.65, 'target': [5.750000000000039, 0.0, 3.775000000000001], 'up': (0.0, 0.0, 1.0)}
+#Include ld.bl
+image_mapping_data["main"]["projection"] = {'xscale': 1.064435325651855, 'camera': [-6.850000000000032, -11.774999999999984, 3.9949999999999966], 'yscale': 1.5421029326893347, 'target': [6.100000000000005, 0.0, 3.2000000000000015], 'up': [0.012094257070636666, 0.0458884825755716, 0.9988733533901186]}
+#Exclude ld.bl
+#image_mapping_data["main"]["projection"] = {'xscale': 1.067753882203797, 'camera': [-6.900000000000032, -11.774999999999984, 3.9699999999999966], 'yscale': 1.5412762914302771, 'target': [6.125000000000005, 0.0, 3.2000000000000015], 'up': [0.012587949905595398, 0.04776167039706178, 0.998779438293589]}
 
 image_mapping_data["img_1"] = {}
 image_mapping_data["img_1"]["filename"] = "sidsussexbell_1.jpg"
@@ -352,6 +347,18 @@ image_mapping_data["img_1"]["projection"] = {'xscale': 1.78, 'camera': [5.724999
 image_mapping_data["img_1"]["projection"] = {'xscale': 1.77, 'camera': [5.7249999999999766, -8.025000000000045, 6.374999999999991], 'yscale': 2.5, 'target': [-1.0999999999999996, -0.025, 5.650000000000002], 'up': (0.0, 0.0, 1.0)}
 image_mapping_data["img_1"]["projection"] = {'xscale': 1.77, 'camera': [5.7249999999999766, -8.000000000000044, 6.424999999999992], 'yscale': 2.51, 'target': [-1.0999999999999996, -0.025, 5.650000000000002], 'up': (0.0, 0.0, 1.0)}
 image_mapping_data["img_1"]["projection"] = {'xscale': 1.77, 'camera': [5.7249999999999766, -8.025000000000045, 6.449999999999992], 'yscale': 2.51, 'target': [-1.0999999999999996, -0.025, 5.650000000000002], 'up': (0.0, 0.0, 1.0)}
+#image_mapping_data["img_1"]["projection"] = {'xscale': 1.0, 'camera': [5.699999999999976, -7.600000000000039, 4.999999999999972], 'yscale': 1.33, 'target': [-0.6499999999999996, -0.025, 5.625000000000002], 'up': [-0.1280297274786813, -0.025210559713782943, 0.9914498557973834]}
+#image_mapping_data["img_1"]["projection"] = {'xscale': 1.0, 'camera': [4.324999999999957, -4.024999999999988, 7.70000000000001], 'yscale': 1.33, 'target': [-0.5749999999999995, -0.025, 5.424999999999999], 'up': (0.0,0.0,1.0)}
+#image_mapping_data["img_1"]["projection"] = {'xscale': 1.0, 'camera': [4.349999999999957, -3.974999999999988, 7.72500000000001], 'yscale': 1.33, 'target': [-0.5999999999999995, 0, 5.424999999999999], 'up': [0.0, 0.025989506462090445, 0.9996622157278212]}
+image_mapping_data["img_1"]["projection"] = {'xscale': 1.5, 'camera': [5.7249999999999766, -8.025000000000045, 6.449999999999992], 'yscale': 2.51, 'target': [-1.0999999999999996, -0.025, 5.650000000000002], 'up': (0.0, 0.0, 1.0)}
+image_mapping_data["img_1"]["projection"] = {'xscale': 1.4, 'camera': [4.274999999999956, -8.300000000000049, 6.699999999999996], 'yscale': 2.51, 'target': [-1.1249999999999996, -0.025, 5.7500000000000036], 'up': [0.007904268768544647, 0.010539104615119298, 0.9999132211392879]}
+image_mapping_data["img_1"]["projection"] = {'xscale': 1.313, 'camera': [3.7249999999999535, -8.275000000000048, 7.100000000000001], 'yscale': 2.538, 'target': [-1.1749999999999994, -0.025, 5.800000000000004], 'up': [0.015537794932649479, 0.018198676592683993, 0.999713651551736]}
+# Include ld.bl
+image_mapping_data["img_1"]["projection"] = {'xscale': 1.313, 'camera': [3.274999999999955, -8.200000000000047, 7.550000000000008], 'yscale': 2.538, 'target': [-1.1999999999999993, -0.025, 5.850000000000005], 'up': [0.025724837840984928, 0.020849315095758218, 0.9994516190282013]}
+image_mapping_data["img_1"]["projection"] = {'xscale': 0.6307628326789375, 'camera': [-2.9250000000000314, -1.7999999999999958, 10.675000000000052], 'yscale': 3.1895123566316363, 'target': [-1.824999999999997, -0.025, 7.175000000000024], 'up': [-0.17289738620078887, 0.0966518133922961, 0.980186166405605]}
+# Exclude ld.bl
+#image_mapping_data["img_1"]["projection"] = {'xscale': 0.585, 'camera': [-0.07500000000003758, -3.5999999999999894, 11.100000000000058], 'yscale': 2.235, 'target': [-1.6499999999999977, -0.025, 6.250000000000011], 'up': [0.1901964638010508, 0.033214255290522667, 0.9811840390075003]}
+
 
 image_mapping_data["img_2"] = {}
 image_mapping_data["img_2"]["filename"] = "sidsussexbell_2.jpg"
@@ -468,49 +475,77 @@ class c_mapping(object):
         self.point_mappings.set_projection(name, self.image_projections[name])
         pass
     #f find_better_projection
-    def find_better_projection(self,image_projection,projection,deltas_list,delta_scale,scale_error_weight=1.0):
-        smallest_error = (None,10000)
+    def find_better_projection(self,image_projection,projection,deltas_list,delta_scale,scale_error_weight=1.0,verbose=False):
+        smallest_error = (None,10000,{},1.0,1.0)
         for deltas in deltas_list:
             r = {}
             image_projection.set_projection( projection=projection, deltas=deltas, delta_scale=0.25, resultant_projection=r )
-            print
-            print deltas
+            if verbose:
+                print
+                print deltas, delta_scale, r
+                pass
             e = 0
-            corr = (statistics.c_correlation(), statistics.c_correlation())
+            corr = [statistics.c_correlation(), statistics.c_correlation(),1.0,1.0]
             corr[0].add_entry(0.0,0.0)
             corr[1].add_entry(0.0,0.0)
+            pts = 0
             for n in self.point_mappings.get_mapping_names():
-                mapping = self.point_mappings.get_xy(n,image_projection.name)
-                if mapping is not None:
-                    e += image_projection.mapping_error(n,mapping,corr,object_guess_locations)
+                if n in object_guess_locations:
+                    xyz = object_guess_locations[n]
+                    mapping_xy = self.point_mappings.get_xy(n,image_projection.name)
+                    if mapping_xy is not None:
+                        e += image_projection.mapping_error(n,xyz,mapping_xy,corr,verbose=verbose)
+                        pts += 1
+                        pass
                     pass
                 pass
             full_e = e
             full_e += scale_error_weight*(1-corr[0].correlation_coefficient())
             full_e += scale_error_weight*(1-corr[1].correlation_coefficient())
-            print "Total error",full_e,e,1-corr[0].correlation_coefficient(), 1-corr[1].correlation_coefficient()
+            xscale = math.pow(corr[2],1.0/pts)
+            yscale = math.pow(corr[3],1.0/pts)
+            print "Total error",full_e,e,1-corr[0].correlation_coefficient(), 1-corr[1].correlation_coefficient(),xscale,yscale
             if full_e<smallest_error[1]:
-                smallest_error = (deltas,full_e,r)
+                smallest_error = (deltas,full_e,r,xscale/r["xscale"],yscale/r["yscale"])
                 pass
             pass
         print "Smallest error",smallest_error
         print
         return smallest_error
     #f blah
-    def blah(self, image_mapping_name):
-        global image_mapping_data
-        image_data = image_mapping_data[image_mapping_name]
-        p = self.image_projections[image_mapping_name].projection
-        for j in range(100):
-            for i in range(100000):
-                (d,e,p) = self.find_better_projection(self.image_projections[image_mapping_name],p,self.camera_deltas,delta_scale=0.05,scale_error_weight=0.1)
-                if len(d)==0:
-                    print "Iteration",j,i
+    def blah(self, image_mapping_name, verbose=False):
+        img_proj = self.image_projections[image_mapping_name]
+        projection = img_proj.projection
+        for k in range(100):
+            (xsc,ysc)=(1.0,1.0)
+            for j in range(1000):
+                done = False
+                for i in range(100000):
+                    (d,e,projection,xsc,ysc) = self.find_better_projection(img_proj, projection, self.camera_deltas, delta_scale=0.05, scale_error_weight=0.1, verbose=verbose)
+                    if len(d)==0:
+                        print "Iteration",j,i
+                        done = True
+                        break
+                    pass
+                (d,e,projection,xsc,ysc) = self.find_better_projection(img_proj, projection, self.target_deltas,delta_scale=0.00125, verbose=verbose)
+                if len(d)!=0: done=False
+                (d,e,projection,xsc,ysc) = self.find_better_projection(img_proj, projection, self.up_deltas,delta_scale=0.000125, verbose=verbose)
+                if len(d)!=0: done=False
+                if done:
                     break
                 pass
-            (d,e,p) = self.find_better_projection(self.image_projections[image_mapping_name],p,self.target_deltas,delta_scale=0.00125)
-            (d,e,p) = self.find_better_projection(self.image_projections[image_mapping_name],p,self.up_deltas,delta_scale=0.000125)
+            if done:
+                if (xsc<0.999) or (xsc>1.001): done = False
+                if (ysc<0.999) or (ysc>1.001): done = False
+                if not done:
+                    projection["xscale"] *= math.sqrt(xsc)
+                    projection["yscale"] *= math.sqrt(ysc)
+                    pass
+                pass
+            if done:
+                break
             pass
+        (d,e,projection,xsc,ysc) = self.find_better_projection(img_proj, projection, [{}], delta_scale=0.05, scale_error_weight=0, verbose=True)
         pass
     #f load_images
     def load_images(self, image_mapping_data):
@@ -520,24 +555,6 @@ class c_mapping(object):
                             image_filename=image_data["filename"],
                             projection=image_data["projection"],
                             size=image_data["size"])
-            pass
-        pass
-    #f calc_total_errors
-    def calc_total_errors(self):
-        global image_mapping_data
-        # Should get data from point_mappings instead
-        for k in image_mapping_data:
-            #if k in ["img_1", "img_3"]: continue
-            image_data = image_mapping_data[k]
-            print
-            print k
-            e = 0
-            corr = (statistics.c_correlation(), statistics.c_correlation())
-            for n in image_data["mappings"]: # Should get data from point_mappings instead
-                xy = image_data["mappings"][n]
-                e += self.image_projections[k].mapping_error(n,xy,corr)
-                pass
-            print "Total error",e,1-corr[0].correlation_coefficient(), 1-corr[1].correlation_coefficient()
             pass
         pass
     #f generate_faces(self):
@@ -605,7 +622,7 @@ class c_mapping(object):
             ogm.create_opengl_surface(projection_callback=xyz_from_image_uv)
             self.meshes.append(ogm)
             pass
-        #proj.load_texture()
+        proj.load_texture()
         #die
         pass
     #f reset
@@ -623,8 +640,8 @@ class c_mapping(object):
         self.point_mappings.approximate_positions()
         self.generate_faces()
 
-        self.blah("main")
-        die
+        #self.blah("main")
+        #die
         pass
     #f display_set_projection
     def display_set_projection(self):

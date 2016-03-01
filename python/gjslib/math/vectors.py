@@ -1,3 +1,23 @@
+import math
+
+def vector_prod3(a,b):
+    r = [ a[1]*b[2] - a[2]*b[1],
+          a[2]*b[0] - a[0]*b[2],
+          a[0]*b[1] - a[1]*b[0] ]
+    return r
+
+def vector_normalize(v, epsilon=1E-8):
+    d = math.sqrt(dot_product(v,v))
+    if d<epsilon: d=1
+    return vector_scale(v,1.0/d)
+
+def vector_scale(a,scale=1.0):
+    d = []
+    for i in range(len(a)):
+        d.append(a[i]*scale)
+        pass
+    return d
+
 def vector_add(a,b,scale=1.0):
     d = []
     for i in range(len(a)):

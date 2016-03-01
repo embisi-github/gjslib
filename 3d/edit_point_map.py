@@ -17,6 +17,18 @@ from image_point_mapping import c_point_mapping
 
 #a c_edit_point_map_image
 class c_edit_point_map_image(object):
+    """
+    This class represents an image that can be presented in an OpenGL widget frame,
+    that corresponds to an image with a point mapping of (x,y) points to names
+
+    When displayed it shows the image (-1,-1) to (+1,+1) and an optional 'focus' indicator
+    The center of the source image for (0,0) can be selected, as can the scale (i.e. zoom)
+
+    Optionally the image can display the point-map points; these will be represented in
+    the first instance as spinning glowing '+' marks on the relevant spots of the image
+
+    The 'focus' indicator defaults to a white border of a configurable OpenGL-coord width/height
+    """
     #f __init__
     def __init__(self, filename=None, image_name=None, epm=None, pm=None):
         self.filename = filename
@@ -36,18 +48,31 @@ class c_edit_point_map_image(object):
         pass
     #f set_focus
     def set_focus(self, focus=True):
+        """
+        Enable or disable the display of the 'focus frame'
+        """
         self.display_options["focus"] = focus
         pass
     #f focus_on_point
-    def focus_on_point(self, pt_name):
+    def focus_on_point(self, pt_name, force_focus=False):
+        """
+        Set the center of the image in the display window to be the point name in the
+        point mappings; if the image has no map, then either do not move the centering
+        or force the focus to move to the center of the image.
+        """
         pt = self.point_mappings.get_xy(pt_name, self.image_name )
-        if pt is None:
-            #self.center = (0,0)
+        if force_focus and (pt is None):
+            self.center = (0,0)
             return
         self.center = (-pt[0],-pt[1])
         pass
     #f adjust
     def adjust(self, scale=(1.0,1.0), translate=(0.0,0.0), scaled=True ):
+        """
+        Adjust the view of the image by a scale and translation.
+
+        If 'scaled' then scale the translation.
+        """
         if type(scale)==float:
             scale = (scale,scale)
             pass
@@ -63,6 +88,11 @@ class c_edit_point_map_image(object):
         pass
     #f load_texture
     def load_texture(self):
+        """
+        Load the texture and create any OpenGL objects required for display.
+
+        This is done in a lazy fashion - only create the image etc when required
+        """
         if (self.texture is None):
             self.texture = gjslib.graphics.opengl.texture_from_png(self.filename)
             pass
@@ -85,7 +115,8 @@ class c_edit_point_map_image(object):
     #f uniform_xy
     def uniform_xy(self, xy):
         """
-        Return -1->1 xy for a view port xy 0->1
+        Return the corresponding uniform xy (-1->1) for a view port xy 0->1.
+        This depends on the scaling and centering of the view port onto the image
         """
         # Get xy in range -1 -> 1
         xy = (2.0*xy[0]-1.0, 2.0*xy[1]-1.0)
@@ -94,14 +125,18 @@ class c_edit_point_map_image(object):
         return xy
     #f display
     def display(self):
+        """
+        Display the point map image with focus if required to the current OpenGL context
+        """
         self.load_texture()
-        if self.texture is None:
-            return
+
         if self.display_options["focus"]:
-            glMaterialfv(GL_FRONT,GL_DIFFUSE,[1.0,1.0,1.0,1.0])
-            glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,1.0,1.0,1.0])
-            glDisable(GL_TEXTURE_2D)
-            self.focus_object.draw_opengl_surface()
+            if self.focus_object is not None:
+                glMaterialfv(GL_FRONT,GL_DIFFUSE,[1.0,1.0,1.0,1.0])
+                glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,1.0,1.0,1.0])
+                glDisable(GL_TEXTURE_2D)
+                self.focus_object.draw_opengl_surface()
+                pass
             pass
 
         glPushMatrix()
@@ -114,7 +149,7 @@ class c_edit_point_map_image(object):
             glMaterialfv(GL_FRONT,GL_AMBIENT,c)
             glDisable(GL_TEXTURE_2D)
             for m in self.epm.point_mapping_names:
-                pt = self.point_mappings.get_xy(m, self.image_name )
+                pt = self.point_mappings.get_xy(m, self.image_name)
                 if pt is not None:
                     glPushMatrix()
                     glTranslate(pt[0],pt[1],-0.1)
@@ -134,18 +169,28 @@ class c_edit_point_map_image(object):
                 pass
             pass
 
-        glMaterialfv(GL_FRONT,GL_DIFFUSE,[1.0,1.0,1.0,1.0])
-        glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,1.0,1.0,1.0])
-        glEnable(GL_TEXTURE_2D)
-        glBindTexture(GL_TEXTURE_2D, self.texture)
-        self.object.draw_opengl_surface()
-        glPopMatrix()
+        if self.texture is not None:
+            glBindTexture(GL_TEXTURE_2D, self.texture)
+            pass
+
+        if self.object is not None:
+            glMaterialfv(GL_FRONT,GL_DIFFUSE,[1.0,1.0,1.0,1.0])
+            glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,1.0,1.0,1.0])
+            glEnable(GL_TEXTURE_2D)
+            self.object.draw_opengl_surface()
+            glPopMatrix()
+            pass
         pass
     #f All done
     pass
 
 #a c_edit_point_map_info
 class c_edit_point_map_info(opengl_widget.c_opengl_container_widget):
+    """
+    This class represents an OpenGL widget that contains information frames for the edit point map
+
+    It contains a set of subwidgets that are updated when the 'update' call is invoked
+    """
     #f __init__
     def __init__(self, epm=None, pm=None, **kwargs):
         opengl_widget.c_opengl_container_widget.__init__(self, **kwargs)
@@ -179,6 +224,11 @@ class c_edit_point_map_info(opengl_widget.c_opengl_container_widget):
 
 #a c_edit_point_map
 class c_edit_point_map(object):
+    """
+    Top level class for the editing of point maps application
+
+    
+    """
     glow_colors = []
     n = 10
     r = 0.5

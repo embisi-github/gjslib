@@ -8,7 +8,7 @@ class c_set_of_lines(object):
         pass
     def add_line(self, pt, drn):
         drn = list(drn)
-        matrix.normalize(drn)
+        drn = vectors.vector_normalize(drn)
         self.lines.append( (pt,drn) )
         pass
     def generate_meeting_points(self, too_close=0.0001):

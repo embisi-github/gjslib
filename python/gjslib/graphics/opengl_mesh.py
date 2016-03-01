@@ -96,7 +96,7 @@ class c_opengl_textured_mesh(object):
         self.object = gjslib.graphics.obj.c_obj()
         for t in self.mesh.triangles:
             #print t.winding_order
-            if (t.winding_order%2)==0: continue
+            #if (t.winding_order%2)==0: continue
             xyz_list = []
             uv_list = []
             for p in t.pts:

@@ -1,24 +1,6 @@
 #!/usr/bin/env python
 import math
-
-#a Useful functions
-def normalize(xyz):
-    d = 0
-    for v in xyz:
-        d += v*v
-        pass
-    if d<0.000001:
-        pass
-    d = math.sqrt(d)
-    for i in range(len(xyz)):
-        xyz[i] = xyz[i] / d
-        pass
-    pass
-def vector_prod(a,b):
-    r = [ a[1]*b[2] - a[2]*b[1],
-          a[2]*b[0] - a[0]*b[2],
-          a[0]*b[1] - a[1]*b[0] ]
-    return r
+import vectors
         
 #a c_matrix2x2
 class c_matrix2x2(object):
@@ -86,14 +68,12 @@ class c_matrix3x3(object):
         pass
     #f lookat
     def lookat(self, eye, target, up):
-        forward = [target[0]-eye[0],
-                   target[1]-eye[1],
-                   target[2]-eye[2]]
-        normalize(forward)
-        side = vector_prod(forward,up)
-        normalize(side)
-        up = vector_prod(side,forward)
-        normalize(up)
+        forward = vectors.vector_add(target, eye, scale=-1.0)
+        forward = vectors.vector_normalize(forward)
+        side    = vectors.vector_prod3(forward,up)
+        side    = vectors.vector_normalize(side)
+        up      = vectors.vector_prod3(side,forward)
+        up      = vectors.vector_normalize(up)
         self.matrix = (side[0], side[1], side[2],
                        up[0], up[1], up[2],
                        -forward[0], -forward[1], -forward[2])
