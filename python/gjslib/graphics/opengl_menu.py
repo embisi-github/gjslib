@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
 #a Imports
+from OpenGL.GLUT import *
 
-#a Class for c_opengl
+#a Class for c_opengl_menu
 #c c_opengl_menu
 class c_opengl_menu(object):
     #f __init__
@@ -20,14 +21,14 @@ class c_opengl_menu(object):
     def add_menu(self, menu_name):
         self.menu_list.append( (menu_name,[]) )
         pass
-    #f add_menu_item
-    def add_menu_item(self,text,item_id):
+    #f add_item
+    def add_item(self,text,item_id):
         self.menu_list[-1][1].append((text,len(self.ids)))
         self.ids.append(item_id)
         pass
-    #f add_menu_submenu
-    def add_menu_submenu(self,text,menu_name):
-        self.menu_list[-1].append( (text,menu_name) )
+    #f add_submenu
+    def add_submenu(self,text,menu_name):
+        self.menu_list[-1][1].append( (text,menu_name) )
         return
     #f glut_id
     def glut_id(self, name):
@@ -43,7 +44,7 @@ class c_opengl_menu(object):
         pass
     #f destroy_opengl_menus
     def destroy_opengl_menus(self):
-        if len(self.menus)==0:
+        if len(self.menu_gluts)==0:
             return
         glutDetachMenu()
         for n in self.menu_gluts:
@@ -62,7 +63,7 @@ class c_opengl_menu(object):
                     glutAddMenuEntry(text, item)
                     pass
                 else:
-                    glutAddSubMenu(text, self.menu_gluts[name])
+                    glutAddSubMenu(text, self.menu_gluts[item])
                     pass
                 pass
             pass

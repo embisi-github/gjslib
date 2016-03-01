@@ -4,7 +4,7 @@
 #a Imports
 import gjslib.graphics.obj
 import gjslib.graphics.opengl
-from gjslib.graphics import opengl_layer, opengl_widget, opengl_utils
+from gjslib.graphics import opengl_app, opengl_layer, opengl_widget, opengl_utils, opengl_menu
 
 import math
 from OpenGL.GLUT import *
@@ -178,8 +178,9 @@ class c_edit_point_map_image(object):
             glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,1.0,1.0,1.0])
             glEnable(GL_TEXTURE_2D)
             self.object.draw_opengl_surface()
-            glPopMatrix()
             pass
+
+        glPopMatrix()
         pass
     #f All done
     pass
@@ -194,9 +195,9 @@ class c_edit_point_map_info(opengl_widget.c_opengl_container_widget):
     #f __init__
     def __init__(self, epm=None, pm=None, **kwargs):
         opengl_widget.c_opengl_container_widget.__init__(self, **kwargs)
-        self.info_widget    = opengl_widget.c_opengl_simple_text_widget(og=epm.og)
-        self.image_widget   = opengl_widget.c_opengl_simple_text_widget(og=epm.og)
-        self.mapping_widget = opengl_widget.c_opengl_simple_text_widget(og=epm.og)
+        self.info_widget    = opengl_widget.c_opengl_simple_text_widget(og=epm)
+        self.image_widget   = opengl_widget.c_opengl_simple_text_widget(og=epm)
+        self.mapping_widget = opengl_widget.c_opengl_simple_text_widget(og=epm)
         self.epm = epm
         self.point_mappings = pm
         self.add_widget(self.info_widget,   map_xywh=( (0.0,0.0,6000.0,100.0), ( -1.0,0.9,2.0,-2*0.1) ) )
@@ -223,7 +224,7 @@ class c_edit_point_map_info(opengl_widget.c_opengl_container_widget):
     pass
 
 #a c_edit_point_map
-class c_edit_point_map(object):
+class c_edit_point_map(opengl_app.c_opengl_app):
     """
     Top level class for the editing of point maps application
 
@@ -238,30 +239,15 @@ class c_edit_point_map(object):
             glow_colors.append((1-r+v, 1-v, r, 1-r+v, 1-v)[i:i+3])
             pass
         pass
-    print glow_colors
+
     #f __init__
-    def __init__(self, og):
+    def __init__(self, **kwargs):
+        opengl_app.c_opengl_app.__init__(self, **kwargs)
         self.tick = 0
-        self.og = og
         self.aspect = 1.0
         self.zNear=1.0
         self.zFar=40.0
         self.images = {}
-        self.og.init_opengl()
-        font_dir = "../../fonts/"
-        self.og.load_font(font_dir+"cabin-bold")
-        self.point_mappings = c_point_mapping()
-        self.load_point_mapping("sidsussexbell.map")
-        self.epm_info = c_edit_point_map_info(epm=self, pm=self.point_mappings)
-        self.load_images()
-        self.point_set_start_tick = None
-        pass
-    #f main_loop
-    def main_loop(self):
-        self.og.main_loop( display_callback=self.display,
-                           keyboard_callback = self.keyboard_callback,
-                           mouse_callback = self.mouse_callback,
-                           menu_callback = self.menu_callback)
         pass
     #f save_point_mapping
     def save_point_mapping(self, point_map_filename):
@@ -290,27 +276,38 @@ class c_edit_point_map(object):
                                                     filename=image_data["filename"])
             pass
         pass
-    #f reset
-    def reset(self):
+    #f opengl_post_init
+    def opengl_post_init(self):
+        font_dir = "../../fonts/"
+        self.load_font(font_dir+"cabin-bold")
+        self.point_mappings = c_point_mapping()
+        self.load_point_mapping("sidsussexbell.map")
+        self.epm_info = c_edit_point_map_info(epm=self, pm=self.point_mappings)
+        self.load_images()
+        self.point_set_start_tick = None
+
         glutSetCursor(GLUT_CURSOR_CROSSHAIR)
 
-        menus = self.og.build_menu_init()
-        self.og.build_menu_add_menu(menus,"images")
         self.image_names = self.images.keys()
         self.image_names.sort()
+
+        self.menus = opengl_menu.c_opengl_menu()
+        self.menus.add_menu("images")
         for i in self.image_names:
-            self.og.build_menu_add_menu_item(menus,i,("image",i))
+            self.menus.add_item(i,("image",i))
             pass
-        self.og.build_menu_add_menu(menus,"main_menu")
-        self.og.build_menu_add_menu_submenu(menus,"Images","images")
-        self.og.build_menu_add_menu_item(menus,"Save",("save",0))
-        self.og.create_menus(menus)
-        self.og.attach_menu("main_menu")
+        self.menus.add_menu("points")
+        for i in self.point_mapping_names:
+            self.menus.add_item(i,("point",i))
+            pass
+        self.menus.add_menu("main_menu")
+        self.menus.add_submenu("Images","images")
+        self.menus.add_submenu("Points","points")
+        self.menus.add_item("Save",("save",0))
+        self.menus.create_opengl_menus()
+        self.attach_menu(self.menus, "main_menu")
 
         self.epm_info.update()
-        for i in self.images:
-            self.images[i].camera = self.og.camera
-            pass
 
         self.displayed_images = ["img_1", "img_2"]
         self.focus_image = 0
@@ -398,9 +395,6 @@ class c_edit_point_map(object):
             pass
         self.glow_tick = (self.tick/10) % len(self.glow_colors)
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
-        self.og.camera["facing"] = c_quaternion.roll(self.og.camera["rpy"][0]).multiply(self.og.camera["facing"])
-        self.og.camera["facing"] = c_quaternion.pitch(self.og.camera["rpy"][1]).multiply(self.og.camera["facing"])
-        self.og.camera["facing"] = c_quaternion.yaw(self.og.camera["rpy"][2]).multiply(self.og.camera["facing"])
         self.layers.display()
         glutSwapBuffers()
         pass
@@ -478,8 +472,8 @@ class c_edit_point_map(object):
             self.images[image_name].set_focus(True)
             pass
         pass
-    #f menu_callback
-    def menu_callback(self, menu, value):
+    #f mmenu_callback
+    def mmenu_callback(self, menu, value):
         if type(value)==tuple:
             if value[0]=="image":
                 self.select_image(value[1])
@@ -490,8 +484,8 @@ class c_edit_point_map(object):
             pass
         print menu, value
         return True
-    #f keyboard_callback
-    def keyboard_callback(self,k,m,x,y):
+    #f keypress
+    def keypress(self,k,m,x,y):
         sc = 1.0
         if (m & GLUT_ACTIVE_SHIFT): sc=4.0
         image_controls = {"D":(1.0,-sc,0.0,0),
@@ -535,9 +529,9 @@ class c_edit_point_map(object):
             return True
         print ord(k),x,y
         pass
-    #f mouse_callback
-    def mouse_callback(self,b,s,m,x,y):
-        xy = self.og.window_xy((x,y))
+    #f mouse
+    def mouse(self,b,s,m,x,y):
+        xy = self.window_xy((x,y))
         layers = self.layers.find_layers_at_xy(xy)
         if len(layers)==0:
             self.point_set_end()
@@ -581,9 +575,8 @@ class c_edit_point_map(object):
 
 #a Main
 def main():
-    og = gjslib.graphics.opengl.c_opengl(window_size = (1800,1100))
-    m = c_edit_point_map(og)
-    m.reset()
+    m = c_edit_point_map(window_size = (1800,1100))
+    m.init_opengl()
     m.main_loop()
 
 if __name__ == '__main__':

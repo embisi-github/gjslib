@@ -16,6 +16,7 @@ class c_opengl_app(object):
     def __init__(self, window_size):
         self.window_size = window_size
         self.display_has_errored = False
+        self.fonts = {}
         pass
     #f window_xy
     def window_xy(self, xy):
@@ -134,6 +135,7 @@ class c_opengl_app(object):
     #f load_font
     def load_font(self, bitmap_filename):
         import numpy
+        from gjslib.graphics.font import c_bitmap_font
         bf = c_bitmap_font()
         bf.load(bitmap_filename)
 
