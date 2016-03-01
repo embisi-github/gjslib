@@ -72,6 +72,7 @@ from image_point_mapping import c_point_mapping
 from image_projection import c_image_projection
 
 #a Class
+#c c_plane
 class c_plane(object):
     """
     A plane can be described as the set of points p satisfying
@@ -446,7 +447,7 @@ class c_mapping(opengl_app.c_opengl_camera_app):
                   {"up":(0.0,0.0,+0.01)},
                   {}]
     #f __init__
-    def __init__(self, obj, texture_filename, **kwargs):
+    def __init__(self, **kwargs):
         opengl_app.c_opengl_camera_app.__init__(self, **kwargs)
         self.first_pass = True
         self.mvp =  matrix.c_matrix4x4()
@@ -838,26 +839,20 @@ class c_mapping(opengl_app.c_opengl_camera_app):
 
 #a Main
 def main():
-    m = c_mapping()
-    menus = [ ("submenu",   (("a",1), ("b",2))),
-              ("main_menu", (("sub", "submenu"), ("c", 3)))
-              ]
-    og = opengl.c_opengl(window_size = (1000,1000))
+    og = c_mapping(window_size = (1000,1000))
     og.init_opengl()
-    menus = og.build_menu_init()
-    og.build_menu_add_menu(menus,"submenu")
-    og.build_menu_add_menu_item(menus,"a",("a",1))
-    og.build_menu_add_menu_item(menus,"b",("b",2))
-    og.build_menu_add_menu(menus,"main_menu")
-    og.build_menu_add_menu_submenu(menus,"Sub","submenu")
-    og.build_menu_add_menu_item(menus,"c","Item c")
-    og.create_menus(menus)
-    og.attach_menu("main_menu")
-    m.camera = og.camera
-    m.reset()
-    og.main_loop( display_callback=m.display,
-                  mouse_callback = m.mouse)
-                  #menu_callback = menu_callback)
+    #menus = og.build_menu_init()
+    #og.build_menu_add_menu(menus,"submenu")
+    #og.build_menu_add_menu_item(menus,"a",("a",1))
+    #og.build_menu_add_menu_item(menus,"b",("b",2))
+    #og.build_menu_add_menu(menus,"main_menu")
+    #og.build_menu_add_menu_submenu(menus,"Sub","submenu")
+    #og.build_menu_add_menu_item(menus,"c","Item c")
+    #og.create_menus(menus)
+    #og.attach_menu("main_menu")
+    #m.camera = og.camera
+    #m.reset()
+    og.main_loop()
 
 if __name__ == '__main__':
     main()
