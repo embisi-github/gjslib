@@ -153,7 +153,8 @@ class c_edit_point_map_image(object):
                 if pt is not None:
                     glPushMatrix()
                     glTranslate(pt[0],pt[1],-0.1)
-                    sc = 0.01/self.scale[0]
+                    sc = 0.003/self.scale[0]
+                    sc = sc * (1+2*(self.epm.tick%100)/100.0)
                     if self.epm.point_mapping_names[self.epm.point_mapping_index]==m:
                         sc = sc*2
                         pass
@@ -291,15 +292,13 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         self.image_names = self.images.keys()
         self.image_names.sort()
 
-        self.menus = opengl_menu.c_opengl_menu()
+        self.menus = opengl_menu.c_opengl_menu(callback=self.menu_select)
         self.menus.add_menu("images")
         for i in self.image_names:
             self.menus.add_item(i,("image",i))
             pass
         self.menus.add_menu("points")
-        for i in self.point_mapping_names:
-            self.menus.add_item(i,("point",i))
-            pass
+        self.menus.add_hierarchical_select_menu("points",self.point_mapping_names, item_select_value=lambda x:("point",x))
         self.menus.add_menu("main_menu")
         self.menus.add_submenu("Images","images")
         self.menus.add_submenu("Points","points")
@@ -472,11 +471,14 @@ class c_edit_point_map(opengl_app.c_opengl_app):
             self.images[image_name].set_focus(True)
             pass
         pass
-    #f mmenu_callback
-    def mmenu_callback(self, menu, value):
+    #f menu_select
+    def menu_select(self, menu, value):
         if type(value)==tuple:
             if value[0]=="image":
                 self.select_image(value[1])
+                return True
+            if value[0]=="point":
+                self.change_point(point_name=value[1])
                 return True
             if value[0]=="save":
                 self.save_point_mapping("sidsussexbell.map")
@@ -531,7 +533,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         pass
     #f mouse
     def mouse(self,b,s,m,x,y):
-        xy = self.window_xy((x,y))
+        xy = (x,y)
         layers = self.layers.find_layers_at_xy(xy)
         if len(layers)==0:
             self.point_set_end()

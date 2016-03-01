@@ -21,6 +21,9 @@ class c_opengl_app(object):
     #f window_xy
     def window_xy(self, xy):
         return ((xy[0]+1.0)*self.window_size[0]/2, (xy[1]+1.0)*self.window_size[1]/2)
+    #f uniform_xy
+    def uniform_xy(self, xy):
+        return (-1.0+2*float(xy[0])/self.window_size[0], -1.0+2*float(xy[1])/self.window_size[1])
     #f attach_menu
     def attach_menu(self, menu, name):
         glutSetMenu(menu.glut_id(name))
@@ -68,6 +71,9 @@ class c_opengl_app(object):
         pass
     #f keypress_callback
     def keypress_callback(self, key,x,y):
+        w = glutGet(GLUT_WINDOW_WIDTH)
+        h = glutGet(GLUT_WINDOW_HEIGHT)
+        y = h-y # Invert y as OpenGL want it from BL
         m = glutGetModifiers()
         if self.keypress(key,m,x,y):
             return
@@ -76,6 +82,9 @@ class c_opengl_app(object):
         pass
     #f mouse_callback
     def mouse_callback(self, button,state,x,y):
+        w = glutGet(GLUT_WINDOW_WIDTH)
+        h = glutGet(GLUT_WINDOW_HEIGHT)
+        y = h-y # Invert y as OpenGL want it from BL
         m = glutGetModifiers()
         b = "left"
         s = "up"
@@ -84,8 +93,6 @@ class c_opengl_app(object):
         if button == GLUT_LEFT_BUTTON:   b="left"
         if button == GLUT_MIDDLE_BUTTON: b="middle"
         if button == GLUT_RIGHT_BUTTON:  b="right"
-        x = (2.0*x)/self.window_size[0]-1.0
-        y = 1.0-(2.0*y)/self.window_size[1]
         self.mouse(b,s,m,x,y)
         pass
     #f idle_callback
