@@ -97,7 +97,8 @@ def closest_meeting_of_two_lines(p0, d0, p1, d1, too_close=0.0001):
     D = d0d0*d1d1 - d0d1*d0d1
 
     if D<too_close:
-        return ( (0.0,0.0), (0.0,0.0), 0.0, 1.0/too_close )
+        zero = vector_add(p0,p0,scale=-1.0)
+        return ( zero, zero, 0.0, 1.0/too_close )
 
     s = (d1d1*d0p10 - d0d1*d1p10) / D
     t = (d0d1*d0p10 - d0d0*d1p10) / D

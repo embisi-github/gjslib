@@ -18,8 +18,8 @@ class c_point_mapping(object):
     #f get_images
     def get_images(self):
         return self.images.keys()
-    #f get_image
-    def get_image(self, image_name):
+    #f get_image_data
+    def get_image_data(self, image_name):
         return self.images[image_name]
     #f load_data_add_image
     def load_data_add_image(self, data):
@@ -76,6 +76,8 @@ class c_point_mapping(object):
             cb(data)
             pass
         f.close()
+        self.images["main"]["projection"] = {'xscale': 1.0636174418096784, 'camera': [-3.1749999999999945, -15.325000000000035, 6.595000000000033], 'yscale': 1.5135350671146544, 'target': [6.375000000000009, 0.0, 5.325000000000017], 'up': [-0.1422858044230801, 0.03653391377635495, 0.9891511628683752]}
+        self.images["img_1"]["projection"] = {'xscale': 2.323016417382242, 'camera': [7.875000000000012, -8.325000000000033, 8.425000000000024], 'yscale': 2.3233962463563502, 'target': [-1.2499999999999991, 0.0, 7.325000000000026], 'up': [-0.00036548890680590984, 0.02728913846465669, 0.9996275152974311]}
         pass
     #f save_data
     def save_data(self, data_filename):
@@ -150,7 +152,42 @@ class c_point_mapping(object):
                 pass
             print v%(name,image,str(xy))
             pass
+        undo_op = (name,image,None)
+        if image in self.image_mappings[name]:
+            old_xy = self.image_mappings[name][image]
+            undo_op = (name,image,(old_xy[0],old_xy[1]))
+            pass
         self.image_mappings[name][image] = xy
+        return undo_op
+    #f delete_image_location
+    def delete_image_location(self,name,image,verbose=False):
+        if image not in self.image_mappings[name]:
+            if verbose:
+                print "Requested deleting point %s that is not in image %s"%(name,image)
+                pass
+            return None
+        if verbose:
+            print "Deleting point %s in image %s"%(name,image)
+            pass
+        undo_op = (name,image,self.image_mappings[name][image])
+        del(self.image_mappings[name][image])
+        return undo_op
+    #f undo_add_image_location
+    def undo_add_image_location(self, undo_op, verbose=False):
+        (name, image, xy) = undo_op
+        if xy is None:
+            self.delete_image_location(name,image,verbose=verbose)
+            pass
+        else:
+            self.add_image_location(name,image,xy,verbose=verbose)
+            pass
+        pass
+    #f undo_delete_image_location
+    def undo_delete_image_location(self, undo_op, verbose=False):
+        if undo_op is None:
+            return
+        (name, image, xy) = undo_op
+        self.add_image_location(name,image,xy,verbose=verbose)
         pass
     #f set_projection
     def set_projection(self,image,projection):
@@ -197,6 +234,8 @@ class c_point_mapping(object):
         pass
     #f get_approx_position
     def get_approx_position(self, name ):
+        if name not in self.positions:
+            return None
         return self.positions[name]
     #f Done
     pass

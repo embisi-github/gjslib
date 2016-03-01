@@ -140,10 +140,15 @@ class c_plane(object):
             vk = self.xyz_list[k][0]
             vij = (vj[0]-vi[0], vj[1]-vi[1], vj[2]-vi[2])
             vik = (vk[0]-vi[0], vk[1]-vi[1], vk[2]-vi[2])
+            vij = vectors.vector_normalize(vij)
+            vjk = vectors.vector_normalize(vik)
             n = (vij[1]*vik[2] - vij[2]*vik[1],
                  vij[2]*vik[0] - vij[0]*vik[2],
                  vij[0]*vik[1] - vij[1]*vik[0])
             ln = math.sqrt(n[0]*n[0] + n[1]*n[1] + n[2]*n[2])
+            if (ln<0.7):
+                print "Dont like normal",(i,j,k)
+                continue
             if (ln<epsilon):
                 n = (0.0,0.0,0.0)
                 pass
@@ -163,6 +168,8 @@ class c_plane(object):
         return normals
     #f average_normal
     def average_normal(self, normals, epsilon=1E-6):
+        if len(normals)==0:
+            return None
         normal = (0.0,0.0,0.0)
         for (ijk,n) in normals:
             normal = (normal[0]+n[0], normal[1]+n[1], normal[2]+n[2])
@@ -290,11 +297,26 @@ class c_plane(object):
     pass
 
 #a Mapping data
+"""
+lspike 0,1810
+clk center 0,1275
+rspkie 0,1502
+
+clk cetner = 1275/1650 * spike height
+
+450 on spkie approx 2.7m
+
+Spikes at 10.86m off the ground
+clock center at 8.4m off the groun
+LDBL at about 4.5m left of center
+
+spkies at 620.0/936*4.5
+"""
 object_guess_locations = {}
-object_guess_locations["clk.center"] = (0.0,0.5,6.5)
-object_guess_locations["lspike.t"] = (-3.0,0.0,8.5)
-object_guess_locations["rspike.t"] = ( 3.0,0.0,8.5)
-#object_guess_locations["ld.bl"] = ( -4.75,0.5,0.0)
+object_guess_locations["clk.center"] = (  0.0, -0.15,  8.4)
+object_guess_locations["lspike.t"]   = ( -3.0,  0.0, 10.9)
+object_guess_locations["rspike.t"]   = (  3.0,  0.0, 10.9)
+object_guess_locations["ld.bl"]      = ( -4.5,  0.0,  0.0)
 
 faces = {}
 faces["frontleft"]  = ("img_1",
@@ -306,7 +328,8 @@ faces["frontleft"]  = ("img_1",
                           "fl.cr5.bl", "fl.cr5.tl", "fl.cr5.tr", "fl.cr5.br",
                           "fl.cr6.bl", "fl.cr6.br", 
                           "fl.cr", "fl.crt","fl.crtr",
-                          ],#"fl.br", "bl"],
+                          "fl.br", "bl",
+                          ],
                          ["fl.win1.bl","fl.win1.br","fl.win1.tr","fl.win1.tl"],
                          ["fl.win2.bl","fl.win2.br","fl.win2.tr","fl.win2.tl"],
                          ["fl.win3.bl","fl.win3.br","fl.win3.tr","fl.win3.tl"],
@@ -360,6 +383,7 @@ image_mapping_data["img_1"]["projection"] = {'xscale': 0.6307628326789375, 'came
 # Exclude ld.bl
 #image_mapping_data["img_1"]["projection"] = {'xscale': 0.585, 'camera': [-0.07500000000003758, -3.5999999999999894, 11.100000000000058], 'yscale': 2.235, 'target': [-1.6499999999999977, -0.025, 6.250000000000011], 'up': [0.1901964638010508, 0.033214255290522667, 0.9811840390075003]}
 
+image_mapping_data["img_1"]["projection"] = {"camera":(+7.0,-6.0,6.7), "target":(-1.0,0.0,5.5), "up":(0.0,0.0,1.0), "xscale":1.5, "yscale":2.1}
 
 image_mapping_data["img_2"] = {}
 image_mapping_data["img_2"]["filename"] = "sidsussexbell_2.jpg"
@@ -374,6 +398,9 @@ image_mapping_data["img_3"]["size"] = (320,370)
 image_mapping_data["img_3"]["projection"] = {'xscale': 3.0, 'camera': [0.05, -9.999999999999986, -0.6500000000000005], 'yscale': 2.93, 'target': [0.25, 0.2, 4.999999999999997], 'up': (0.0, 0.0, 1.0)}
 image_mapping_data["img_3"]["projection"] = {'xscale': 2.95, 'camera': [0.025, -10.024999999999986, -0.6250000000000004], 'yscale': 2.93, 'target': [0.225, 0.2, 4.999999999999997], 'up': (0.0, 0.0, 1.0)}
 image_mapping_data["img_3"]["projection"] = {'xscale': 2.95, 'camera': [0.07500000000000001, -9.824999999999983, -0.6500000000000005], 'yscale': 2.91, 'target': [0.25, 0.2, 4.999999999999997], 'up': (0.0, 0.0, 1.0)}
+
+image_mapping_data["main"]["projection"] = {'xscale': 1.0636174418096784, 'camera': [-3.1749999999999945, -15.325000000000035, 6.595000000000033], 'yscale': 1.5135350671146544, 'target': [6.375000000000009, 0.0, 5.325000000000017], 'up': [-0.1422858044230801, 0.03653391377635495, 0.9891511628683752]}
+image_mapping_data["img_1"]["projection"] = {'xscale': 2.323016417382242, 'camera': [7.875000000000012, -8.325000000000033, 8.425000000000024], 'yscale': 2.3233962463563502, 'target': [-1.2499999999999991, 0.0, 7.325000000000026], 'up': [-0.00036548890680590984, 0.02728913846465669, 0.9996275152974311]}
 
 #del(image_mapping_data["img_2"])
 #del(image_mapping_data["img_3"])
@@ -466,15 +493,15 @@ class c_mapping(opengl_app.c_opengl_camera_app):
         self.camera["facing"] = c_quaternion.identity()
         self.camera["facing"] = c_quaternion.pitch(-1*3.1415/2).multiply(self.camera["facing"])
         self.camera["facing"] = c_quaternion.roll(0*3.1415).multiply(self.camera["facing"])
-        for k in image_mapping_data:
-            #self.image_projections[k].load_texture()
-            pass
+
         self.point_mappings.find_line_sets()
         self.point_mappings.approximate_positions()
-        self.generate_faces()
 
         #self.blah("main")
         #die
+
+        self.generate_faces()
+
         pass
     #f load_point_mapping
     def load_point_mapping(self, point_map_filename):
@@ -518,8 +545,11 @@ class c_mapping(opengl_app.c_opengl_camera_app):
             full_e = e
             full_e += scale_error_weight*(1-corr[0].correlation_coefficient())
             full_e += scale_error_weight*(1-corr[1].correlation_coefficient())
-            xscale = math.pow(corr[2],1.0/pts)
-            yscale = math.pow(corr[3],1.0/pts)
+            (xscale, yscale) = (1.0,1.0)
+            if corr[2]>0 and corr[3]>0:
+                xscale = math.pow(corr[2],1.0/pts)
+                yscale = math.pow(corr[3],1.0/pts)
+                pass
             print "Total error",full_e,e,1-corr[0].correlation_coefficient(), 1-corr[1].correlation_coefficient(),xscale,yscale
             if full_e<smallest_error[1]:
                 smallest_error = (deltas,full_e,r,xscale/r["xscale"],yscale/r["yscale"])
