@@ -60,7 +60,7 @@ We can also assume the model positions are all perfect, and adjust Pimg and Timg
 
 #a Imports
 import gjslib.graphics.obj
-from gjslib.graphics import opengl, opengl_utils, opengl_mesh
+from gjslib.graphics import opengl_app, opengl_utils, opengl_mesh
 import math
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
@@ -423,7 +423,7 @@ def point_on_plane(p0,p1,p2,k01,k02):
     return mp
 
 #a c_mapping
-class c_mapping(object):
+class c_mapping(opengl_app.c_opengl_camera_app):
     camera_deltas = [{"camera":(-0.1,0.0,0.0)},
                      {"camera":(+0.1,0.0,0.0)},
                      {"camera":(0.0,-0.1,0.0)},
@@ -446,19 +446,34 @@ class c_mapping(object):
                   {"up":(0.0,0.0,+0.01)},
                   {}]
     #f __init__
-    def __init__(self):
+    def __init__(self, obj, texture_filename, **kwargs):
+        opengl_app.c_opengl_camera_app.__init__(self, **kwargs)
         self.first_pass = True
         self.mvp =  matrix.c_matrix4x4()
-        self.camera = opengl.camera
-        self.aspect = 1.0
-        self.zNear=1.0
-        self.zFar=40.0
         self.point_mappings = c_point_mapping()
         self.image_projections = {}
         self.load_point_mapping("sidsussexbell.map")
         global image_mapping_data
         self.load_images(image_mapping_data)
         #self.calc_total_errors()
+        pass
+    #f opengl_post_init
+    def opengl_post_init(self):
+        global image_mapping_data
+
+        self.camera["position"] = [0.0,10.0,-2.0]
+        self.camera["facing"] = c_quaternion.identity()
+        self.camera["facing"] = c_quaternion.pitch(-1*3.1415/2).multiply(self.camera["facing"])
+        self.camera["facing"] = c_quaternion.roll(0*3.1415).multiply(self.camera["facing"])
+        for k in image_mapping_data:
+            #self.image_projections[k].load_texture()
+            pass
+        self.point_mappings.find_line_sets()
+        self.point_mappings.approximate_positions()
+        self.generate_faces()
+
+        #self.blah("main")
+        #die
         pass
     #f load_point_mapping
     def load_point_mapping(self, point_map_filename):
@@ -557,7 +572,7 @@ class c_mapping(object):
                             size=image_data["size"])
             pass
         pass
-    #f generate_faces(self):
+    #f generate_faces
     def generate_faces(self):
         global faces
         self.meshes = []
@@ -624,48 +639,6 @@ class c_mapping(object):
             pass
         proj.load_texture()
         #die
-        pass
-    #f reset
-    def reset(self):
-        global image_mapping_data
-        #opengl.attach_menu("main_menu")
-        self.camera["position"] = [0.0,10.0,-2.0]
-        self.camera["facing"] = c_quaternion.identity()
-        self.camera["facing"] = c_quaternion.pitch(-1*3.1415/2).multiply(self.camera["facing"])
-        self.camera["facing"] = c_quaternion.roll(0*3.1415).multiply(self.camera["facing"])
-        for k in image_mapping_data:
-            #self.image_projections[k].load_texture()
-            pass
-        self.point_mappings.find_line_sets()
-        self.point_mappings.approximate_positions()
-        self.generate_faces()
-
-        #self.blah("main")
-        #die
-        pass
-    #f display_set_projection
-    def display_set_projection(self):
-        glMatrixMode(GL_PROJECTION)
-        glLoadIdentity()
-        gluPerspective(self.camera["fov"],self.aspect,self.zNear,self.zFar)
-        self.mvp.perspective(self.camera["fov"],self.aspect,self.zNear,self.zFar)
-
-        self.camera["facing"] = c_quaternion.roll( self.camera["rpy"][0]).multiply(self.camera["facing"])
-        self.camera["facing"] = c_quaternion.pitch(self.camera["rpy"][1]).multiply(self.camera["facing"])
-        self.camera["facing"] = c_quaternion.yaw(  self.camera["rpy"][2]).multiply(self.camera["facing"])
-
-        m = self.camera["facing"].get_matrix()
-        self.camera["position"][0] += self.camera["speed"]*m[0][2]
-        self.camera["position"][1] += self.camera["speed"]*m[1][2]
-        self.camera["position"][2] += self.camera["speed"]*m[2][2]
-
-        glMatrixMode(GL_MODELVIEW)
-        glLoadIdentity()
-        glMultMatrixf(m)
-        glTranslate(self.camera["position"][0],self.camera["position"][1],self.camera["position"][2])
-
-        self.mvp.mult3x3(m3=m)
-        self.mvp.translate(self.camera["position"])
         pass
     #f display_image_faces
     def display_image_faces(self):
@@ -778,9 +751,7 @@ class c_mapping(object):
         pass
     #f display
     def display(self):
-        glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
-
-        self.display_set_projection()
+        opengl_app.c_opengl_camera_app.display(self)
 
         ambient_lightZeroColor = [1.0,1.0,1.0,1.0]
         glLightfv(GL_LIGHT1, GL_AMBIENT, ambient_lightZeroColor)

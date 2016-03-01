@@ -32,6 +32,13 @@ def dot_product(a,b):
         pass
     return r
 
+def point_on_plane(p0,p1,p2,k01,k02):
+    # mp = p0 + k01.(p1-p0) + k02.(p2-p0)
+    mp = vector.add(p0, p1, scale=k01 )
+    mp = vector.add(mp, p2, scale=k02 )
+    mp = vector.add(mp, p0, scale=(-k01-k02) )
+    return mp
+
 #a Closest meeting of two lines
 def closest_meeting_of_two_lines(p0, d0, p1, d1, too_close=0.0001):
     """

@@ -165,6 +165,10 @@ class c_opengl_camera_app(c_opengl_app):
                        "speed":0,
                        "fov":90,
                        }
+        self.mvp = None
+        self.aspect = 1.0
+        self.zNear=1.0
+        self.zFar=40.0
         pass
     #f change_angle
     def change_angle(self, angle, dirn, angle_delta=0.01 ):
@@ -221,7 +225,10 @@ class c_opengl_camera_app(c_opengl_app):
     def display(self):
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
-        gluPerspective(40.,1.,1.,40.)
+        gluPerspective(self.camera["fov"],self.aspect,self.zNear,self.zFar)
+        if self.mvp is not None:
+            self.mvp.perspective(self.camera["fov"],self.aspect,self.zNear,self.zFar)
+            pass
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
 
@@ -236,6 +243,11 @@ class c_opengl_camera_app(c_opengl_app):
 
         glMultMatrixf(m)
         glTranslate(self.camera["position"][0],self.camera["position"][1],self.camera["position"][2])
+
+        if self.mvp is not None:
+            self.mvp.mult3x3(m3=m)
+            self.mvp.translate(self.camera["position"])
+            pass
 
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
         pass
