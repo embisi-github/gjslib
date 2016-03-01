@@ -15,6 +15,14 @@ class c_obj(object):
         self.faces = []
         self.opengl_surface = {}
         pass
+    #f reset
+    def reset(self):
+        self.destroy_opengl_surface()
+        self.vertices = []
+        self.uv_map = []
+        self.normals = []
+        self.faces = []
+        pass
     #f from_bitmap
     def from_bitmap(self, image, scale_factors, is_solid=None):
         """
@@ -124,6 +132,21 @@ class c_obj(object):
             vti = None
             pass
         return (vi+delta,vti+delta,vni+delta)
+    #f add_triangle
+    def add_triangle(self, xyz_list, uv_list):
+        nv = len(self.vertices)
+        nt = len(self.uv_map)
+        for xyz in xyz_list:
+            self.vertices.append(xyz)
+            pass
+        for uv in uv_list:
+            self.uv_map.append( uv )
+            pass
+        self.normals.extend(self.vertices[nv:])
+        self.faces.append( (self.face_of_triple(nv,nt,nv),
+                            self.face_of_triple(nv+1,nt+1,nv+1),
+                            self.face_of_triple(nv+2,nt+2,nv+2)) )
+        pass
     #f add_rectangle
     def add_rectangle(self,xyz,dxyz0,dxyz1,uv=(0.0,0.0),duv0=(1.0,0.0),duv1=(0.0,1.0)):
         nv = len(self.vertices)

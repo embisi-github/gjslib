@@ -35,7 +35,7 @@ class c_opengl_simple_text_widget(object):
         pass
     #f replace_text
     def replace_text(self, text, baseline_xy=(-1.0,-1.0), scale=(0.001,0.001) ):
-        self.og_obj.destroy_opengl_surface()
+        self.og_obj.reset()
         if text is not None:
             self.og_obj.add_text(text, self.bitmap_font, baseline_xy, scale )
             self.og_obj.create_opengl_surface()

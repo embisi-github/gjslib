@@ -66,19 +66,19 @@ class c_image_projection(object):
         dirn = self.ip.apply(dirn)
         return (self.camera, dirn)
     #f mapping_error
-    def mapping_error(self, name, xy, corr=None):
-        scaled_xy = (-1.0+2.0*xy[0]/(self.size[0]+0.0), 1.0-2.0*xy[1]/(self.size[1]+0.0))
+    def mapping_error(self, name, xy, corr=None, object_guess_locations=None):
         abs_error = 0
         if name in object_guess_locations:
-            img_of_model = self.image_of_model(object_guess_locations[name])
-            abs_error += ( (scaled_xy[0]-img_of_model[0][0])*(scaled_xy[0]-img_of_model[0][0]) +
-                          (scaled_xy[1]-img_of_model[0][1])*(scaled_xy[1]-img_of_model[0][1]))
-            xscale = scaled_xy[0] / img_of_model[0][0] * self.scales[0]
-            yscale = scaled_xy[1] / img_of_model[0][1] * self.scales[1]
+            (img_uvzw, img_xy) = self.image_of_model(object_guess_locations[name])
+            error = ( (xy[0]-img_uvzw[0])*(xy[0]-img_uvzw[0]) +
+                      (xy[1]-img_uvzw[1])*(xy[1]-img_uvzw[1]))
+            abs_error += error
+            xscale = xy[0] / img_uvzw[0] * self.scales[0]
+            yscale = xy[1] / img_uvzw[1] * self.scales[1]
             if corr is not None:
-                corr[0].add_entry(scaled_xy[0], img_of_model[0][0])
-                corr[1].add_entry(scaled_xy[1], img_of_model[0][1])
+                corr[0].add_entry(xy[0], img_uvzw[0])
+                corr[1].add_entry(xy[1], img_uvzw[1])
                 pass
-            print name, xscale,yscale, xy, scaled_xy, img_of_model
+            print name, error, xscale,yscale, "xy %s:%s"%(str(xy), str(img_uvzw[0:2]))
             pass
         return abs_error

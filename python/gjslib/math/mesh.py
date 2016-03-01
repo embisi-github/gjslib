@@ -675,6 +675,25 @@ class c_mesh( object ):
     Then the contours can be applied to ensure that all of the contours are present as mesh line segments.
 
     After the mesh is fully built with contours winding rules and fill can be applied, or gradients applied to lines.
+
+    The mesh always has a list of points (self.point_set), list of line segments, and a list of triangles
+    This is a list of c_mesh_points
+    Each mesh point has a list of lines it is part of
+    The list of line_segments is a list of c_mesh_lines(pta,ptb)
+    Each mesh line has a pts=(pta,ptb) tuple attribute and a (tria,trib) triangle tuple
+    The triangle list is a list of c_mesh_triangle()
+    Each triangle has a list of 3 points, triangle number (unique id), winding order (None, True or False, for whether it is in/out or unknown)
+
+    To use a mesh with contours:
+    x = c_mesh()
+    x.add_contour( [c_point,...] )
+    x.map_contours_to_mesh()
+    x.normalize() - number the points, and remove empty triangles
+
+    To create a mesh for a shape from a set of points
+    x = c_mesh()
+    x.from_points( [c_point,...] )
+
     """
     #f __init__
     def __init__( self ):
@@ -1006,6 +1025,8 @@ class c_mesh( object ):
             pass
         radial_order.insert(0,(0,0,self.point_set[0]))
         num_points_used = len(radial_order)
+        if num_points_used<3:
+            return
         # First fill from the 'starter point'
         for i in range(2,num_points_used):
             self.add_triangle_from_points( (radial_order[0][2],radial_order[i-1][2], radial_order[i][2]) )
@@ -1172,6 +1193,8 @@ class c_mesh( object ):
         Check all triangles
         If the triangle area is not small, continue, else remove the triangle
         The triangle to remove (T=ABC) must be 'nearly a straight line', i.e. the longest side of the triangle (AB)
+        IF AB is the longest side then C = (qA + (1-q)B) + e.perp(BA) where 0<q<1
+        (A-C).(B-C) = ((q-1)(A+B) . 
         Find the point of the triangle that is not on the longest side (C), and move it gently so it is on the longest side
           Note that C = k.AB + l.(normal to AB); find k, then make C=k.AB
           Find the triangle the other side of AB (T2=ABX)
@@ -1192,6 +1215,7 @@ class c_mesh( object ):
             self.check_consistent()
             print self.__repr__(verbose=True)
             pass
+        #verbose = True
         triangles_removed = 0
         i = 0
         while i<len(self.triangles):
@@ -1204,10 +1228,17 @@ class c_mesh( object ):
                 print "Area %f of %s, want to remove"%(t.get_area(),str(t))
                 pass
             (A,B,C) = t.get_points()
-            print A,B,C
-            while ( (A.coords()[0]-C.coords()[0]) * (B.coords()[0]-C.coords()[0]) + 
-                    (A.coords()[1]-C.coords()[1]) * (B.coords()[1]-C.coords()[1]) ) > 0: (A,B,C) = (B,C,A)
-            print A,B,C
+
+            (Ax,Ay) = A.coords()
+            (Bx,By) = B.coords()
+            (Cx,Cy) = C.coords()
+            lAB2 = (Ax-Bx)*(Ax-Bx)+(Ay-By)*(Ay-By)
+            lAC2 = (Ax-Cx)*(Ax-Cx)+(Ay-Cy)*(Ay-Cy)
+            lBC2 = (Bx-Cx)*(Bx-Cx)+(By-Cy)*(By-Cy)
+            while (lAB2<lAC2) or (lAB2<lBC2):
+                (A,B,C) = (B,C,A)
+                (lAB2, lAC2, lBC2) = (lBC2, lAB2, lAC2)
+                pass
             (Ax,Ay) = A.coords()
             (Bx,By) = B.coords()
             (Cx,Cy) = C.coords()
@@ -1238,7 +1269,7 @@ class c_mesh( object ):
                 pass
             else:
                 #self.check_consistent()
-                AB.swap_diagonal( self, verbose=True )
+                AB.swap_diagonal( self, verbose=verbose )
                 #self.check_consistent()
                 pass
             i+=1

@@ -61,9 +61,9 @@ class c_opengl_layer(opengl.c_depth_contents):
     #f display
     def display(self):
         xywh = self.xywh
-        glEnable(GL_SCISSOR_TEST)
         glViewport(xywh[0],xywh[1],xywh[2],xywh[3])
         glScissor(xywh[0],xywh[1],xywh[2],xywh[3])
+        glEnable(GL_SCISSOR_TEST)
         if self.autoclear in ["depth"]:
             glClear(GL_DEPTH_BUFFER_BIT)
             pass
@@ -74,6 +74,8 @@ class c_opengl_layer(opengl.c_depth_contents):
         self.display_init()
         for c in self:
             c.display()
+            pass
+
         glDisable(GL_SCISSOR_TEST)
         pass
     #f scaled_xy

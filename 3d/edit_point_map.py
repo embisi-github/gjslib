@@ -42,7 +42,7 @@ class c_edit_point_map_image(object):
     def focus_on_point(self, pt_name):
         pt = self.point_mappings.get_xy(pt_name, self.image_name )
         if pt is None:
-            self.center = (0,0)
+            #self.center = (0,0)
             return
         self.center = (-pt[0],-pt[1])
         pass
@@ -50,6 +50,9 @@ class c_edit_point_map_image(object):
     def adjust(self, scale=(1.0,1.0), translate=(0.0,0.0), scaled=True ):
         if type(scale)==float:
             scale = (scale,scale)
+            pass
+        if scale[0]<0:
+            scale = (1.0/self.scale[0], 1.0/self.scale[1])
             pass
         if scaled:
             translate = (translate[0]/self.scale[0], translate[1]/self.scale[1])
@@ -146,15 +149,20 @@ class c_edit_point_map_info(opengl_widget.c_opengl_container_widget):
     #f __init__
     def __init__(self, epm=None, pm=None, **kwargs):
         opengl_widget.c_opengl_container_widget.__init__(self, **kwargs)
-        self.image_widget = opengl_widget.c_opengl_simple_text_widget(og=epm.og)
+        self.info_widget    = opengl_widget.c_opengl_simple_text_widget(og=epm.og)
+        self.image_widget   = opengl_widget.c_opengl_simple_text_widget(og=epm.og)
         self.mapping_widget = opengl_widget.c_opengl_simple_text_widget(og=epm.og)
         self.epm = epm
         self.point_mappings = pm
-        self.add_widget(self.image_widget,  map_xywh=( (0.0,0.0,6000.0,4000.0), ( 0.0,1.0,2.0,-2*1.0) ) )
-        self.add_widget(self.mapping_widget,map_xywh=( (0.0,0.0,6000.0,4000.0), (-1.0,1.0,2.0,-2*1.0) ) )
+        self.add_widget(self.info_widget,   map_xywh=( (0.0,0.0,6000.0,100.0), ( -1.0,0.9,2.0,-2*0.1) ) )
+        self.add_widget(self.image_widget,  map_xywh=( (0.0,0.0,6000.0,4000.0), ( 0.0,0.7,2.0,-2*0.7) ) )
+        self.add_widget(self.mapping_widget,map_xywh=( (0.0,0.0,6000.0,4000.0), (-1.0,0.7,2.0,-2*0.7) ) )
         pass
     #f update
     def update(self):
+        info = "Current pt '%s'"%(self.epm.point_mapping_names[self.epm.point_mapping_index])
+        self.info_widget.replace_text(info, baseline_xy=(0.0,64.0), scale=(1.0,1.0))
+
         import string
         image_list = self.point_mappings.get_images()
         image_list.sort()
@@ -238,10 +246,10 @@ class c_edit_point_map(object):
 
         menus = self.og.build_menu_init()
         self.og.build_menu_add_menu(menus,"images")
-        image_keys = self.images.keys()
-        for i in range(len(image_keys)):
-            k = image_keys[i]
-            self.og.build_menu_add_menu_item(menus,k,("image",k))
+        self.image_names = self.images.keys()
+        self.image_names.sort()
+        for i in self.image_names:
+            self.og.build_menu_add_menu_item(menus,i,("image",i))
             pass
         self.og.build_menu_add_menu(menus,"main_menu")
         self.og.build_menu_add_menu_submenu(menus,"Images","images")
@@ -257,9 +265,9 @@ class c_edit_point_map(object):
         self.displayed_images = ["img_1", "img_2"]
         self.focus_image = 0
         self.layers = opengl_layer.c_opengl_layer_set()
-        self.image_layers = (self.layers.new_layer( (0,500,500,500), depth=10),
-                             self.layers.new_layer( (500,500,500,500), depth=10 ))
-        self.info_layer = self.layers.new_layer( (0,0,1000,500), depth=1 )
+        self.image_layers = (self.layers.new_layer( (0,300,900,900), depth=10),
+                             self.layers.new_layer( (900,300,900,900), depth=10 ))
+        self.info_layer = self.layers.new_layer( (0,0,1800,300), depth=1, autoclear="all" )
         self.info_layer.add_contents(self.epm_info)
 
         for i in range(len(self.image_layers)):
@@ -351,7 +359,7 @@ class c_edit_point_map(object):
         self.images[self.displayed_images[self.focus_image]].set_focus(False)
         self.focus_image += 1
         if not fwd:
-            self.focus_image += 2*len(self.displayed_images)-2
+            self.focus_image -= 2
             pass
         if focus_image is not None:
             self.focus_image = focus_image
@@ -373,7 +381,7 @@ class c_edit_point_map(object):
     def change_point(self, adjustment=None, point_name=None ):
         if adjustment is not None:
             l = len(self.point_mapping_names)
-            self.point_mapping_index = (self.point_mapping_index + l + adjustment[0]) % l
+            self.point_mapping_index = (self.point_mapping_index + adjustment[0]) % l
             pass
         if point_name is not None:
             if point_name in self.point_mapping_names:
@@ -381,6 +389,7 @@ class c_edit_point_map(object):
                 pass
             pass
         self.adjust_image((1.0,0.0,0.0,1))
+        self.epm_info.update()
         pass
     #f point_set_start
     def point_set_start(self,image_name,xy,layer_xy,image_xy):
@@ -404,13 +413,26 @@ class c_edit_point_map(object):
         pt_name = self.point_mapping_names[self.point_mapping_index]
         self.point_mappings.add_image_location(pt_name,image_name,image_xy,uniform=True,verbose=True)
         pass
+    #f select_image
+    def select_image(self, image_name, image=None):
+        if image is None:
+            image=self.focus_image
+            pass
+        print "Select",image_name,image
+        prev_image_name = self.displayed_images[image]
+        self.images[prev_image_name].set_focus(False)
+        self.displayed_images[image] = image_name
+        self.image_layers[image].clear_contents()
+        self.image_layers[image].add_contents(self.images[image_name])
+        if image==self.focus_image:
+            self.images[image_name].set_focus(True)
+            pass
+        pass
     #f menu_callback
     def menu_callback(self, menu, value):
         if type(value)==tuple:
             if value[0]=="image":
-                self.displayed_images[self.focus_image] = value[1]
-                self.image_layers[self.focus_image].clear_contents()
-                self.image_layers[self.focus_image].add_contents(self.images[value[1]])
+                self.select_image(value[1])
                 return True
             if value[0]=="save":
                 self.save_point_mapping("sidsussexbell.map")
@@ -434,10 +456,11 @@ class c_edit_point_map(object):
                           "+":(1.05*sc,0.0,0.0,0),
                           "-":(1/1.05/sc,0.0,0.0,0),
                           "_":(1/1.05/sc,0.0,0.0,0),
+                          "1":(-1.0,0.0,0.0,0),
                           "g":(1.0,0.0,0.0,1),
                           }
-        point_controls = {";":(-1,),
-                          ".":(+1,),
+        point_controls = {".":(-1,),
+                          ";":(+1,),
                           }
         if ord(k)==27:
             self.point_set_end()
@@ -452,6 +475,13 @@ class c_edit_point_map(object):
             return True
         if k in point_controls:
             self.change_point(adjustment=point_controls[k])
+            return True
+        if k in ["n", "p"]:
+            image_name = self.displayed_images[self.focus_image]
+            i = self.image_names.index(image_name) + 1
+            if k=="p": i-=2
+            i = i%len(self.image_names)
+            self.select_image(image_name=self.image_names[i])
             return True
         print ord(k),x,y
         pass
@@ -501,7 +531,7 @@ class c_edit_point_map(object):
 
 #a Main
 def main():
-    og = gjslib.graphics.opengl.c_opengl(window_size = (1000,1000))
+    og = gjslib.graphics.opengl.c_opengl(window_size = (1800,1100))
     m = c_edit_point_map(og)
     m.reset()
     m.main_loop()

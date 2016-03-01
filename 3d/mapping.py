@@ -60,7 +60,7 @@ We can also assume the model positions are all perfect, and adjust Pimg and Timg
 
 #a Imports
 import gjslib.graphics.obj
-import gjslib.graphics.opengl
+from gjslib.graphics import opengl, opengl_mesh
 import math
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
@@ -71,35 +71,287 @@ from gjslib.math import matrix, vectors, statistics
 from image_point_mapping import c_point_mapping
 from image_projection import c_image_projection
 
+#a Class
+class c_plane(object):
+    """
+    A plane can be described as the set of points p satisfying
+    p.n = k (p, n vectors, k scalar)
+
+    This plane class provides for being given a set of (x,y,z) points
+    that are approximately on a plane, which can then be coplanarized
+    
+    This process requires estimating some 'n' for the plane, and
+    then averaging the normals, and generating a unit normal
+
+    Then the value 'k' can be determined, again by averaging
+
+    Then the points may be 'coplanarized'
+
+    Also, an intersection between a line a + l.d (a, r vectors, l variable scalar)
+    can be found with the plane.
+    """
+    normal_indices = {}
+    normal_indices[3] = ( (0,1,2), )
+    normal_indices[4] = ( (0,1,2), (0,1,3), (0,2,3), (1,2,3), )
+    normal_indices[5] = ( (0,2,4), (1,3,0), (2,4,1), (3,0,2), (4,1,3) )
+    normal_indices[6] = ( (0,2,4), (1,3,5), (0,1,2), (1,2,3), (2,3,4), (3,4,5), (4,5,0), (5,0,1) )
+    normal_indices[6] = ( (0,2,4), (1,3,5) )
+    #f __init__
+    def __init__(self):
+        self.xyz_list = []
+        self.normal = None
+        self.k = None
+        pass
+    #f invalid
+    def invalid(self):
+        if self.normal is None:
+            return True
+        if self.k is None:
+            return True
+        return False
+    #f add_xyz
+    def add_xyz(self, xyz, name=None):
+        self.xyz_list.append((xyz,name))
+        pass
+    #f estimate_normals
+    def estimate_normals(self, epsilon=1E-6):
+        l = len(self.xyz_list)
+        if l<3:
+            return None
+        n = []
+        if l in self.normal_indices:
+            n = self.normal_indices[l]
+            pass
+        else:
+            # Choose k=(l/3)+1
+            # l=7 -> k=3
+            # Then 0,k,2k; 1,k+1,2k+1, etc up to k-1,...
+            # for l=7 it is 0,3,6; 1,4,0; 2,5,1
+            k = (l/3)+1
+            for i in range(k):
+                n.append( (i,(i+k)%l,(i+2*k)%l) )
+                pass
+            pass
+        normals = []
+        for (i,j,k) in n:
+            vi = self.xyz_list[i][0]
+            vj = self.xyz_list[j][0]
+            vk = self.xyz_list[k][0]
+            vij = (vj[0]-vi[0], vj[1]-vi[1], vj[2]-vi[2])
+            vik = (vk[0]-vi[0], vk[1]-vi[1], vk[2]-vi[2])
+            n = (vij[1]*vik[2] - vij[2]*vik[1],
+                 vij[2]*vik[0] - vij[0]*vik[2],
+                 vij[0]*vik[1] - vij[1]*vik[0])
+            ln = math.sqrt(n[0]*n[0] + n[1]*n[1] + n[2]*n[2])
+            if (ln<epsilon):
+                n = (0.0,0.0,0.0)
+                pass
+            else:
+                n = (n[0]/ln, n[1]/ln, n[2]/ln)
+                pass
+            if len(normals)>0:
+                nn0 = (normals[0][1][0]*n[0] + 
+                       normals[0][1][1]*n[1] + 
+                       normals[0][1][2]*n[2])
+                if nn0<0:
+                    n = (-n[0], -n[1], -n[2])
+                    pass
+                pass
+            normals.append(((i,j,k),n))
+            pass
+        return normals
+    #f average_normal
+    def average_normal(self, normals, epsilon=1E-6):
+        normal = (0.0,0.0,0.0)
+        for (ijk,n) in normals:
+            normal = (normal[0]+n[0], normal[1]+n[1], normal[2]+n[2])
+            pass
+        normal = (normal[0]/len(normals), normal[1]/len(normals), normal[2]/len(normals))
+        ln = math.sqrt(normal[0]*normal[0] + normal[1]*normal[1] + normal[2]*normal[2])
+        if (ln<epsilon):
+            normal = None
+            pass
+        else:
+            normal = (normal[0]/ln, normal[1]/ln, normal[2]/ln)
+            pass
+        return normal
+    #f average_k
+    def average_k(self, normal, epsilon=1E-6):
+        if normal is None:
+            return None
+        k = 0.0
+        n = 0
+        for xyz in self.xyz_list:
+            xyz = xyz[0]
+            kdn = (xyz[0]*normal[0] + 
+                   xyz[1]*normal[1] + 
+                   xyz[2]*normal[2])
+            if (kdn<-epsilon) or (kdn>epsilon): # xyz may be unknown (0.0,0.0,0.0)
+                n+=1
+                k += kdn
+                pass
+            pass
+        if n==0: return None
+        k = k / n
+        return k
+    #f verify_normals
+    def verify_normals(self, normal, normals, error_margin=0.1):
+        for (ijk,n) in normals:
+            nn = ( n[0]*normal[0] +
+                   n[1]*normal[1] +
+                   n[2]*normal[2])
+            if nn<1.0-error_margin:
+                pts = (self.xyz_list[ijk[0]][1],
+                       self.xyz_list[ijk[1]][1],
+                       self.xyz_list[ijk[2]][1])
+                       
+                print "Large error in normal",nn,pts
+                pass
+            pass
+        pass
+    #f generate_plane
+    def generate_plane(self, epsilon=1E-6):
+        self.normal = None
+        self.k = None
+        normals = self.estimate_normals(epsilon=epsilon)
+        if normals is None:
+            return
+        normal = self.average_normal(normals,epsilon=epsilon)
+        self.verify_normals(normal, normals)
+        k = self.average_k(normal, epsilon=epsilon)
+        self.normal = normal
+        self.k = k
+        pass
+    #f coplanarize_xyz
+    def coplanarize_xyz(self, xyz, name=None, errors=None ):
+        """
+        Every point in the plane is p.n=k
+        If a point is p'=(p+l*n), as it has a perpendicular error of 'l', then
+        p'.n = (p+l*n).n = p.n+l*n.n = k + l => l = p'.n - k,
+        and a 'coplanarized point' is p' - l*n
+        (Note n is a unit vector)
+        """
+        l = ( xyz[0]*self.normal[0] + 
+              xyz[1]*self.normal[1] + 
+              xyz[2]*self.normal[2]) - self.k
+        xyz = (xyz[0] - l*self.normal[0],
+               xyz[1] - l*self.normal[1],                   
+               xyz[2] - l*self.normal[2])
+        if errors is not None:
+            if "total_sq" not in errors:
+                errors["total_sq"] = 0
+                errors["num_pts"] = 1
+                errors["pts"] = {}
+                pass
+            if name is None: name=str(xyz)
+            errors["pts"][name] = l
+            errors["total_sq"] += l*l
+            errors["num_pts"] += 1
+            pass
+        return xyz
+    #f coplanarize
+    def coplanarize(self, errors=None):
+        if self.normal is None:
+            return
+        if self.k is None:
+            return
+        for i in range(len(self.xyz_list)):
+            self.xyz_list[i][0] = self.coplanarize_xyz(self.xyz_list[i][0],errors)
+            pass
+        pass
+    #f line_intersect
+    def line_intersect(self, p, d, epsilon=1E-6):
+        """
+        Find intersection of plane with line p + l*d
+
+        Since all points p' on the plane have p'.n = k:
+        (p + l*d).n = k => p.n + l*d.n = k => p.n + l(d.n) = k
+        Hence l(d.n) = k - p.n => l = (k-p.n)/(d.n)
+        """
+        if self.normal is None:
+            return None
+        if self.k is None:
+            return None
+        kpn = self.k - ( p[0]*self.normal[0] + 
+                         p[1]*self.normal[1] + 
+                         p[2]*self.normal[2] )
+        dn = (d[0]*self.normal[0] + 
+              d[1]*self.normal[1] + 
+              d[2]*self.normal[2])
+        if (dn<-epsilon) or (dn>epsilon):
+            l = kpn/dn
+            p = (p[0] + l*d[0],
+                 p[1] + l*d[1],
+                 p[2] + l*d[2])
+            pass
+        return p
+    #f All done
+    pass
+
 #a Mapping data
 object_guess_locations = {}
 object_guess_locations["clk.center"] = (0.0,0.0,6.5)
 object_guess_locations["lspike.t"] = (-3.0,0.0,8.5)
 object_guess_locations["rspike.t"] = ( 3.0,0.0,8.5)
+object_guess_locations["ld.bl"] = ( -4.5,0.0,0.0)
 faces = {}
-faces["frontleft"]  = ["tl", "fl.cr", "fl.br", "bl"]
-faces["frontright"] = ["tr", "br", "fr.bl", "fr.cl"]
-faces["clock"]      = ["clk.tl", "clk.mtr", "clk.mtl", "clk.tr", "clk.br", "clk.bl"]
-faces["lspike.fl"]  = ["lspike.l", "lspike.t", "lspike.f"]
-faces["lspike.fr"]  = ["lspike.f", "lspike.t", "lspike.r"]
-faces["rspike.fl"]  = ["rspike.l", "rspike.t", "rspike.f"]
-faces["rspike.fr"]  = ["rspike.f", "rspike.t", "rspike.r"]
+faces["frontleft"]  = ("img_1",
+                       ( ["tl",
+                          "fl.cr1.bl", "fl.cr1.tl", "fl.cr1.tr", "fl.cr1.br",
+                          "fl.cr2.bl", "fl.cr2.tl", "fl.cr2.tr", "fl.cr2.br",
+                          "fl.cr3.bl", "fl.cr3.tl", "fl.cr3.tr", "fl.cr3.br",
+                          "fl.cr4.bl", "fl.cr4.tl", "fl.cr4.tr", "fl.cr4.br",
+                          "fl.cr5.bl", "fl.cr5.tl", "fl.cr5.tr", "fl.cr5.br",
+                          "fl.cr6.bl", "fl.cr6.br", 
+                          "fl.cr", "fl.crt","fl.crtr",
+                          "fl.br", "bl"],
+                         ["fl.win1.bl","fl.win1.br","fl.win1.tr","fl.win1.tl"],
+                         ["fl.win2.bl","fl.win2.br","fl.win2.tr","fl.win2.tl"],
+                         ["fl.win3.bl","fl.win3.br","fl.win3.tr","fl.win3.tl"],
+                         ["fl.win4.bl","fl.win4.br","fl.win4.tr","fl.win4.tl"],
+                         ["fl.win5.bl","fl.win5.br","fl.win5.tr","fl.win5.tl"],
+                         ),
+                       (
+                         #"fl.win1.bl","fl.win1.br","fl.win1.tr","fl.win1.tl",
+                         #"fl.win2.bl","fl.win2.br","fl.win2.tr","fl.win2.tl",
+                         #"fl.win3.bl","fl.win3.br","fl.win3.tr","fl.win3.tl",
+                         #"fl.win4.bl","fl.win4.br","fl.win4.tr","fl.win4.tl",
+                         #"fl.win5.bl","fl.win5.br","fl.win5.tr","fl.win5.tl",
+                         ), )
+faces["frontright"] = ("img_1", (["tr", "br", "fr.bl", "fr.cl"],),() )
+faces["clock"]      = ("img_1", (["clk.l1","clk.tl", "clk.mtr", "clk.mtl", "clk.tr", "clk.br", "clk.r1", "clk.bl"],),
+                       ("clk.l2","clk.l3","clk.l4","clk.l5",
+                        "clk.r2","clk.r3","clk.r4","clk.r5",
+                        ))
+faces["lspike.fl"]  = ("img_1", (["lspike.l", "lspike.t", "lspike.f"],), () )
+faces["lspike.fr"]  = ("img_1", (["lspike.f", "lspike.t", "lspike.r"],), () )
+faces["rspike.fl"]  = ("img_1", (["rspike.l", "rspike.t", "rspike.f"],), () )
+faces["rspike.fr"]  = ("img_1", (["rspike.f", "rspike.t", "rspike.r"],), () )
 
 image_mapping_data = {}
 image_mapping_data["main"] = {}
 image_mapping_data["main"]["filename"] = "sidsussexbell.jpg"
 image_mapping_data["main"]["size"] = (4272,2848)
-image_mapping_data["main"]["projection"] = {"camera":(-6.0,-12.0,2.0), "target":(5.0,0.0,4.0), "up":(0.0,0.0,1.0), "xscale":1.3, "yscale":1.75}
-image_mapping_data["main"]["projection"] = {'xscale': 1.052, 'camera': [-3.319999999999946, -13.375000000000016, 1.5700000000000052], 'yscale': 1.90, 'target': [5.574999999999997, 0.15, 4.280000000000003], 'up': (0.0, 0.0, 1.0)}
-
+image_mapping_data["main"]["projection"] = {"camera":(-6.0,-12.0,2.0), "target":(5.0,0.0,4.0), "up":(0.0,0.0,1.0), "xscale":1.052, "yscale":1.9}
+image_mapping_data["main"]["projection"] = {'xscale': 1.052, 'camera': [-2.5249999999999773, -13.525000000000022, 1.300000000000003], 'yscale': 1.9, 'target': [5.350000000000005, 0.0, 4.225000000000003], 'up': (0.0, 0.0, 1.0)}
+image_mapping_data["main"]["projection"] = {'xscale': 1.052, 'camera': [-3.8249999999999726, -14.82500000000004, 2.0500000000000003], 'yscale': 1.85, 'target': [5.900000000000041, 0.0, 3.750000000000001], 'up': (0.0, 0.0, 1.0)}
+image_mapping_data["main"]["projection"] = {'xscale': 1.03, 'camera': [-4.324999999999976, -14.500000000000036, 2.2249999999999996], 'yscale': 1.80, 'target': [5.925000000000042, 0.0, 3.700000000000001], 'up': (0.0, 0.0, 1.0)}
+image_mapping_data["main"]["projection"] = {'xscale': 1.03, 'camera': [-4.299999999999976, -14.250000000000032, 2.374999999999999], 'yscale': 1.8, 'target': [5.950000000000042, 0.0, 3.6500000000000012], 'up': (0.0, 0.0, 1.0)}
+image_mapping_data["main"]["projection"] = {'xscale': 1.03, 'camera': [-4.299999999999976, -14.250000000000032, 2.374999999999999], 'yscale': 1.8, 'target': [5.950000000000042, 0.0, 3.6500000000000012], 'up': (0.0, 0.0, 1.0)}
+image_mapping_data["main"]["projection"] = {'xscale': 1.03, 'camera': [-5.549999999999994, -14.05000000000003, 2.674999999999998], 'yscale': 1.8, 'target': [6.425000000000049, 0.0, 3.5750000000000015], 'up': (0.0, 0.0, 1.0)}
+image_mapping_data["main"]["projection"] = {'xscale': 1.03, 'camera': [-4.59999999999998, -13.700000000000024, 1.8750000000000009], 'yscale': 1.8, 'target': [6.125000000000044, 0.0, 3.8750000000000004], 'up': (0.0, 0.0, 1.0)}
+image_mapping_data["main"]["projection"] = {'xscale': 1.03, 'camera': [-3.474999999999974, -13.875000000000027, 1.6500000000000017], 'yscale': 1.75, 'target': [5.775000000000039, 0.0, 3.8750000000000004], 'up': (0.0, 0.0, 1.0)}
+image_mapping_data["main"]["projection"] = {'xscale': 1.02, 'camera': [-3.8999999999999724, -13.575000000000022, 1.850000000000001], 'yscale': 1.70, 'target': [5.775000000000039, 0.0, 3.8250000000000006], 'up': (0.0, 0.0, 1.0)}
+image_mapping_data["main"]["projection"] = {'xscale': 1.02, 'camera': [-4.024999999999972, -13.300000000000018, 2.0000000000000004], 'yscale': 1.65, 'target': [5.750000000000039, 0.0, 3.775000000000001], 'up': (0.0, 0.0, 1.0)}
 
 image_mapping_data["img_1"] = {}
 image_mapping_data["img_1"]["filename"] = "sidsussexbell_1.jpg"
 image_mapping_data["img_1"]["size"] = (640,480)
 image_mapping_data["img_1"]["projection"] = {"camera":(+7.0,-6.0,6.7), "target":(-1.0,0.0,5.5), "up":(0.0,0.0,1.0), "xscale":2.2, "yscale":2.1}
 image_mapping_data["img_1"]["projection"] = {'xscale': 1.78, 'camera': [5.7249999999999766, -8.050000000000045, 6.349999999999991], 'yscale': 2.495, 'target': [-1.0999999999999996, -0.025, 5.650000000000002], 'up': (0.0, 0.0, 1.0)}
-
-
+image_mapping_data["img_1"]["projection"] = {'xscale': 1.77, 'camera': [5.7249999999999766, -8.025000000000045, 6.374999999999991], 'yscale': 2.5, 'target': [-1.0999999999999996, -0.025, 5.650000000000002], 'up': (0.0, 0.0, 1.0)}
+image_mapping_data["img_1"]["projection"] = {'xscale': 1.77, 'camera': [5.7249999999999766, -8.000000000000044, 6.424999999999992], 'yscale': 2.51, 'target': [-1.0999999999999996, -0.025, 5.650000000000002], 'up': (0.0, 0.0, 1.0)}
+image_mapping_data["img_1"]["projection"] = {'xscale': 1.77, 'camera': [5.7249999999999766, -8.025000000000045, 6.449999999999992], 'yscale': 2.51, 'target': [-1.0999999999999996, -0.025, 5.650000000000002], 'up': (0.0, 0.0, 1.0)}
 
 image_mapping_data["img_2"] = {}
 image_mapping_data["img_2"]["filename"] = "sidsussexbell_2.jpg"
@@ -112,8 +364,11 @@ image_mapping_data["img_3"] = {}
 image_mapping_data["img_3"]["filename"] = "sidsussexbell_3.jpg"
 image_mapping_data["img_3"]["size"] = (320,370)
 image_mapping_data["img_3"]["projection"] = {'xscale': 3.0, 'camera': [0.05, -9.999999999999986, -0.6500000000000005], 'yscale': 2.93, 'target': [0.25, 0.2, 4.999999999999997], 'up': (0.0, 0.0, 1.0)}
+image_mapping_data["img_3"]["projection"] = {'xscale': 2.95, 'camera': [0.025, -10.024999999999986, -0.6250000000000004], 'yscale': 2.93, 'target': [0.225, 0.2, 4.999999999999997], 'up': (0.0, 0.0, 1.0)}
+image_mapping_data["img_3"]["projection"] = {'xscale': 2.95, 'camera': [0.07500000000000001, -9.824999999999983, -0.6500000000000005], 'yscale': 2.91, 'target': [0.25, 0.2, 4.999999999999997], 'up': (0.0, 0.0, 1.0)}
 
-
+#del(image_mapping_data["img_2"])
+#del(image_mapping_data["img_3"])
 
 #a c_opengl_image_projection
 class c_opengl_image_projection(c_image_projection):
@@ -125,7 +380,7 @@ class c_opengl_image_projection(c_image_projection):
         pass
     #f load_texture
     def load_texture(self):
-        self.texture = gjslib.graphics.opengl.texture_from_png(self.image_filename)
+        self.texture = opengl.texture_from_png(self.image_filename)
         self.object = gjslib.graphics.obj.c_obj()
         self.object.add_rectangle( (-10.0,10.0,0.0), (20.0,0.0,0.0), (0.0,-20.0,0.0) )
         self.object.create_opengl_surface()
@@ -171,8 +426,8 @@ class c_mapping(object):
                      {}]
     target_deltas = [{"target":(-0.1,0.0,0.0)},
                      {"target":(+0.1,0.0,0.0)},
-                     {"target":(0.0,-0.1,0.0)},
-                     {"target":(0.0,+0.1,0.0)},
+                     #{"target":(0.0,-0.1,0.0)},
+                     #{"target":(0.0,+0.1,0.0)},
                      {"target":(0.0,0.0,-0.1)},
                      {"target":(0.0,0.0,+0.1)},
                      {}]
@@ -187,7 +442,7 @@ class c_mapping(object):
     def __init__(self):
         self.first_pass = True
         self.mvp =  matrix.c_matrix4x4()
-        self.camera = gjslib.graphics.opengl.camera
+        self.camera = opengl.camera
         self.aspect = 1.0
         self.zNear=1.0
         self.zFar=40.0
@@ -196,7 +451,6 @@ class c_mapping(object):
         self.load_point_mapping("sidsussexbell.map")
         global image_mapping_data
         self.load_images(image_mapping_data)
-        print self.point_mappings.get_mapping_names()
         #self.calc_total_errors()
         pass
     #f load_point_mapping
@@ -214,7 +468,7 @@ class c_mapping(object):
         self.point_mappings.set_projection(name, self.image_projections[name])
         pass
     #f find_better_projection
-    def find_better_projection(self,mappings,image_projection,projection,deltas_list,delta_scale):
+    def find_better_projection(self,image_projection,projection,deltas_list,delta_scale,scale_error_weight=1.0):
         smallest_error = (None,10000)
         for deltas in deltas_list:
             r = {}
@@ -225,14 +479,18 @@ class c_mapping(object):
             corr = (statistics.c_correlation(), statistics.c_correlation())
             corr[0].add_entry(0.0,0.0)
             corr[1].add_entry(0.0,0.0)
-            for n in mappings:
-                e += image_projection.mapping_error(n,mappings[n],corr)
+            for n in self.point_mappings.get_mapping_names():
+                mapping = self.point_mappings.get_xy(n,image_projection.name)
+                if mapping is not None:
+                    e += image_projection.mapping_error(n,mapping,corr,object_guess_locations)
+                    pass
                 pass
-            print "Total error",e,1-corr[0].correlation_coefficient(), 1-corr[1].correlation_coefficient()
-            e += 50.0*(1-corr[0].correlation_coefficient())
-            e += 50.0*(1-corr[1].correlation_coefficient())
-            if e<smallest_error[1]:
-                smallest_error = (deltas,e,r)
+            full_e = e
+            full_e += scale_error_weight*(1-corr[0].correlation_coefficient())
+            full_e += scale_error_weight*(1-corr[1].correlation_coefficient())
+            print "Total error",full_e,e,1-corr[0].correlation_coefficient(), 1-corr[1].correlation_coefficient()
+            if full_e<smallest_error[1]:
+                smallest_error = (deltas,full_e,r)
                 pass
             pass
         print "Smallest error",smallest_error
@@ -243,13 +501,15 @@ class c_mapping(object):
         global image_mapping_data
         image_data = image_mapping_data[image_mapping_name]
         p = self.image_projections[image_mapping_name].projection
-        for i in range(1000):
-            for j in range(5):
-                (d,e,p) = self.find_better_projection(image_data["mappings"],self.image_projections[image_mapping_name],p,self.camera_deltas,delta_scale=0.05)
-                if len(d)==0: break
+        for j in range(100):
+            for i in range(100000):
+                (d,e,p) = self.find_better_projection(self.image_projections[image_mapping_name],p,self.camera_deltas,delta_scale=0.05,scale_error_weight=0.1)
+                if len(d)==0:
+                    print "Iteration",j,i
+                    break
                 pass
-            (d,e,p) = self.find_better_projection(image_data["mappings"],self.image_projections[image_mapping_name],p,self.target_deltas,delta_scale=0.0125)
-            (d,e,p) = self.find_better_projection(image_data["mappings"],self.image_projections[image_mapping_name],p,self.up_deltas,delta_scale=0.0025)
+            (d,e,p) = self.find_better_projection(self.image_projections[image_mapping_name],p,self.target_deltas,delta_scale=0.00125)
+            (d,e,p) = self.find_better_projection(self.image_projections[image_mapping_name],p,self.up_deltas,delta_scale=0.000125)
             pass
         pass
     #f load_images
@@ -280,22 +540,91 @@ class c_mapping(object):
             print "Total error",e,1-corr[0].correlation_coefficient(), 1-corr[1].correlation_coefficient()
             pass
         pass
-        #self.blah("img_3")
+    #f generate_faces(self):
+    def generate_faces(self):
+        global faces
+        self.meshes = []
+        proj = self.image_projections["main"]
+        pts = {}
+        def uv_from_image_xyz(xyz, proj=proj):
+            (uvzw,img_xy) = proj.image_of_model(xyz)
+            uv = (0.5+uvzw[0]*0.5, 0.5-uvzw[1]*0.5)
+            return uv
+        for pt in self.point_mappings.get_mapping_names():
+            xyz = self.point_mappings.get_approx_position(pt)
+            if xyz is not None:
+                uv = uv_from_image_xyz(xyz)
+                if uv is not None:
+                    pts[pt] = (uv, xyz)
+                    pass
+                pass
+            pass
+        for n in faces:
+            plane = c_plane()
+            errors = {}
+            (img, contour_list, fill_points) = faces[n]
+            ogm = opengl_mesh.c_opengl_textured_mesh()
+            for c in contour_list:
+                for pt in c:
+                    if pt in pts:
+                        plane.add_xyz(pts[pt][1], pt)
+                        pass
+                    pass
+            for pt in fill_points:
+                if pt in pts:
+                    plane.add_xyz(pts[pt][1], pt)
+                    pass
+                pass
+            plane.generate_plane()
+            if plane.invalid():
+                print "Abandon plane",n
+                continue
+            for c in contour_list:
+                contour = []
+                for pt in c:
+                    if pt in pts:
+                        xyz = plane.coplanarize_xyz(pts[pt][1],name=pt,errors=errors)
+                        contour.append( (pts[pt][0], xyz, None) )
+                        pass
+                    pass
+                ogm.add_contour(contour)
+                pass
+            for pt in fill_points:
+                if pt in pts:
+                    xyz = plane.coplanarize_xyz(pts[pt][1],name=pt,errors=errors)
+                    ogm.add_point( pts[pt][0], xyz, None )
+                    pass
+                pass
+            print "Plane",n,errors["total_sq"]/errors["num_pts"],errors["pts"]
+            ogm.optimize()
+            def xyz_from_image_uv(uv, proj=proj, plane=plane):
+                (p,d) = proj.model_line_for_image((-1.0+2.0*uv[0],1.0-2.0*uv[1]))
+                xyz = plane.line_intersect(p,d)
+                if xyz is None: return (0.0,0.0,0.0)
+                return xyz
+            ogm.create_opengl_surface(projection_callback=xyz_from_image_uv)
+            self.meshes.append(ogm)
+            pass
+        #proj.load_texture()
+        #die
         pass
     #f reset
     def reset(self):
         global image_mapping_data
-        #gjslib.graphics.opengl.attach_menu("main_menu")
+        #opengl.attach_menu("main_menu")
         self.camera["position"] = [0.0,10.0,-2.0]
         self.camera["facing"] = c_quaternion.identity()
         self.camera["facing"] = c_quaternion.pitch(-1*3.1415/2).multiply(self.camera["facing"])
         self.camera["facing"] = c_quaternion.roll(0*3.1415).multiply(self.camera["facing"])
         for k in image_mapping_data:
-            self.image_projections[k].load_texture()
+            #self.image_projections[k].load_texture()
             pass
         self.point_mappings.find_line_sets()
         self.point_mappings.approximate_positions()
-        #die
+        self.generate_faces()
+
+        self.blah("main")
+        die
         pass
     #f display_set_projection
     def display_set_projection(self):
@@ -327,53 +656,31 @@ class c_mapping(object):
         glPushMatrix()
         glEnable(GL_TEXTURE_2D)
         glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,1.0,1.0,1.0])
-        proj = self.image_projections["main"]
+        proj = self.image_projections["img_1"]
         if proj.texture is not None:
             glBindTexture(GL_TEXTURE_2D, proj.texture)
             pass
-        for n in faces:
-            f = faces[n]
-            pts = []
-            tex_pts = []
-            for pt in f:
-                if pt in self.point_mappings.get_mapping_names():
-                    pt_xyz = self.point_mappings.get_approx_position(pt)
-                    pts.append(pt_xyz)
-                    (xyzw,img_xy) = proj.image_of_model(pt_xyz)
-                    tex_pts.append( (0.5+xyzw[0]*0.5, 0.5-xyzw[1]*0.5) )
-                    pass
-                pass
-            if len(pts)>=3:
-                i = 0
-                j = len(pts)-1
-                glBegin(GL_TRIANGLE_STRIP)
-                while (j>=i):
-                    glTexCoord2f(tex_pts[i][0],tex_pts[i][1])
-                    glVertex3f(pts[i][0],pts[i][1],pts[i][2])
-                    i += 1
-                    if (i<=j):
-                        glTexCoord2f(tex_pts[j][0],tex_pts[j][1])
-                        glVertex3f(pts[j][0],pts[j][1],pts[j][2])
-                        pass
-                    j -= 1
-                    pass
-                glEnd()
-                pass
+        #glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        for m in self.meshes:
+            m.draw_opengl_surface()
             pass
         glDisable(GL_TEXTURE_2D)
+        #glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
         glPopMatrix()
         self.first_pass = False
         pass
     #f display_image_points
     def display_image_points(self):
         for n in self.point_mappings.get_mapping_names():
-            (xyz) = self.point_mappings.get_approx_position(n)
-            glPushMatrix()
-            glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,0.3,0.3,1.0])
-            glTranslate(xyz[0],xyz[1],xyz[2])
-            glScale(0.03,0.03,0.03)
-            glutSolidSphere(1,6,6)
-            glPopMatrix()
+            xyz = self.point_mappings.get_approx_position(n)
+            if xyz is not None:
+                glPushMatrix()
+                glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,0.3,0.3,1.0])
+                glTranslate(xyz[0],xyz[1],xyz[2])
+                glScale(0.03,0.03,0.03)
+                glutSolidSphere(1,6,6)
+                glPopMatrix()
+                pass
             pass
         #for pt in ["clkcenter", "lspike", "rspike"]:
         for pt in ["rspike"]:
@@ -547,7 +854,7 @@ def main():
     menus = [ ("submenu",   (("a",1), ("b",2))),
               ("main_menu", (("sub", "submenu"), ("c", 3)))
               ]
-    og = gjslib.graphics.opengl.c_opengl(window_size = (1000,1000))
+    og = opengl.c_opengl(window_size = (1000,1000))
     og.init_opengl()
     menus = og.build_menu_init()
     og.build_menu_add_menu(menus,"submenu")

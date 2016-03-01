@@ -266,6 +266,14 @@ class c_opengl(object):
             self.camera["rpy"][angle] += dirn*angle_delta            
             pass
         pass
+    #f change_position
+    def change_position(self, x,y,z ):
+        scale = 0.1+self.camera["speed"]*5
+        self.camera["position"] = [self.camera["position"][0]+x*scale,
+                                   self.camera["position"][1]+y*scale,
+                                   self.camera["position"][2]+z*scale
+                                   ]
+        pass
     #f keypress_callback
     def keypress_callback(self, key,x,y):
         m = glutGetModifiers()
@@ -283,11 +291,20 @@ class c_opengl(object):
         if key=='c': self.change_angle(0,+1)
         if key=='a': self.change_angle(2,-1)
         if key=='d': self.change_angle(2,+1)
+
+        if key=='W': self.change_position(0,0,-1)
+        if key=='S': self.change_position(0,0,+1)
+        if key=='Z': self.change_position(0,-1,0)
+        if key=='C': self.change_position(0,+1,0)
+        if key=='A': self.change_position(1,0,0)
+        if key=='D': self.change_position(-1,0,0)
+
+        if key==';': self.camera["speed"] += acceleration
+        if key=='.': self.camera["speed"] -= acceleration
+
         if key=='[': self.change_fov(-1)
         if key==']': self.change_fov(+1)
         if key==' ': self.camera["speed"] = 0
-        if key==';': self.camera["speed"] += acceleration
-        if key=='.': self.camera["speed"] -= acceleration
         if key=='e': self.camera["rpy"] = [0,0,0]
         if key=='r': self.camera["position"] = [0,0,-10]
         if key=='r': self.camera["facing"] = c_quaternion.identity()

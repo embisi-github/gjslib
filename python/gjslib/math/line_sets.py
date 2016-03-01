@@ -13,7 +13,7 @@ class c_set_of_lines(object):
         pass
     def generate_meeting_points(self, too_close=0.0001):
         self.line_meetings = []
-        self.posn = (0.0,0.0,0.0)
+        self.posn = None
         for i in range(len(self.lines)):
             (p0,d0) = self.lines[i]
             for j in range(len(self.lines)):
@@ -26,17 +26,22 @@ class c_set_of_lines(object):
             pass
         if len(self.line_meetings)==0:
             return
-        posn = (0.0,0.0,0.0)
+        posn = None
         total_weight = 0
         for (c0,c1,dist,goodness) in self.line_meetings:
             weight = 1/(5.0+goodness)
+            if posn is None:
+                posn = (0.0,0.0,0.0)
+                pass
             posn = vectors.vector_add(posn, c0, scale=0.5*weight)
             posn = vectors.vector_add(posn, c1, scale=0.5*weight)
             total_weight += weight
             #print c0,c1,weight,total_weight,posn
             pass
         #print posn, total_weight
-        self.posn = vectors.vector_add((0.0,0.0,0.0), posn, scale=1/total_weight)
+        if posn is not None:
+            self.posn = vectors.vector_add((0.0,0.0,0.0), posn, scale=1/total_weight)
+            pass
         pass
 
 #a Top level
