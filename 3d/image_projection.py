@@ -118,6 +118,49 @@ class c_image_projection(object):
             print "%16s"%name, error, xscale,yscale, "xy %s:%s"%(str(xy), str(img_uvzw[0:2]))
             pass
         return abs_error
+    #f optimize_projection
+    def optimize_projection(self,
+                            point_mappings,
+                             use_references = False,
+                             scale_iterations=100,
+                             target_iterations=100,
+                             camera_iterations=1000,
+                             delta_scale=0.05,
+                             verbose=False):
+
+        base_projection = self.projection
+        for k in range(scale_iterations):
+            (xsc,ysc)=(1.0,1.0)
+            for j in range(target_iterations):
+                done = False
+                for i in range(camera_iterations):
+                    (d,p) = self.guess_better_projection(point_mappings, base_projection, use_references, self.camera_deltas, delta_scale=delta_scale, scale_error_weight=0.1, verbose=verbose)
+                    if len(d)==0:
+                        print "Iteration",j,i
+                        done = True
+                        break
+                    base_projection = p
+                    pass
+                (d,p) = self.guess_better_projection(point_mappings, base_projection, use_references, self.target_deltas, delta_scale=delta_scale/20.0, verbose=verbose)
+                base_projection = p
+                if len(d)!=0: done=False
+                (d,p) = self.guess_better_projection(point_mappings, base_projection, use_references, self.up_deltas, delta_scale=delta_scale/100.0, verbose=verbose)
+                base_projection = p
+                if len(d)!=0: done=False
+                if done:
+                    break
+                pass
+            if done:
+                #(d,p) = self.guess_better_projection(point_mappings, base_projection, use_references, self.scale_deltas, verbose=verbose)
+                #base_projection = p
+                #if len(d)!=0: done=False
+                pass
+            if done:
+                break
+            pass
+        (d,p) = self.guess_better_projection(point_mappings, base_projection, use_references, verbose=verbose)
+        self.set_projection(base_projection)
+        return base_projection
     #f guess_better_projection
     def guess_better_projection(self, point_mappings, base_projection, use_references=True, deltas_list=[{}], delta_scale=1.0, scale_error_weight=0.1, verbose=False):
         smallest_error = ({},10000,base_projection,1.0,1.0)

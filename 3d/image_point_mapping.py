@@ -268,39 +268,14 @@ class c_point_mapping(object):
             if (image is not None) and image!=image_name:
                 continue
             proj = self.images[image_name]["projection"]
-            base_projection = proj.projection
-            for k in range(scale_iterations):
-                (xsc,ysc)=(1.0,1.0)
-                for j in range(target_iterations):
-                    done = False
-                    for i in range(camera_iterations):
-                        (d,p) = proj.guess_better_projection(self, base_projection, use_references, proj.camera_deltas, delta_scale=delta_scale, scale_error_weight=0.1, verbose=verbose)
-                        if len(d)==0:
-                            print "Iteration",j,i
-                            done = True
-                            break
-                        base_projection = p
-                        pass
-                    (d,p) = proj.guess_better_projection(self, base_projection, use_references, proj.target_deltas, delta_scale=delta_scale/20.0, verbose=verbose)
-                    base_projection = p
-                    if len(d)!=0: done=False
-                    (d,p) = proj.guess_better_projection(self, base_projection, use_references, proj.up_deltas, delta_scale=delta_scale/100.0, verbose=verbose)
-                    base_projection = p
-                    if len(d)!=0: done=False
-                    if done:
-                        break
-                    pass
-                if done:
-                    #(d,p) = proj.guess_better_projection(self, base_projection, use_references, proj.scale_deltas, verbose=verbose)
-                    #base_projection = p
-                    #if len(d)!=0: done=False
-                    pass
-                if done:
-                    break
-                pass
-            (d,p) = proj.guess_better_projection(self, base_projection, use_references, verbose=verbose)
-            proj.set_projection(base_projection)
-            print "self.images['%s']['projection'] = %s"%(image_name,str(base_projection))
+            projection = proj.optimize_projection(point_mappings=self,
+                                                  use_references=use_references,
+                                                  scale_iterations=scale_iterations,
+                                                  target_iterations=target_iterations,
+                                                  camera_iterations=camera_iterations,
+                                                  delta_scale=delta_scale,
+                                                  verbose=verbose)
+            print "self.images['%s']['projection'] = %s"%(image_name,str(projection))
             pass
         pass
     #f Done
