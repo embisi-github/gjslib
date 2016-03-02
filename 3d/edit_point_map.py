@@ -207,7 +207,7 @@ class c_edit_point_map_image(object):
             (uvzw,img_xy) = proj.image_of_model(xyz)
             return (uvzw[0],uvzw[1])
         for pt in self.epm.point_mapping_names:
-            xyz = self.epm.point_mappings.get_approx_position(pt)
+            xyz = self.epm.point_mappings.get_xyz(pt)
             if xyz is not None:
                 uv = uv_from_image_xyz(xyz)
                 if uv is not None:
@@ -607,10 +607,15 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         self.do_undoable_operation( ("delete_image_location",(pt_name,image_name)) )
         pass
     #f optimize_projection
-    def optimize_projection(self, image_name=None):
+    def optimize_projection(self, image_name=None, initial=False):
         self.point_mappings.find_line_sets()
         self.point_mappings.approximate_positions()
-        self.point_mappings.optimize_projections(image=image_name, scale_iterations=1, target_iterations=5, camera_iterations=200, delta_scale=0.01)
+        if initial:
+            self.point_mappings.initial_orientation(image=image_name, steps=20, verbose=False)
+            pass
+        else:
+            self.point_mappings.optimize_projections(image=image_name, fov_iterations=10, orientation_iterations=50, camera_iterations=20, delta_scale=0.01)
+            pass
         self.point_mappings.find_line_sets()
         self.point_mappings.approximate_positions()
         pass
@@ -673,6 +678,10 @@ class c_edit_point_map(opengl_app.c_opengl_app):
             image_name = None
             if k=="o": image_name=self.displayed_images[self.focus_image]
             self.optimize_projection(image_name=image_name)
+            return True
+        if k in ["i"]:
+            image_name=self.displayed_images[self.focus_image]
+            self.optimize_projection(image_name=image_name, initial=True)
             return True
         if (ord(k)==127) and (m&GLUT_ACTIVE_CTRL):
             self.point_delete(image_name=self.displayed_images[self.focus_image],

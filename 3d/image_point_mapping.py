@@ -1,5 +1,6 @@
 #a Imports
 from gjslib.math.line_sets import c_set_of_lines
+from gjslib.math.quaternion import c_quaternion
 
 #a c_point_mapping
 class c_point_mapping(object):
@@ -76,15 +77,28 @@ class c_point_mapping(object):
             cb(data)
             pass
         f.close()
-        self.images['main']['projection'] = {'xscale': 1.0, 'camera': [6.550000000000024, -13.525000000000007, 18.895000000000003], 'yscale': 1.5, 'target': [9.150000000000048, 0.0, 4.875000000000011], 'up': [-0.33350891961340084, -0.0828258108440976, 0.9391015310371504]}
-        self.images['img_1']['projection'] = {'xscale': 1.0, 'camera': [6.374999999999991, -6.975000000000014, 11.72500000000007], 'yscale': 1.3, 'target': [-2.399999999999995, 0.0, 5.374999999999998], 'up': [0.03234892372532482, 0.3206458702150309, 0.9466465935331194]}
-        self.images['main']['projection'] = {'xscale': 1.0, 'camera': [4.399999999999993, -15.425000000000034, 19.794999999999952], 'yscale': 1.5, 'target': [9.650000000000055, 0.0, 5.400000000000018], 'up': [-0.3950709969815411, -0.33635069378035787, 0.8548608764807776]}
-        self.images['img_1']['projection'] = {'xscale': 1.0, 'camera': [5.499999999999979, -7.350000000000019, 12.725000000000085], 'yscale': 1.3, 'target': [-3.3499999999999917, 0.0, 3.9499999999999793], 'up': [-0.017569450567893528, 0.3400796697024401, 0.9402324886227988]}
-        self.images['main']['projection'] = {'xscale': 1.0, 'camera': [6.550000000000024, -13.525000000000007, 18.895000000000003], 'yscale': 1.5, 'target': [9.150000000000048, 0.0, 4.875000000000011], 'up': [-0.33350891961340084, -0.0828258108440976, 0.9391015310371504]}
-        self.images['img_1']['projection'] = {'xscale': 1.0, 'camera': [6.374999999999991, -6.975000000000014, 11.72500000000007], 'yscale': 1.3, 'target': [-2.399999999999995, 0.0, 5.374999999999998], 'up': [0.03234892372532482, 0.3206458702150309, 0.9466465935331194]}
+        # horizontal FOV for 35mm camera: 12.5mm:110 15mm:100 18mm:90 20mm:85 23mm:75 28mm:65 31mm:60 35mm:55 40mm:50 50mm:40 54mm:35 65mm:30 80mm:35 100mm:20
+        # yaw is left-right (-ve,+ve)
+        # pitch is -ve up
+        # roll is clockwise +ve
+        # Can now do initial plus optimization (at delta_scale 0.1)
+        # This you do with the reference objects
+        self.images['img_1']['projection'] = {'fov': 68.33999999999999, 'camera': [5.303600000000904, -8.318100000001156, 9.881700000000029], 'orientation': c_quaternion({'r': 0.7545, 'i': 0.5657, 'j': 0.2373, 'k': 0.2330}), 'aspect': 1.3}
+        self.images['main']['projection'] = {'fov': 84.575, 'camera': [-4.695799999997939, -14.592999999998563, 2.773999999999937], 'orientation': c_quaternion({'r': 0.6208, 'i': 0.7191, 'j':-0.2353, 'k':-0.2052}), 'aspect': 1.5}
 
-        self.images["main"]["projection"]  = {"camera":(-6.0,-12.0,2.0), "target":(5.0,0.0,4.0), "up":(0.0,0.0,1.0), "xscale":1.0, "yscale":1.5}
-        self.images["img_1"]["projection"] = {"camera":(+7.0,-6.0,6.7), "target":(-1.0,0.0,5.5), "up":(0.0,0.0,1.0), "xscale":1.0, "yscale":1.3}
+        # Refine img_1 with delta_scale 0.01 on reference objects
+        self.images['img_1']['projection'] = {'fov': 68.33999999999999, 'camera': [5.200500000001144, -8.421200000000916, 9.918599999999943], 'orientation': c_quaternion({'r': 0.7575, 'i': 0.5655, 'j': 0.2342, 'k': 0.2269}), 'aspect': 1.3}
+        self.images['main']['projection'] = {'fov': 84.575, 'camera': [-4.29609999999887, -14.992699999997631, 2.773999999999937], 'orientation': c_quaternion({'r': 0.6243, 'i': 0.7206, 'j':-0.2353, 'k':-0.1888}), 'aspect': 1.5}
+        # Now change FOV delta - made it bigger, fov does not change (obviously) - so move it down to 0.01
+        self.images['main']['projection'] = {'fov': 84.575, 'camera': [-3.9960999999995517, -15.292699999996932, 2.773999999999937], 'orientation': c_quaternion({'r': 0.6278, 'i': 0.7215, 'j':-0.2301, 'k':-0.1802}), 'aspect': 1.5}
+
+        # Now one-then-other optimization
+        self.images['main']['projection'] = {'fov': 84.575, 'camera': [-3.7760999999990874, -15.51269999999642, 2.773999999999937], 'orientation': c_quaternion({'r': 0.6305, 'i': 0.7222, 'j':-0.2243, 'k':-0.1751}), 'aspect': 1.5}
+        self.images['img_1']['projection'] = {'fov': 68.33999999999999, 'camera': [5.100500000001377, -8.321200000001149, 9.918599999999943], 'orientation': c_quaternion({'r': 0.7589, 'i': 0.5645, 'j': 0.2363, 'k': 0.2225}), 'aspect': 1.3}
+
+        #After moving some points - main is still moving in the same old direction
+        self.images['img_1']['projection'] = {'fov': 68.33999999999999, 'camera': [4.993600000001626, -8.472800000000795, 9.90229999999998], 'orientation': c_quaternion({'r': 0.7607, 'i': 0.5670, 'j': 0.2328, 'k': 0.2133}), 'aspect': 1.3}        
+        self.images['main']['projection'] = {'fov': 84.575, 'camera': [-3.5760999999986653, -15.712699999995953, 2.773999999999937], 'orientation': c_quaternion({'r': 0.6330, 'i': 0.7226, 'j':-0.2194, 'k':-0.1705}), 'aspect': 1.5}
         pass
     #f save_data
     def save_data(self, data_filename):
@@ -221,6 +235,7 @@ class c_point_mapping(object):
         for n in self.image_mappings:
             line_sets[n] = c_set_of_lines()
             for img_name in self.image_mappings[n].keys():
+                if img_name not in ["main", "img_1"]: continue
                 p = self.images[img_name]["projection"]
                 if p is not None:
                     xy = self.uniform_mapping(n,img_name)
@@ -246,35 +261,36 @@ class c_point_mapping(object):
         return self.positions[name]
     #f get_xyz
     def get_xyz(self, name, use_references=False ):
+        # clk.center (  0.0, -0.2,   8.4)  error 7.421E-5
+        # clk.center (  0.0, -0.25,  8.4)  error 7.265E-5
+        # clk.center (  0.0, -0.30,  8.4)  error 0.8185E-5
+        # clk.center (  0.0, -0.32,  8.4)  error 0.1824E-5
+        # That was with tower spikes +-3.0
         object_guess_locations = {}
-        object_guess_locations["clk.center"] = (  0.0, -0.25,  8.4)
-        object_guess_locations["lspike.t"]   = ( -3.0,  0.0, 10.9)
-        object_guess_locations["rspike.t"]   = (  3.0,  0.0, 10.9)
+        object_guess_locations["clk.center"] = (  0.0, -0.32,  8.4)
+        object_guess_locations["lspike.t"]   = ( -3.3,  0.0, 10.9)
+        object_guess_locations["rspike.t"]   = (  3.3,  0.0, 10.9)
         if use_references:
             return None
         if name in object_guess_locations:
             return object_guess_locations[name]
         return self.get_approx_position(name)
-    #f optimize_projections
-    def optimize_projections(self,
-                             image=None,
-                             use_references = False,
-                             scale_iterations=100,
-                             target_iterations=100,
-                             camera_iterations=1000,
-                             delta_scale=0.05,
-                             verbose=False):
+    #f initial_orientation
+    def initial_orientation(self, image=None, **kwargs):
         for image_name in self.images.keys():
             if (image is not None) and image!=image_name:
                 continue
             proj = self.images[image_name]["projection"]
-            projection = proj.optimize_projection(point_mappings=self,
-                                                  use_references=use_references,
-                                                  scale_iterations=scale_iterations,
-                                                  target_iterations=target_iterations,
-                                                  camera_iterations=camera_iterations,
-                                                  delta_scale=delta_scale,
-                                                  verbose=verbose)
+            projection = proj.guess_initial_orientation(point_mappings=self, **kwargs)
+            print "self.images['%s']['projection'] = %s"%(image_name,str(projection))
+            pass
+    #f optimize_projections
+    def optimize_projections(self, image=None, **kwargs):
+        for image_name in self.images.keys():
+            if (image is not None) and image!=image_name:
+                continue
+            proj = self.images[image_name]["projection"]
+            projection = proj.optimize_projection(point_mappings=self, **kwargs)
             print "self.images['%s']['projection'] = %s"%(image_name,str(projection))
             pass
         pass

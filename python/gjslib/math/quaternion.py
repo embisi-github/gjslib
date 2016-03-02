@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import math
-from matrix import c_matrix4x4
+from matrix import c_matrix3x3, c_matrix4x4
 
 class c_quaternion( object ):
     fmt = "%7.4f"
@@ -8,15 +8,27 @@ class c_quaternion( object ):
     def identity( cls ):
         return cls()
     @classmethod
-    def pitch( cls, angle ):
-        return cls().from_euler( angle, 0, 0 )
+    def pitch( cls, angle, degrees=False ):
+        return cls().from_euler( angle, 0, 0, degrees=degrees )
     @classmethod
-    def yaw( cls, angle ):
-        return cls().from_euler( 0, angle, 0 )
+    def yaw( cls, angle, degrees=False ):
+        return cls().from_euler( 0, angle, 0, degrees=degrees )
     @classmethod
-    def roll( cls, angle ):
-        return cls().from_euler( 0, 0, angle )
-    def __init__( self, quat=None ):
+    def roll( cls, angle, degrees=False ):
+        return cls().from_euler( 0, 0, angle, degrees=degrees )
+    @classmethod
+    def from_sequence( cls, rotations, degrees=False ):
+        q = cls()
+        for (t,n) in rotations:
+            r = {"roll":cls.roll, "pitch":cls.pitch, "yaw":cls.yaw}[t](n,degrees=degrees)
+            print t,n,r, q
+            q = r.multiply(q)
+            pass
+        return q
+    @classmethod
+    def of_euler( cls, roll, pitch, yaw, degrees=False ):
+        return cls().from_euler( roll, pitch, yaw, degrees=degrees )
+    def __init__( self, quat=None, euler=None ):
         self.quat = {"r":1, "i":0, "j":0, "k":0}
         self.matrix = None
         if quat is not None:
@@ -25,9 +37,14 @@ class c_quaternion( object ):
             self.quat["j"] = quat["j"]
             self.quat["k"] = quat["k"]
             pass
+        if euler is not None:
+            self.from_euler(euler[0], euler[1], euler[2])
+            pass
         pass
+    def copy(self):
+        return c_quaternion(quat=self.quat)
     def __repr__( self ):
-        result = ("quat( "+self.fmt+", "+self.fmt+", "+self.fmt+", "+self.fmt+" )") % (self.quat["r"],
+        result = ("c_quaternion({'r':"+self.fmt+", 'i':"+self.fmt+", 'j':"+self.fmt+", 'k':"+self.fmt+"})") % (self.quat["r"],
                                                                                        self.quat["i"],
                                                                                        self.quat["j"],
                                                                                        self.quat["k"] )
@@ -35,6 +52,11 @@ class c_quaternion( object ):
     def get_matrix( self ):
         if self.matrix is None: self.create_matrix()
         return self.matrix
+    def get_matrix3( self ):
+        m = self.get_matrix()
+        return c_matrix3x3((m[0][0], m[0][1], m[0][2],
+                            m[1][0], m[1][1], m[1][2],
+                            m[2][0], m[2][1], m[2][2],))
     def get_matrix4( self ):
         m = self.get_matrix()
         m4 = c_matrix4x4( r0=(m[0][0], m[0][1], m[0][2], 0.0),
@@ -73,11 +95,42 @@ class c_quaternion( object ):
 
         self.matrix = m
         pass
-    def from_euler( self, roll, pitch, yaw ):
+    def from_euler( self, roll=0, pitch=0, yaw=0, degrees=False ):
+        """
+        Euler angles are roll, pitch and yaw. (Z, Y then X axis rotations)
+        The rotations are performed in the order 
+        Angles are in radians
+        """
+        if degrees:
+            roll  = 3.14159265/180.0 * roll
+            pitch = 3.14159265/180.0 * pitch
+            yaw   = 3.14159265/180.0 * yaw
+            pass
+        cr = math.cos(roll/2)
+        cp = math.cos(pitch/2)
+        cy = math.cos(yaw/2)
+        sr = math.sin(roll/2)
+        sp = math.sin(pitch/2)
+        sy = math.sin(yaw/2)
+        cpcy = cp * cy
+        spsy = sp * sy
+        self.quat["r"] = cr * cpcy + sr * spsy
+        self.quat["i"] = sr * cpcy - cr * spsy
+        self.quat["j"] = cr * sp * cy + sr * cp * sy
+        self.quat["k"] = cr * cp * sy - sr * sp * cy
+        self.matrix = None
+        return self
+    def to_euler( self, degrees=False ):
         """
         Euler angles are roll, pitch and yaw.
         The rotations are performed in the order 
+        Angles are in radians
         """
+        if degrees:
+            roll  = 3.14159265/180.0 * roll
+            pitch = 3.14159265/180.0 * pitch
+            yaw   = 3.14159265/180.0 * yaw
+            pass
         cr = math.cos(roll/2)
         cp = math.cos(pitch/2)
         cy = math.cos(yaw/2)

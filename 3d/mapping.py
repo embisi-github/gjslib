@@ -399,11 +399,12 @@ image_mapping_data["img_3"]["projection"] = {'xscale': 3.0, 'camera': [0.05, -9.
 image_mapping_data["img_3"]["projection"] = {'xscale': 2.95, 'camera': [0.025, -10.024999999999986, -0.6250000000000004], 'yscale': 2.93, 'target': [0.225, 0.2, 4.999999999999997], 'up': (0.0, 0.0, 1.0)}
 image_mapping_data["img_3"]["projection"] = {'xscale': 2.95, 'camera': [0.07500000000000001, -9.824999999999983, -0.6500000000000005], 'yscale': 2.91, 'target': [0.25, 0.2, 4.999999999999997], 'up': (0.0, 0.0, 1.0)}
 
-image_mapping_data["main"]["projection"] = {'xscale': 1.0636174418096784, 'camera': [-3.1749999999999945, -15.325000000000035, 6.595000000000033], 'yscale': 1.5135350671146544, 'target': [6.375000000000009, 0.0, 5.325000000000017], 'up': [-0.1422858044230801, 0.03653391377635495, 0.9891511628683752]}
-image_mapping_data["img_1"]["projection"] = {'xscale': 2.323016417382242, 'camera': [7.875000000000012, -8.325000000000033, 8.425000000000024], 'yscale': 2.3233962463563502, 'target': [-1.2499999999999991, 0.0, 7.325000000000026], 'up': [-0.00036548890680590984, 0.02728913846465669, 0.9996275152974311]}
 
-#del(image_mapping_data["img_2"])
-#del(image_mapping_data["img_3"])
+image_mapping_data['main']['projection'] = {'fov': 84.575, 'camera': [-3.7760999999990874, -15.51269999999642, 2.773999999999937], 'orientation': c_quaternion({'r': 0.6305, 'i': 0.7222, 'j':-0.2243, 'k':-0.1751}), 'aspect': 1.5}
+image_mapping_data['img_1']['projection'] = {'fov': 68.33999999999999, 'camera': [5.100500000001377, -8.321200000001149, 9.918599999999943], 'orientation': c_quaternion({'r': 0.7589, 'i': 0.5645, 'j': 0.2363, 'k': 0.2225}), 'aspect': 1.3}
+
+del(image_mapping_data["img_2"])
+del(image_mapping_data["img_3"])
 
 #a c_opengl_image_projection
 class c_opengl_image_projection(c_image_projection):
@@ -429,15 +430,16 @@ class c_opengl_image_projection(c_image_projection):
             glPopMatrix()
             return
         glPushMatrix()
-        glTranslate(self.camera[0],self.camera[1],self.camera[2])
+        camera = self.projection["camera"]
+        glTranslate(camera[0],camera[1],camera[2])
         glutSolidCube(0.1)
         glPopMatrix()
         glColor3f(1.0, 1.0, 1.0)
         glLineWidth(1.0)
-        glBegin(GL_LINES);
-        glVertex3f(self.camera[0],self.camera[1],self.camera[2])
-        glVertex3f(self.target[0],self.target[1],self.target[2])
-        glEnd()
+        #glBegin(GL_LINES);
+        #glVertex3f(self.camera[0],self.camera[1],self.camera[2])
+        #glVertex3f(self.target[0],self.target[1],self.target[2])
+        #glEnd()
         glPopMatrix()
         pass
     pass
@@ -481,8 +483,7 @@ class c_mapping(opengl_app.c_opengl_camera_app):
         self.point_mappings = c_point_mapping()
         self.image_projections = {}
         self.load_point_mapping("sidsussexbell.map")
-        global image_mapping_data
-        self.load_images(image_mapping_data)
+        self.load_images()
         #self.calc_total_errors()
         pass
     #f opengl_post_init
@@ -496,9 +497,6 @@ class c_mapping(opengl_app.c_opengl_camera_app):
 
         self.point_mappings.find_line_sets()
         self.point_mappings.approximate_positions()
-
-        #self.blah("main")
-        #die
 
         self.generate_faces()
 
@@ -517,86 +515,11 @@ class c_mapping(opengl_app.c_opengl_camera_app):
         self.point_mappings.add_image(name, size=size)
         self.point_mappings.set_projection(name, self.image_projections[name])
         pass
-    #f find_better_projection
-    def find_better_projection(self,image_projection,projection,deltas_list,delta_scale,scale_error_weight=1.0,verbose=False):
-        smallest_error = (None,10000,{},1.0,1.0)
-        for deltas in deltas_list:
-            r = {}
-            image_projection.set_projection( projection=projection, deltas=deltas, delta_scale=0.25, resultant_projection=r )
-            if verbose:
-                print
-                print deltas, delta_scale, r
-                pass
-            e = 0
-            corr = [statistics.c_correlation(), statistics.c_correlation(),1.0,1.0]
-            corr[0].add_entry(0.0,0.0)
-            corr[1].add_entry(0.0,0.0)
-            pts = 0
-            for n in self.point_mappings.get_mapping_names():
-                if n in object_guess_locations:
-                    xyz = object_guess_locations[n]
-                    mapping_xy = self.point_mappings.get_xy(n,image_projection.name)
-                    if mapping_xy is not None:
-                        e += image_projection.mapping_error(n,xyz,mapping_xy,corr,verbose=verbose)
-                        pts += 1
-                        pass
-                    pass
-                pass
-            full_e = e
-            full_e += scale_error_weight*(1-corr[0].correlation_coefficient())
-            full_e += scale_error_weight*(1-corr[1].correlation_coefficient())
-            (xscale, yscale) = (1.0,1.0)
-            if corr[2]>0 and corr[3]>0:
-                xscale = math.pow(corr[2],1.0/pts)
-                yscale = math.pow(corr[3],1.0/pts)
-                pass
-            print "Total error",full_e,e,1-corr[0].correlation_coefficient(), 1-corr[1].correlation_coefficient(),xscale,yscale
-            if full_e<smallest_error[1]:
-                smallest_error = (deltas,full_e,r,xscale/r["xscale"],yscale/r["yscale"])
-                pass
-            pass
-        print "Smallest error",smallest_error
-        print
-        return smallest_error
-    #f blah
-    def blah(self, image_mapping_name, verbose=False):
-        img_proj = self.image_projections[image_mapping_name]
-        projection = img_proj.projection
-        for k in range(100):
-            (xsc,ysc)=(1.0,1.0)
-            for j in range(1000):
-                done = False
-                for i in range(100000):
-                    (d,e,projection,xsc,ysc) = self.find_better_projection(img_proj, projection, self.camera_deltas, delta_scale=0.05, scale_error_weight=0.1, verbose=verbose)
-                    if len(d)==0:
-                        print "Iteration",j,i
-                        done = True
-                        break
-                    pass
-                (d,e,projection,xsc,ysc) = self.find_better_projection(img_proj, projection, self.target_deltas,delta_scale=0.00125, verbose=verbose)
-                if len(d)!=0: done=False
-                (d,e,projection,xsc,ysc) = self.find_better_projection(img_proj, projection, self.up_deltas,delta_scale=0.000125, verbose=verbose)
-                if len(d)!=0: done=False
-                if done:
-                    break
-                pass
-            if done:
-                if (xsc<0.999) or (xsc>1.001): done = False
-                if (ysc<0.999) or (ysc>1.001): done = False
-                if not done:
-                    projection["xscale"] *= math.sqrt(xsc)
-                    projection["yscale"] *= math.sqrt(ysc)
-                    pass
-                pass
-            if done:
-                break
-            pass
-        (d,e,projection,xsc,ysc) = self.find_better_projection(img_proj, projection, [{}], delta_scale=0.05, scale_error_weight=0, verbose=True)
-        pass
     #f load_images
-    def load_images(self, image_mapping_data):
-        for k in image_mapping_data:
-            image_data = image_mapping_data[k]
+    def load_images(self):
+        image_names = self.point_mappings.get_images()
+        for k in image_names:
+            image_data = self.point_mappings.get_image_data(k)
             self.load_image(k,
                             image_filename=image_data["filename"],
                             projection=image_data["projection"],
