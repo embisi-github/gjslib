@@ -76,8 +76,15 @@ class c_point_mapping(object):
             cb(data)
             pass
         f.close()
-        self.images["main"]["projection"] = {'xscale': 1.0636174418096784, 'camera': [-3.1749999999999945, -15.325000000000035, 6.595000000000033], 'yscale': 1.5135350671146544, 'target': [6.375000000000009, 0.0, 5.325000000000017], 'up': [-0.1422858044230801, 0.03653391377635495, 0.9891511628683752]}
-        self.images["img_1"]["projection"] = {'xscale': 2.323016417382242, 'camera': [7.875000000000012, -8.325000000000033, 8.425000000000024], 'yscale': 2.3233962463563502, 'target': [-1.2499999999999991, 0.0, 7.325000000000026], 'up': [-0.00036548890680590984, 0.02728913846465669, 0.9996275152974311]}
+        self.images['main']['projection'] = {'xscale': 1.0, 'camera': [6.550000000000024, -13.525000000000007, 18.895000000000003], 'yscale': 1.5, 'target': [9.150000000000048, 0.0, 4.875000000000011], 'up': [-0.33350891961340084, -0.0828258108440976, 0.9391015310371504]}
+        self.images['img_1']['projection'] = {'xscale': 1.0, 'camera': [6.374999999999991, -6.975000000000014, 11.72500000000007], 'yscale': 1.3, 'target': [-2.399999999999995, 0.0, 5.374999999999998], 'up': [0.03234892372532482, 0.3206458702150309, 0.9466465935331194]}
+        self.images['main']['projection'] = {'xscale': 1.0, 'camera': [4.399999999999993, -15.425000000000034, 19.794999999999952], 'yscale': 1.5, 'target': [9.650000000000055, 0.0, 5.400000000000018], 'up': [-0.3950709969815411, -0.33635069378035787, 0.8548608764807776]}
+        self.images['img_1']['projection'] = {'xscale': 1.0, 'camera': [5.499999999999979, -7.350000000000019, 12.725000000000085], 'yscale': 1.3, 'target': [-3.3499999999999917, 0.0, 3.9499999999999793], 'up': [-0.017569450567893528, 0.3400796697024401, 0.9402324886227988]}
+        self.images['main']['projection'] = {'xscale': 1.0, 'camera': [6.550000000000024, -13.525000000000007, 18.895000000000003], 'yscale': 1.5, 'target': [9.150000000000048, 0.0, 4.875000000000011], 'up': [-0.33350891961340084, -0.0828258108440976, 0.9391015310371504]}
+        self.images['img_1']['projection'] = {'xscale': 1.0, 'camera': [6.374999999999991, -6.975000000000014, 11.72500000000007], 'yscale': 1.3, 'target': [-2.399999999999995, 0.0, 5.374999999999998], 'up': [0.03234892372532482, 0.3206458702150309, 0.9466465935331194]}
+
+        self.images["main"]["projection"]  = {"camera":(-6.0,-12.0,2.0), "target":(5.0,0.0,4.0), "up":(0.0,0.0,1.0), "xscale":1.0, "yscale":1.5}
+        self.images["img_1"]["projection"] = {"camera":(+7.0,-6.0,6.7), "target":(-1.0,0.0,5.5), "up":(0.0,0.0,1.0), "xscale":1.0, "yscale":1.3}
         pass
     #f save_data
     def save_data(self, data_filename):
@@ -237,6 +244,65 @@ class c_point_mapping(object):
         if name not in self.positions:
             return None
         return self.positions[name]
+    #f get_xyz
+    def get_xyz(self, name, use_references=False ):
+        object_guess_locations = {}
+        object_guess_locations["clk.center"] = (  0.0, -0.25,  8.4)
+        object_guess_locations["lspike.t"]   = ( -3.0,  0.0, 10.9)
+        object_guess_locations["rspike.t"]   = (  3.0,  0.0, 10.9)
+        if use_references:
+            return None
+        if name in object_guess_locations:
+            return object_guess_locations[name]
+        return self.get_approx_position(name)
+    #f optimize_projections
+    def optimize_projections(self,
+                             image=None,
+                             use_references = False,
+                             scale_iterations=100,
+                             target_iterations=100,
+                             camera_iterations=1000,
+                             delta_scale=0.05,
+                             verbose=False):
+        for image_name in self.images.keys():
+            if (image is not None) and image!=image_name:
+                continue
+            proj = self.images[image_name]["projection"]
+            base_projection = proj.projection
+            for k in range(scale_iterations):
+                (xsc,ysc)=(1.0,1.0)
+                for j in range(target_iterations):
+                    done = False
+                    for i in range(camera_iterations):
+                        (d,p) = proj.guess_better_projection(self, base_projection, use_references, proj.camera_deltas, delta_scale=delta_scale, scale_error_weight=0.1, verbose=verbose)
+                        if len(d)==0:
+                            print "Iteration",j,i
+                            done = True
+                            break
+                        base_projection = p
+                        pass
+                    (d,p) = proj.guess_better_projection(self, base_projection, use_references, proj.target_deltas, delta_scale=delta_scale/20.0, verbose=verbose)
+                    base_projection = p
+                    if len(d)!=0: done=False
+                    (d,p) = proj.guess_better_projection(self, base_projection, use_references, proj.up_deltas, delta_scale=delta_scale/100.0, verbose=verbose)
+                    base_projection = p
+                    if len(d)!=0: done=False
+                    if done:
+                        break
+                    pass
+                if done:
+                    #(d,p) = proj.guess_better_projection(self, base_projection, use_references, proj.scale_deltas, verbose=verbose)
+                    #base_projection = p
+                    #if len(d)!=0: done=False
+                    pass
+                if done:
+                    break
+                pass
+            (d,p) = proj.guess_better_projection(self, base_projection, use_references, verbose=verbose)
+            proj.set_projection(base_projection)
+            print "self.images['%s']['projection'] = %s"%(image_name,str(base_projection))
+            pass
+        pass
     #f Done
     pass
 

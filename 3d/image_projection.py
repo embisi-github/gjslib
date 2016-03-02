@@ -1,8 +1,31 @@
 #a Imports
+import math
 from gjslib.math import matrix, vectors, statistics
 
 #a c_image_projection
 class c_image_projection(object):
+    camera_deltas = [{"camera":(-0.1,0.0,0.0),"up":(0.0,0.0,0.0)},
+                     {"camera":(+0.1,0.0,0.0),"up":(0.0,0.0,0.0)},
+                     {"camera":(0.0,-0.1,0.0),"up":(0.0,0.0,0.0)},
+                     {"camera":(0.0,+0.1,0.0),"up":(0.0,0.0,0.0)},
+                     {"camera":(0.0,0.0,-0.1),"up":(0.0,0.0,0.0)},
+                     {"camera":(0.0,0.0,+0.1),"up":(0.0,0.0,0.0)},
+                     {}]
+    target_deltas = [{"target":(-0.1,0.0,0.0)},
+                     {"target":(+0.1,0.0,0.0)},
+                     #{"target":(0.0,-0.1,0.0)},
+                     #{"target":(0.0,+0.1,0.0)},
+                     {"target":(0.0,0.0,-0.1)},
+                     {"target":(0.0,0.0,+0.1)},
+                     {}]
+    up_deltas = [ {"up":(-0.01,0.0,0.0)},
+                  {"up":(+0.01,0.0,0.0)},
+                  {"up":(0.0,-0.01,0.0)},
+                  {"up":(0.0,+0.01,0.0)},
+                  {"up":(0.0,0.0,-0.01)},
+                  {"up":(0.0,0.0,+0.01)},
+                  {}]
+    scale_deltas = [ {"scale_update":(0.999,1.001,0.5)} ]
     #f __init__
     def __init__(self,name,image_filename,size=(1.0,1.0)):
         self.name = name
@@ -42,6 +65,11 @@ class c_image_projection(object):
                             "xscale":xscale,
                             "yscale":yscale}
         m.lookat( camera, target, up )
+        if deltas is not None:
+            if "up" in deltas:
+                up = (m.matrix[3], m.matrix[4], m.matrix[5])
+                pass
+            pass
         #print m
         self.mvp.mult3x3(m=m)
         self.mvp.translate(camera, scale=-1)
@@ -67,14 +95,19 @@ class c_image_projection(object):
         dirn = self.ip.apply(dirn)
         return (self.camera, dirn)
     #f mapping_error
-    def mapping_error(self, name, xyz, xy, corr=None, verbose=False ):
+    def mapping_error(self, name, xyz, xy, corr=None, epsilon=1E-6, verbose=False ):
         abs_error = 0
         (img_uvzw, img_xy) = self.image_of_model(xyz)
         error = ( (xy[0]-img_uvzw[0])*(xy[0]-img_uvzw[0]) +
                   (xy[1]-img_uvzw[1])*(xy[1]-img_uvzw[1]))
         abs_error += error
-        xscale = xy[0] / img_uvzw[0] * self.scales[0]
-        yscale = xy[1] / img_uvzw[1] * self.scales[1]
+        (xscale,yscale) = (10000.0, 10000.0)
+        if img_uvzw[0]<-epsilon or img_uvzw[0]>epsilon:
+            xscale = xy[0] / img_uvzw[0] * self.scales[0]
+            pass
+        if img_uvzw[1]<-epsilon or img_uvzw[1]>epsilon:
+            yscale = xy[1] / img_uvzw[1] * self.scales[1]
+            pass
         if corr is not None:
             corr[0].add_entry(xy[0], img_uvzw[0])
             corr[1].add_entry(xy[1], img_uvzw[1])
@@ -85,5 +118,62 @@ class c_image_projection(object):
             print "%16s"%name, error, xscale,yscale, "xy %s:%s"%(str(xy), str(img_uvzw[0:2]))
             pass
         return abs_error
+    #f guess_better_projection
+    def guess_better_projection(self, point_mappings, base_projection, use_references=True, deltas_list=[{}], delta_scale=1.0, scale_error_weight=0.1, verbose=False):
+        smallest_error = ({},10000,base_projection,1.0,1.0)
+        for deltas in deltas_list:
+            r = {}
+            self.set_projection( projection=base_projection, deltas=deltas, delta_scale=0.25, resultant_projection=r )
+            if verbose:
+                print "\ngbp :", deltas, delta_scale, r
+                pass
+            e = 0
+            corr = [statistics.c_correlation(), statistics.c_correlation(),1.0,1.0]
+            corr[0].add_entry(0.0,0.0)
+            corr[1].add_entry(0.0,0.0)
+            pts = 0
+            for n in point_mappings.get_mapping_names():
+                xyz = point_mappings.get_xyz( n, use_references )
+                mapping_xy = point_mappings.get_xy(n,self.name)
+                if (xyz is not None) and (mapping_xy is not None):
+                    e += self.mapping_error(n,xyz,mapping_xy,corr,verbose=verbose)
+                    pts += 1
+                    pass
+                pass
+            if pts>0:
+                full_e = e
+                full_e += scale_error_weight*(1-corr[0].correlation_coefficient())
+                full_e += scale_error_weight*(1-corr[1].correlation_coefficient())
+                (xscale, yscale) = (1.0,1.0)
+                if corr[2]>0 and corr[3]>0:
+                    xscale = math.pow(corr[2],1.0/pts)
+                    yscale = math.pow(corr[3],1.0/pts)
+                    pass
+                print "Total error",full_e,e,1-corr[0].correlation_coefficient(), 1-corr[1].correlation_coefficient(),xscale,yscale
+                if full_e<smallest_error[1]:
+                    smallest_error = (deltas,full_e,r,xscale/r["xscale"],yscale/r["yscale"])
+                    pass
+                pass
+            pass
+        if "scale_update" in smallest_error[0]:
+            (scale_low, scale_high, scale_update_power) = deltas["scale_update"]
+            (r,xsc,ysc) = smallest_error[2:5]
+            done = True
+            if (xsc<scale_low) or (xsc>scale_high): done = False
+            if (ysc<scale_low) or (ysc>scale_high): done = False
+            if done:
+                smallest_error[0] = {}
+                pass
+            else:
+                r["xscale"] *= math.pow(xsc,scale_update_power)
+                r["yscale"] *= math.pow(ysc,scale_update_power)
+                pass
+            pass
+
+        if verbose:
+            print "Smallest error",smallest_error
+            print
+            pass
+        return (smallest_error[0], smallest_error[2])
     #f All done
     pass

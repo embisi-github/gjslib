@@ -214,7 +214,7 @@ class c_edit_point_map_image(object):
                     glPushMatrix()
                     glTranslate(uv[0],uv[1],-0.1)
                     sc = 0.005/self.scale[0]
-                    glRotate(2*self.epm.tick,0.0,0.0,1.0)
+                    glRotate(4*self.epm.tick,0.0,0.0,1.0)
                     glPushMatrix()
                     glScale(sc,4*sc,1.0)
                     glutSolidCube(1.0)
@@ -382,6 +382,10 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         self.load_point_mapping("sidsussexbell.map")
         self.epm_info = c_edit_point_map_info(epm=self, pm=self.point_mappings)
         self.load_images()
+
+        self.point_mappings.find_line_sets()
+        self.point_mappings.approximate_positions()
+
         self.point_set_start_tick = None
 
         glutSetCursor(GLUT_CURSOR_CROSSHAIR)
@@ -402,9 +406,6 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         self.menus.add_item("Save",("save",0))
         self.menus.create_opengl_menus()
         self.attach_menu(self.menus, "main_menu")
-
-        self.point_mappings.find_line_sets()
-        self.point_mappings.approximate_positions()
 
         self.epm_info.update()
 
@@ -605,6 +606,14 @@ class c_edit_point_map(opengl_app.c_opengl_app):
             return
         self.do_undoable_operation( ("delete_image_location",(pt_name,image_name)) )
         pass
+    #f optimize_projection
+    def optimize_projection(self, image_name=None):
+        self.point_mappings.find_line_sets()
+        self.point_mappings.approximate_positions()
+        self.point_mappings.optimize_projections(image=image_name, scale_iterations=1, target_iterations=5, camera_iterations=200, delta_scale=0.01)
+        self.point_mappings.find_line_sets()
+        self.point_mappings.approximate_positions()
+        pass
     #f select_image
     def select_image(self, image_name, image=None):
         if image is None:
@@ -659,6 +668,11 @@ class c_edit_point_map(opengl_app.c_opengl_app):
                           }
         if ord(k)==27:
             self.point_set_end()
+            return True
+        if k in ["o", "O"]:
+            image_name = None
+            if k=="o": image_name=self.displayed_images[self.focus_image]
+            self.optimize_projection(image_name=image_name)
             return True
         if (ord(k)==127) and (m&GLUT_ACTIVE_CTRL):
             self.point_delete(image_name=self.displayed_images[self.focus_image],
