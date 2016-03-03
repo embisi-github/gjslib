@@ -297,11 +297,11 @@ class c_matrixNxN(object):
     @classmethod
     def multiply_matrix_data( cls, n, m0, m1 ):
         m = []
-        for i in range(n): # Row of result
-            for j in range(n): # Col of result
+        for r in range(n): # Row of result
+            for c in range(n): # Col of result
                 d = 0
                 for k in range(n):
-                    d += m0[i*n+k] * m1[k*n+j]
+                    d += m0[r*n+k] * m1[k*n+c]
                     pass
                 m.append(d)
                 pass
@@ -312,6 +312,18 @@ class c_matrixNxN(object):
     def multiply_matrices( cls, matrix_0, matrix_1 ):
         m = cls.multiply_matrix_data(matrix_0.order, matrix_0.matrix, matrix_1.matrix)
         return cls(data=m)
+    #f combine_lu
+    @classmethod
+    def combine_lu( cls, L, U):
+        m = U.copy()
+        for c in range(U.order):
+            for r in range(U.order):
+                if (c>r):
+                    m[c,r] = L[c,r]
+                    pass
+                pass
+            pass
+        return m
     #f __init__
     def __init__(self, order=None, data=None):
         if order is None:
@@ -369,16 +381,206 @@ class c_matrixNxN(object):
     #f premult
     def premult(self, matrix=None, data=None):
         if matrix is not None: data=matrix.matrix
-        self.matrix = multiply_matrix_data(self.order, data, self.matrix)
+        self.matrix = c_matrixNxN.multiply_matrix_data(self.order, data, self.matrix)
         return self
     #f postmult
     def postmult(self, matrix=None, data=None):
         if matrix is not None: data=matrix.matrix
-        self.matrix = multiply_matrix_data(self.order, self.matrix, data)
+        self.matrix = c_matrixNxN.multiply_matrix_data(self.order, self.matrix, data)
         return self
+
+    #f __getitem__
+    def __getitem__(self,key):
+        if type(key)==tuple:
+            key = self.order*key[0]+key[1]
+        return self.matrix[key]
+    #f __setitem__
+    def __setitem__(self,key, value):
+        if type(key)==tuple:
+            key = self.order*key[0]+key[1]
+        self.matrix[key] = value
+    #f lup_decompose
+    def lup_decompose(self):
+        """
+        Decompose into L and U matrices with a pivot P
+        """
+        n =  self.order
+        P = []
+        for i in range(n): P.append(i)
+
+        LU = self.copy()
+        # Run through the diagonal
+        for d in range(n-1):
+            # Find row with maximum (abs) value in c,r
+            p = 0.
+            r_max = None
+            for r in range(d,n):
+                t = LU[r, d]
+                if t<0: t=-t
+                if t>p:
+                    p     = t
+                    r_max = r
+                    pass
+                pass
+            #print "Diagonal",d,"has max in row",p,r_max
+            if p==0:
+                return None
+                raise Exception("Noninvertible matrix")
+
+            # Swap row i with r_max and update the pivot list
+            if r_max != d:
+                (P[d], P[r_max]) = (P[r_max], P[d])
+                for c in range(d,n):
+                    (LU[d,c], LU[r_max,c]) = (LU[r_max,c], LU[d,c])
+                    pass
+                pass
+
+            # Subtract out from rows below scaling down by LU[d][d] (in p) and up by LU[r][r]
+            for r in range(d+1,n):
+                scale = LU[r,d]/LU[d,d]
+                LU[r,d] = scale
+                for c in range(d+1,n):
+                    LU[r,c] -= scale*LU[d,c]
+                    pass
+                pass
+
+            # Next element on the diagonal...
+            #print "After diagonal",d,LU
+            pass
+        return (LU, P)
+    #f lup_invert
+    def lup_invert(self, P):
+        """
+        self should be an LU matrix
+        Note that LUP matrix is actually a matrix P.L.U
+        If we find vectors 'x' such that L.U.x = P-1.Ic for the c'th column of the identity matrix
+        we will find (with all 'n' x) the inverse
+        """
+        n = self.order
+        R = c_matrixNxN(order=n)
+
+        # For each column in the identity matrix...
+        for c in range(n):
+            # We want to find vector x such that LU.x = Ic
+            # First find a such that L.a = Ic
+            # Note that as L is a lower, we can find the elements top down
+            a = [0]*n
+            a[c] = 1
+            for r in range(n):
+                # Would divide a[r] by Lrr, but that is 1 for L
+                # a[r] = a[r]/1
+                # For the rest of the column remove multiples of a[r] (Lir, n>i>r)
+                for i in range(r+1,n):
+                    a[i] -= self[i,r]*a[r]
+                    pass
+                pass
+
+            # Now we have L.a = Ic
+            # Hence a = U.x
+            # Here we can work up from the bottom of x - we have to start with a...
+            x = a
+            for r in range(n-1,-1,-1):
+                # Now divide a[r] by Urr, which is not 1
+                x[r] = x[r]/self[r,r]
+                # For the rest of the column remove multiples of x[r] (Uir, r>i>=0)
+                for i in range(0,r):
+                    x[i] -= self[i,r]*x[r]
+                    pass
+                pass
+
+            # So we know that LU.x = Ic
+            # Insert into R at the permuted column
+            for r in range(n):
+                R[P[c],r] = x[r]
+                pass
+   
+            pass
+        R.transpose()
+        return R
+    #f lu_split
+    def lu_split(self):
+        """
+        Split an LU where L has diagonal of 1s and is stored in lower half, U is upper half
+        """
+        L = self.copy()
+        U = self.copy()
+        n = self.order
+
+        for r in range(n):
+            for c in range(n):
+                if (r==c):
+                    L[r,c] = 1.
+                    pass
+                elif (r<c):
+                    L[r,c] = 0.
+                    pass
+                else:
+                    U[r,c] = 0.
+                    pass
+                pass
+            pass
+        return (L, U)
+    #f inverse
+    def inverse(self):
+        lup = self.lup_decompose()
+        if lup is None:
+            return None
+        return lup[0].lup_invert(lup[1])
+    #f invert
+    def invert(self):
+        m = self.inverse()
+        self.matrix = m.matrix
+        return self
+    #f __repr__
+    def __repr__(self):
+        return str(self.matrix)
 
 #a Main
 def main():
+    print "LU decompose of 1,2 4,3 should be U=4,3 0,1.25  L= 1,0 0.25,1, P = 2,1; as one matrix this is 4,3, 0.25,1.25"
+    a = c_matrixNxN(data=[1.,2.,4.,3.])
+    print "A", a
+    lup = a.lup_decompose()
+    print "LUP", lup
+    a_i = lup[0].lup_invert(lup[1])
+    print "A inverse", a_i
+    print c_matrixNxN.multiply_matrices(a,a_i)
+
+    print
+    print "More matrices"
+    #a = c_matrixNxN(data=[1.,0.,0.,1.])
+    a = c_matrixNxN(data=[1.,2.,3,4.,5.,4.,6.,3,2.])
+    #L = c_matrixNxN(data=[1.,0.,0.,2.,1.,0.,3.,4.,1.])
+    #U = c_matrixNxN(data=[3.,4.,6.,0.,2.,9.,0.,0.,1.])
+    #LU = c_matrixNxN.combine_lu(L,U)
+    #print "LU", LU
+    #lup = (LU, lup[1])
+    print "A", a
+    lup = a.lup_decompose()
+    print "LUP", lup
+    a_i = lup[0].lup_invert(lup[1])
+    print "A inverse", a_i
+    print c_matrixNxN.multiply_matrices(a,a_i)
+
+    print
+    print "4 by 4..."
+    a = c_matrixNxN(data=[-1.,3.,4.,5.,  0.,4.,2.,1., -5.,5.,2.,-3., -4.,3.,2.,1.])
+    print "A",a
+    lup = a.lup_decompose()
+    print "LUP", lup
+    L,U = lup[0].lu_split()
+    print "U",U
+    print "L",L
+    print "L.U", c_matrixNxN.multiply_matrices(L,U)
+
+    print "A inverse",a.inverse()
+    b = a.copy()
+    print "B",b
+    b.invert()
+    print "B inverted",b
+    b.postmult(a)
+    print "Identity?",b
+    return
     a = c_matrix4x4((1.0,0.0,0.0,0.0),
               (0.0,1.0,0.0,0.0),
               (0.0,0.0,1.0,0.0),
