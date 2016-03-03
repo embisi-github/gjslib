@@ -379,7 +379,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         font_dir = "../../fonts/"
         self.load_font(font_dir+"cabin-bold")
         self.point_mappings = c_point_mapping()
-        self.load_point_mapping("sidsussexbell.map")
+        self.load_point_mapping("pencils.map")
         self.epm_info = c_edit_point_map_info(epm=self, pm=self.point_mappings)
         self.load_images()
 
@@ -409,7 +409,8 @@ class c_edit_point_map(opengl_app.c_opengl_app):
 
         self.epm_info.update()
 
-        self.displayed_images = ["img_1", "img_2"]
+        #self.displayed_images = ["img_1", "img_2"]
+        self.displayed_images = ["left", "middle"]
         self.focus_image = 0
         self.layers = opengl_layer.c_opengl_layer_set()
         self.image_layers = (self.layers.new_layer( (0,300,900,900), depth=10),
@@ -614,7 +615,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
             self.point_mappings.initial_orientation(image=image_name, steps=20, verbose=False)
             pass
         else:
-            self.point_mappings.optimize_projections(image=image_name, fov_iterations=10, orientation_iterations=50, camera_iterations=20, delta_scale=0.01)
+            self.point_mappings.optimize_projections(image=image_name, fov_iterations=10, orientation_iterations=50, camera_iterations=20, delta_scale=0.03) # .01
             pass
         self.point_mappings.find_line_sets()
         self.point_mappings.approximate_positions()
@@ -644,7 +645,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
                 self.change_point(point_name=value[1])
                 return True
             if value[0]=="save":
-                self.save_point_mapping("sidsussexbell.map")
+                self.save_point_mapping("pencils.map")
                 return True
             pass
         print menu, value

@@ -214,7 +214,7 @@ class c_image_projection(object):
                     (d,p) = self.guess_better_projection(point_mappings, base_projection, use_references, self.orientation_deltas, delta_scale=delta_scale, verbose=verbose)
                     base_projection = p
                     if len(d)==0:
-                        print "Oriented complete at",j,i
+                        #print "Oriented complete at",j,i
                         done = True
                         break
                     pass
