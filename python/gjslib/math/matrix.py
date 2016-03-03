@@ -285,6 +285,98 @@ class c_matrix4x4(object):
             pass
         return r
 
+#a c_matrix
+class c_matrixNxN(object):
+    """
+    N x N matrix, held in a linear list in row-major order
+
+    i.e. matrxi[1] is the second column, first row
+    """
+    order = 2
+    #f multiply_matrix_data
+    @classmethod
+    def multiply_matrix_data( cls, n, m0, m1 ):
+        m = []
+        for i in range(n): # Row of result
+            for j in range(n): # Col of result
+                d = 0
+                for k in range(n):
+                    d += m0[i*n+k] * m1[k*n+j]
+                    pass
+                m.append(d)
+                pass
+            pass
+        return m
+    #f multiply_matrices
+    @classmethod
+    def multiply_matrices( cls, matrix_0, matrix_1 ):
+        m = cls.multiply_matrix_data(matrix_0.order, matrix_0.matrix, matrix_1.matrix)
+        return cls(data=m)
+    #f __init__
+    def __init__(self, order=None, data=None):
+        if order is None:
+            if data is None:
+                order=self.order
+                pass
+            else:
+                order = [1,4,9,16,25,36].index(len(data))+1
+                pass
+            pass
+        self.order = order
+        if data is None:
+            self.matrix = [0.]*(order*order)
+            pass
+        else:
+            if len(data) != order*order:
+                raise Exception("Bad data for order %d matrix"%order)
+            self.matrix = data[:]
+            pass
+        pass
+    #f get_matrix
+    def get_matrix(self, row_major=True):
+        if row_major:
+            return self.matrix
+        m = self.copy()
+        m.transpose()
+        return m.matrix
+    #f copy
+    def copy(self):
+        return c_matrixNxN(data=self.matrix)
+    #f apply
+    def apply(self, v):
+        n = self.order
+        r = []
+        for i in range(n):
+            d = 0
+            for j in range(n):
+                d += self.matrix[i*n+j]*v[j]
+                pass
+            r.append(d)
+            pass
+        return r
+    #f transpose
+    def transpose(self):
+        n = self.order
+        r = []
+        for i in range(n):
+            d = 0
+            for j in range(n):
+                r.append(self.matrix[j*n+i])
+                pass
+            pass
+        self.matrix = r
+        return self
+    #f premult
+    def premult(self, matrix=None, data=None):
+        if matrix is not None: data=matrix.matrix
+        self.matrix = multiply_matrix_data(self.order, data, self.matrix)
+        return self
+    #f postmult
+    def postmult(self, matrix=None, data=None):
+        if matrix is not None: data=matrix.matrix
+        self.matrix = multiply_matrix_data(self.order, self.matrix, data)
+        return self
+
 #a Main
 def main():
     a = c_matrix4x4((1.0,0.0,0.0,0.0),
