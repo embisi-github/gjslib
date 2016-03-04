@@ -7,6 +7,18 @@ import re
 
 #a c_obj
 class c_obj(object):
+    """
+    An object is a set of triangular faces
+
+    A face therefore has three points; each point is three indices (vi, vti, vni).
+    These are indices into three different arrays - vertices (vi), texture vertices (vti), and normals (vni)
+
+    These three arrays are arrays of 3-tuples (vertices and normals) and 2-tuples (texture vertices)
+
+    The three arrays are avaiable as the attributes 'vertices', 'normals', and 'uv_map'
+
+    A face coordinate may have a vti of None, in which case the texture coordinate of (0.0,0.0) will be used
+    """
     #f __init__
     def __init__(self):
         self.vertices = []
@@ -306,70 +318,6 @@ class c_obj(object):
             print >> f, face
             pass
         pass
-    #f destroy_opengl_surface
-    def destroy_opengl_surface(self):
-        # Be explicit about deleting the vectors and indices - OpenGL.arrays.vbo should do glDeleteBuffers
-        if "vectors" in self.opengl_surface:
-            del(self.opengl_surface["vectors"])
-            pass
-        if "indices" in self.opengl_surface:
-            del(self.opengl_surface["indices"])
-            pass
-        pass
-    #f create_opengl_surface
-    def create_opengl_surface(self):
-        import OpenGL.arrays.vbo as vbo
-        import numpy
-        from ctypes import sizeof, c_float, c_void_p, c_uint
-
-        self.opengl_surface = {}
-
-        index_list = []
-        vector_list = []
-        for f in self.faces:
-            for (vi,vti,vni) in f:
-                vertex = self.vertices[vi]
-                normal = self.normals[vni]
-                uv_map = (0.0,0.0)
-                if vti is not None: uv_map = self.uv_map[vti]
-                vector_list.extend( [vertex[0], vertex[1], vertex[2],
-                                     normal[0], normal[1], normal[2],
-                                     uv_map[0], uv_map[1]] )
-                index_list.append(len(index_list))
-                pass
-            pass
-
-        vectors = vbo.VBO( data=numpy.array(vector_list, dtype=numpy.float32), target=GL_ARRAY_BUFFER )
-        indices = vbo.VBO( data=numpy.array(index_list, dtype=numpy.uint16), target=GL_ELEMENT_ARRAY_BUFFER )
-
-        self.opengl_surface["vectors"] = vectors
-        self.opengl_surface["indices"] = indices
-
-        pass
-    #f draw_opengl_surface
-    def draw_opengl_surface(self, draw=True):
-        from ctypes import sizeof, c_float, c_void_p, c_uint
-        glEnableClientState(GL_VERTEX_ARRAY)
-        glEnableClientState(GL_NORMAL_ARRAY)
-        glEnableClientState(GL_TEXTURE_COORD_ARRAY)
-
-        self.opengl_surface["vectors"].bind()
-        self.opengl_surface["indices"].bind()
-
-        glVertexPointer( 3, GL_FLOAT,   8*sizeof(c_float), c_void_p(0) )
-        glNormalPointer( GL_FLOAT,      8*sizeof(c_float), c_void_p(3*sizeof(c_float)) )
-        glTexCoordPointer( 2, GL_FLOAT, 8*sizeof(c_float), c_void_p(6*sizeof(c_float)) )
-
-        if draw:
-            glDrawElements( GL_TRIANGLES,
-                            len(self.opengl_surface["indices"]),
-                            GL_UNSIGNED_SHORT,
-                            self.opengl_surface["indices"] )
-            pass
-        self.opengl_surface["vectors"].unbind()
-        self.opengl_surface["indices"].unbind()
-        pass
-
 #a c_text_page
 class c_text_page(c_obj):
     def __init__(self):

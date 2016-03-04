@@ -50,6 +50,10 @@ class c_opengl_app(object):
         glEnable(GL_LIGHT0)
         self.opengl_post_init()
         pass
+    #f opengl_post_init
+    def opengl_post_init(self):
+        """Subclass should provide this"""
+        pass
     #f main_loop
     def main_loop(self):
         glutKeyboardFunc(self.keypress_callback)
@@ -196,18 +200,24 @@ class c_opengl_camera_app(c_opengl_app):
                                    self.camera["position"][2]+z*scale
                                    ]
         pass
+    #f change_fov
+    def change_fov(self, fov):
+        self.camera["fov"] += fov
+        if self.camera["fov"]<10:  self.camera["fov"]=10
+        if self.camera["fov"]>140: self.camera["fov"]=140
+        pass
     #f keypress
     def keypress(self, key,m,x,y):
         acceleration = 0.02
         if key=='i': self.change_angle(0,+3.1415/4,angle_delta=1)
         if key=='o': self.change_angle(1,+3.1415/4,angle_delta=1)
         if key=='p': self.change_angle(1,+3.1415/4,angle_delta=1)
-        if key=='w': self.change_angle(1,-1)
-        if key=='s': self.change_angle(1, 1)
+        if key=='w': self.change_angle(2,-1)
+        if key=='s': self.change_angle(2, 1)
         if key=='z': self.change_angle(0,-1)
         if key=='c': self.change_angle(0,+1)
-        if key=='a': self.change_angle(2,-1)
-        if key=='d': self.change_angle(2,+1)
+        if key=='a': self.change_angle(1,-1)
+        if key=='d': self.change_angle(1,+1)
 
         if key=='W': self.change_position(0,0,-1)
         if key=='S': self.change_position(0,0,+1)

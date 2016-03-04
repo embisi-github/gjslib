@@ -4,8 +4,7 @@
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 from OpenGL.GL import *
-import gjslib.graphics.obj
-from gjslib.graphics import opengl_utils
+from gjslib.graphics import opengl_utils, opengl_obj
 
 #a Class for c_opengl_widget
 #c c_opengl_widget
@@ -30,7 +29,7 @@ class c_opengl_simple_text_widget(object):
     #f __init__
     def __init__(self, og, fontname="font", text=None):
         (self.bitmap_font, self.texture) = og.get_font(fontname)
-        self.og_obj = gjslib.graphics.obj.c_text_page()
+        self.og_obj = opengl_obj.c_text_page()
         self.replace_text(text)
         pass
     #f replace_text

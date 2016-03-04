@@ -1,10 +1,17 @@
 #!/usr/bin/env python
 
+#a To do
+# Outline fonts:
+#   Thickness
+#   Fix broken glyphs
+#   inter-word spacing
+
 #a Imports
 import gjslib.math.bezier as bezier
 import gjslib.math.mesh as mesh
 from PIL import Image
 import math
+import pickle
 
 #a Classes
 #c c_glyph
@@ -229,8 +236,145 @@ class c_glyph( object ):
         result = "glyph '%s' ('%s') : %s : %s"%(self.unichr,self.name,str(self.metrics),str(self.glyph))
         return result
 
+#c c_font
+class c_font(object):
+    """
+    """
+    #f __init__
+    def __init__(self):
+        self.fontname = "font"
+        self.glyph_data = {}
+        self.glyph_names = []
+        pass
+    #f new_from_glyphs
+    def new_from_glyphs(self, fontname="font", font_metrics={}, glyph_names=('a'), scale_to=None ):
+        self.fontname = fontname
+        self.glyph_names = glyph_names
+        xsc = 1.0
+        ysc = 1.0
+        if scale_to is not None:
+            ysc = float(scale_to[1]) / font_metrics["MaxHeight"]
+            xsc = float(scale_to[0]) / font_metrics["MaxWidth"]
+            pass
+        self.line_gap = int(font_metrics["line_gap"] * ysc)
+        self.ascent   = int(font_metrics["ascent"] * ysc)
+        self.descent  = int(font_metrics["descent"] * ysc)
+        self.line_spacing = int((font_metrics["line_gap"]+font_metrics["ascent"]-font_metrics["descent"]) * ysc)
+        self.space_width = int((font_metrics["line_gap"]+font_metrics["ascent"]-font_metrics["descent"]) * xsc)
+        self.glyph_data = {}
+        for gn in glyph_names:
+            self.glyph_data[gn] = {}
+            pass
+        pass
+    #f get_font_data
+    def get_font_data(self):
+        fd = {}
+        fd["fontname"] = self.fontname
+        fd["line_gap"] = self.line_gap
+        fd["ascent"]   = self.ascent
+        fd["descent"]  = self.descent
+        fd["line_spacing"]  = self.line_spacing
+        fd["space_width"]  = self.space_width
+        return fd
+    #f set_font_data
+    def set_font_data(self, fd):
+        if "fontname" in fd: self.fontname = fd["fontname"]
+        if "line_gap" in fd: self.line_gap = fd["line_gap"]
+        if "ascent" in fd: self.ascent = fd["ascent"]
+        if "descent" in fd: self.descent = fd["descent"]
+        if "line_spacing" in fd: self.line_spacing = fd["line_spacing"]
+        if "space_width" in fd: self.space_width = fd["space_width"]
+        return fd
+    #f All done
+    pass
+
+#c c_outline_font
+class c_outline_font(c_font):
+    """
+    """
+    #f __init__
+    def __init__(self, **kwargs):
+        c_font.__init__(self, **kwargs)
+        self.image = None
+        pass
+    #f load
+    def load(self, filename):
+        f = open(filename+".oft")
+        file_obj = pickle.load(f)
+        f.close()
+        self.glyph_data = {}
+        if "font_data" in file_obj:
+            self.set_font_data(file_obj["font_data"])
+            pass
+        if "glyphs" in file_obj:
+            self.glyph_names = file_obj["glyphs"].keys()
+            for gn in self.glyph_names:
+                gd = file_obj["glyphs"][gn]
+                self.glyph_data[gn] = {"points":gd[0],
+                                       "triangles":gd[1],
+                                       "metrics":gd[2]}
+                pass
+            pass
+        pass
+    #f save
+    def save(self, filename):
+        file_obj = {}
+        file_obj["font_data"] = self.get_font_data()
+        file_obj["glyphs"] = {}
+        for gn in self.glyph_names:
+            gd = self.glyph_data[gn]
+            file_obj["glyphs"][gn] = (gd["points"],
+                                      gd["triangles"],
+                                      gd["metrics"],
+                                      )
+            pass
+        f = open(filename+".oft","w")
+        pickle.dump(file_obj,f)
+        f.close()
+        pass
+    #f set_glyph
+    def set_glyph(self, glyph_name, mesh, metrics={"lx":0,"by":0,"w":0,"h":0, "advance_width":0, "left_side_bearing":0}):
+        if glyph_name not in self.glyph_data:
+            raise Exception("Glyph '%s' not in font"%glyph_name)
+        self.glyph_data[glyph_name]["metrics"] = metrics
+        pts = {}
+        tris = []
+        for pt in mesh.point_set:
+            pts[pt.entry_number] = pt.coords()
+            pass
+        for t in mesh.triangles:
+            if not(t.winding_order & 1):
+                continue
+            tri_pts = t.get_points()
+            tri_pt_nums = []
+            for p in tri_pts:
+                tri_pt_nums.append(p.entry_number)
+                pass
+            tris.append(tuple(tri_pt_nums))
+            pass
+        self.glyph_data[glyph_name]["points"] = pts
+        self.glyph_data[glyph_name]["triangles"] = tris
+        pass
+
+    #f get_glyph
+    def get_glyph(self, glyph_name, baseline_x):
+        if glyph_name not in self.glyph_data:
+            return None
+        gd = self.glyph_data[glyph_name]
+        metrics = gd["metrics"]
+        tris = gd["triangles"]
+        pts = {}
+        for pt in gd["points"]:
+            pts[pt] = (gd["points"][pt][0]/float(self.ascent)+baseline_x, gd["points"][pt][1]/float(self.ascent))
+            pass
+        return (baseline_x + metrics["advance_width"]/float(self.ascent),pts,tris)
+    #f get_line_spacing
+    def get_line_spacing(self):
+        return float(self.line_spacing) / float(self.ascent)
+    #f All done
+    pass
 #c c_bitmap_font
-class c_bitmap_font(object):
+class c_bitmap_font(c_font):
     """
     Font metric data needs a header with a font name (64 characters), glyph size w,h (8-bits each, pixels), glyph bbox aspect ratio (2.14 fixed point), glyphs wide and glyphs high (8 bits each),  and number of glyphs (16 bits)
     Then a list of glyphs with 16B per glyph
@@ -239,11 +383,9 @@ class c_bitmap_font(object):
     If the smallest image is 16x16 then a character is 32B of storage
     """
     #f __init__
-    def __init__(self):
+    def __init__(self, **kwargs):
+        c_font.__init__(self, **kwargs)
         self.image = None
-        self.fontname = "font"
-        self.glyph_data = {}
-        self.glyph_names = []
         pass
     #f get_bitmap_data
     def get_bitmap_data(self):
@@ -396,35 +538,26 @@ class c_bitmap_font(object):
         self.image.save(filename+".png")
         pass
     #f new_from_glyphs
-    def new_from_glyphs(self, fontname="font", font_metrics={}, glyph_names=('a'), glyph_size=(32,32) ):
-        self.fontname = fontname
-        self.glyph_names = glyph_names
-        n = len(glyph_names)
+    def new_from_glyphs(self, glyph_size=(32,32), **kwargs ):
+        c_font.new_from_glyphs(self, scale_to=glyph_size, **kwargs)
+        n = len(self.glyph_names)
         header_byte_size = 128 + 16*n
         glyph_byte_size = glyph_size[0]*glyph_size[1]
         gw = 1+int(math.sqrt(n))
         if gw < 1+((header_byte_size-1)/glyph_byte_size):
             gw = 1+((header_byte_size-1)/glyph_byte_size)
             pass
-        gh = 2+(len(glyph_names)-1)/gw
-        ysc = float(glyph_size[1]) / font_metrics["MaxHeight"]
-        xsc = float(glyph_size[0]) / font_metrics["MaxWidth"]
-        self.line_gap = int(font_metrics["line_gap"] * ysc)
-        self.ascent   = int(font_metrics["ascent"] * ysc)
-        self.descent  = int(font_metrics["descent"] * ysc)
-        self.line_spacing = int((font_metrics["line_gap"]+font_metrics["ascent"]-font_metrics["descent"]) * ysc)
+        gh = 2+(n-1)/gw
         self.array_size = (gw, gh)
         self.glyph_size = glyph_size
         self.image_size = (gw*glyph_size[0], gh*glyph_size[1])
         self.image = Image.new(mode="L",size=self.image_size,color="black")
         self.bitmap = self.image.load()
-        self.glyph_data = {}
         i = 0
-        for gn in glyph_names:
-            self.glyph_data[gn] = {"index":i}
+        for gn in self.glyph_names:
+            self.glyph_data[gn]["index"] = i
             self.glyph_data[gn]["gx"] = i%gw
             self.glyph_data[gn]["gy"] = 1+(i/gw)
-            #print gn, self.glyph_data[gn]
             i += 1
             pass
         pass
@@ -512,8 +645,8 @@ class c_bitmap_font(object):
         return baseline_xy
     #f All done
     pass
-#c c_font
-class c_font( object ):
+#c c_ttx_font
+class c_ttx_font( object ):
     """
     A simple font class to permit font handling particularly for OpenGL
 
@@ -524,7 +657,7 @@ class c_font( object ):
     Many TTF fonts are available, and OSX and Windows use TTF.
     No hinting support is provided in this class, as the rendering is expected to be used in OpenGL (for which hints are pointless)
 
-    A c_font has the following attributes:
+    A c_ttx_font has the following attributes:
     glyphs: dictionary of unicode -> c_glyph
     
     """
@@ -634,6 +767,39 @@ class c_font( object ):
     def get_mesh( self, glyph_name, straightness=50 ):
         glyph = self.glyphs[glyph_name]
         return glyph.get_mesh( straightness=straightness )
+    #f generate_outline
+    def generate_outline(self, glyphs='ab', straightness=10):
+        font_glyphs = self.get_glyph_unichrs()
+        accepted_glyphs = []
+        for gu in glyphs:
+            if gu in font_glyphs:
+                accepted_glyphs.append(gu)
+                pass
+            pass
+        glyphs = accepted_glyphs
+
+        font_metrics = self.get_metrics(glyph_unichrs=glyphs)
+        outline_font = c_outline_font()
+        outline_font.new_from_glyphs(fontname="font",
+                                     font_metrics = font_metrics,
+                                     glyph_names=glyphs,
+                                     )
+        size = (1.0,1.0)
+        for gn in glyphs:
+            if gn not in self.glyphs:
+                continue
+            glyph_metrics = self.get_glyph_metrics(gn)
+            m = self.get_mesh(gn, straightness=straightness)
+            glyph_metrics = {"advance_width":size[0]*glyph_metrics["advance_width"],
+                             "left_side_bearing":size[0]*glyph_metrics["left_side_bearing"],
+                             "lx":size[0]*glyph_metrics["lx"],
+                             "by":size[1]*glyph_metrics["by"],
+                             "w":size[0]*glyph_metrics["w"],
+                             "h":size[1]*glyph_metrics["h"],
+                             }
+            outline_font.set_glyph(gn, mesh=m, metrics=glyph_metrics)
+            pass
+        return outline_font
     #f generate_bitmap
     def generate_bitmap(self, size=(64,64), glyphs='ab', straightness=10):
         font_glyphs = self.get_glyph_unichrs()
@@ -671,12 +837,12 @@ class c_font( object ):
 #f test_convert_ttx_to_ttf    
 def test_convert_ttx_to_ttf(ttf_filename="../../fonts/cabin/Cabin-Bold-TTF.ttf",
                             ttx_filename="../../fonts/cabin-bold.ttx"):
-    return c_font.convert_ttf_to_ttx(ttf_filename=ttf_filename,
+    return c_ttx_font.convert_ttf_to_ttx(ttf_filename=ttf_filename,
                                   ttx_filename=ttx_filename)
 
 #f test_show_glyph_data
 def test_show_glyph_data(ttx_filename):
-    f = c_font("fred")
+    f = c_ttx_font("fred")
     f.load_from_ttx(ttx_filename)
     for gu in f.get_glyph_unichrs():
         print gn, f.get_glyph_bbox(glyph_unichr=gu)
@@ -685,7 +851,7 @@ def test_show_glyph_data(ttx_filename):
 
 #f test_get_bezier
 def test_get_bezier(ttx_filename, gn):
-    f = c_font("fred")
+    f = c_ttx_font("fred")
     f.load_from_ttx(ttx_filename)
     print
     print "Beziers",f.create_bezier_lists(gn)
@@ -700,7 +866,7 @@ def test_get_bezier(ttx_filename, gn):
 #f test_draw_glyph
 def test_draw_glyph(ttx_filename, gn):
     import draw
-    f = c_font("fred")
+    f = c_ttx_font("fred")
     f.load_from_ttx(ttx_filename)
     d = draw.c_draw_buffer(size=(60,60),bytes_per_pixel=1)
     print
@@ -721,7 +887,7 @@ def test_draw_glyph(ttx_filename, gn):
 #f test_draw_glyph_set
 def test_draw_glyph_set(ttx_filename, names):
     import draw
-    f = c_font("fred")
+    f = c_ttx_font("fred")
     f.load_from_ttx(ttx_filename)
     d = draw.c_draw_buffer(size=(60,60))
     metrics = f.get_metrics(glyph_unichrs=names)
@@ -731,9 +897,40 @@ def test_draw_glyph_set(ttx_filename, names):
         pass
     pass
 
+#f test_create_outline_font
+def test_create_outline_font(ttx_filename, glyphs, outline_filename):
+    f = c_ttx_font("fred")
+    f.load_from_ttx(ttx_filename)
+    of = f.generate_outline(glyphs=glyphs)
+    of.save(outline_filename)
+    pass
+
+#f test_use_outline_font
+def test_use_outline_font(outline_filename, text="Test text"):
+    import opengl_app, opengl_obj
+    from OpenGL.GL import glBegin, glEnd, glVertex3f, glMaterialfv, GL_FRONT, GL_AMBIENT, GL_TRIANGLES
+    from OpenGL.GLUT import glutSwapBuffers
+
+    og = opengl_app.c_opengl_camera_app(window_size=(400,400))
+    og.init_opengl()
+    of = c_outline_font()
+    of.load(outline_filename)
+
+    of_obj = opengl_obj.c_outline_text_obj()
+    of_obj.add_text(text.split("\n\n")[0], of, baseline_xy=(0.0,0.0), thickness=0.1 )
+    of_obj.create_opengl_surface()
+    def display():
+        opengl_app.c_opengl_camera_app.display(og)
+        of_obj.draw_opengl_surface()
+        glutSwapBuffers()
+        pass
+    og.display = display
+    og.main_loop()
+    pass
+
 #f test_create_bitmap_font
 def test_create_bitmap_font(ttx_filename, glyphs, bitmap_filename):
-    f = c_font("fred")
+    f = c_ttx_font("fred")
     f.load_from_ttx(ttx_filename)
     bf = f.generate_bitmap(size=(128,128), glyphs=glyphs)
     bf.save(bitmap_filename)
@@ -782,7 +979,8 @@ if __name__=="__main__":
     font_data = {}
     font_data["cabin-bold"] = {"ttf_name":"cabin/Cabin-Bold-TTF.ttf",
                                "ttx_name":"cabin-bold.ttx",
-                               "bitmap_name":"cabin-bold"}
+                               "bitmap_name":"cabin-bold",
+                               "outline_name":"cabin-bold"}
     font_data["sf"] = {"ttf_name":"SF Old Republic SC Bold.ttf",
                        "ttx_name":"sf-old-rep-bold.ttx",
                        "bitmap_name":"sf-old-rep-bold"}
@@ -796,6 +994,7 @@ if __name__=="__main__":
     ttf_name = fd["ttf_name"]
     ttx_name = fd["ttx_name"]
     bitmap_name = fd["bitmap_name"]
+    outline_name = fd["outline_name"]
     if False:
         test_convert_ttx_to_ttf(ttf_filename=font_dir+ttf_name,
                                 ttx_filename=font_dir+ttx_name)
@@ -812,14 +1011,25 @@ if __name__=="__main__":
     if False:
         test_draw_glyph_set(ttx_filename=font_dir+ttx_name, names = (u'A', u'B', u'C', u'D', u'E', u'F', u'Q', u'M'))
         pass
-    if True:
+    if False:
         test_create_bitmap_font(ttx_filename=font_dir+ttx_name,
                                 glyphs=("abcdefghijklmnopqrstuvwxyz"+
                                              "ABCDEFGHIJKLMNOPQRSTUVWXYZ"+
                                              "0123456789.,!?_-+*="),
                                 bitmap_filename=font_dir+bitmap_name)
         pass
-    if True:
+    if False:
         test_use_bitmap_font(bitmap_filename=font_dir+bitmap_name,
                              text = test_text)
+        pass
+    if False:
+        test_create_outline_font(ttx_filename=font_dir+ttx_name,
+                                 glyphs=("abcdeghijklnopqrstuvwxyz"+
+                                         "ABCDEFGHIJKLMNOPQRSUVXYZ"+
+                                         "0123456789.,!?_-+*="),
+                                 outline_filename=font_dir+outline_name)
+        pass
+    if True:
+        test_use_outline_font(outline_filename=font_dir+outline_name,
+                              text = test_text)
         pass

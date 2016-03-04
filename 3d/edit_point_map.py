@@ -143,12 +143,12 @@ class c_edit_point_map_image(object):
             self.texture = opengl_utils.texture_from_png(self.filename)
             pass
         if self.object is None:
-            self.object = opengl_obj.c_obj()
+            self.object = opengl_obj.c_opengl_obj()
             self.object.add_rectangle( (-1.0,1.0,0.0), (2.0,0.0,0.0), (0.0,-2.0,0.0) )
             self.object.create_opengl_surface()
             pass
         if self.focus_object is None:
-            self.focus_object = opengl_obj.c_obj()
+            self.focus_object = opengl_obj.c_opengl_obj()
             fw = self.display_options["focus_w"]
             fh = self.display_options["focus_h"]
             self.focus_object.add_rectangle( (-1.0,-1.0,0.0), (2.0,0.0,0.0), (0.0,fh,0.0) )

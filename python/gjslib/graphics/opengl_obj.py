@@ -37,6 +37,7 @@ class c_opengl_obj(c_obj):
 
         index_list = []
         vector_list = []
+        num_vectors = 0
         for f in self.faces:
             for (vi,vti,vni) in f:
                 vertex = self.vertices[vi]
@@ -46,10 +47,13 @@ class c_opengl_obj(c_obj):
                 vector_list.extend( [vertex[0], vertex[1], vertex[2],
                                      normal[0], normal[1], normal[2],
                                      uv_map[0], uv_map[1]] )
+                num_vectors += 1
                 index_list.append(len(index_list))
                 pass
             pass
 
+        if num_vectors > 65530:
+            raise Exception("Object has too many vectors to index - opengl is limited to 64k vectors")
         vectors = vbo.VBO( data=numpy.array(vector_list, dtype=numpy.float32), target=GL_ARRAY_BUFFER )
         indices = vbo.VBO( data=numpy.array(index_list, dtype=numpy.uint16), target=GL_ELEMENT_ARRAY_BUFFER )
 
@@ -74,13 +78,55 @@ class c_opengl_obj(c_obj):
         if draw:
             glDrawElements( GL_TRIANGLES,
                             len(self.opengl_surface["indices"]),
-                            GL_UNSIGNED_SHORT,
-                            self.opengl_surface["indices"] )
+                            GL_UNSIGNED_SHORT, None) 
             pass
         self.opengl_surface["vectors"].unbind()
         self.opengl_surface["indices"].unbind()
         pass
+    #f All done
+    pass
 
+#a c_outline_text_obj
+class c_outline_text_obj(c_opengl_obj):
+    #f add_text
+    def add_text(self, text, outline_font, baseline_xy, thickness=None ):
+        nv = len(self.vertices)
+        nn = len(self.normals)
+        nu = len(self.uv_map)
+
+        self.normals.append( (0.0,0.0,1.0) )
+        if thickness is not None:
+            self.normals.append( (0.0,0.0,-1.0) )
+            pass
+        ln_baseline_xy = baseline_xy
+        for l in text.split("\n"):
+            (baseline_x, baseline_y) = ln_baseline_xy
+            ln_baseline_xy = (baseline_x, baseline_y-outline_font.get_line_spacing())
+            for g in l:
+                ofg = outline_font.get_glyph(g, baseline_x)
+                if ofg is not None:
+                    (baseline_x, pts, tris) = ofg
+                    for t in tris:
+                        for p in t:
+                            self.vertices.append( (pts[p][0],pts[p][1]+baseline_y,0.0) )
+                            pass
+                        face = ( (nv,None,nn), (nv+1,None,nn), (nv+2,None,nn) )
+                        nv += 3
+                        self.faces.append(face)
+                        if thickness is not None:
+                            for p in t:
+                                self.vertices.append( (pts[p][0],pts[p][1]+baseline_y,thickness) )
+                                pass
+                            face = ( (nv,None,nn), (nv+1,None,nn), (nv+2,None,nn) )
+                            nv += 3
+                            self.faces.append(face)
+                        pass
+                    pass
+                pass
+            pass
+        return ln_baseline_xy
+    #f All done
+    pass
 #a c_text_page - move to opengl_font/opengl_text
 class c_text_page(c_opengl_obj):
     def add_glyph(self, unichar, bitmap_font, baseline_xy, scale=(1.0,1.0) ):

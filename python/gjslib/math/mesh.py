@@ -513,6 +513,7 @@ class c_mesh_triangle( object ):
     A triangle in the mesh contains three points, and implicitly three line segments.
 
     It is created from the three points, assuming that the lines have already been made.
+    The points are c_mesh_point instances
     """
     triangle_log = []
     #f __init__
