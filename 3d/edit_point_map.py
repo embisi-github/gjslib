@@ -204,14 +204,16 @@ class c_edit_point_map_image(object):
         glMaterialfv(GL_FRONT,GL_AMBIENT,c)
         glDisable(GL_TEXTURE_2D)
         def uv_from_image_xyz(xyz, proj=self.projection):
-            (uvzw,img_xy) = proj.image_of_model(xyz)
+            ui = proj.image_of_model(xyz)
+            if ui is None:
+                return None
+            (uvzw,img_xy) = ui
             return (uvzw[0],uvzw[1])
         for pt in self.epm.point_mapping_names:
             xyz = self.epm.point_mappings.get_xyz(pt)
             if xyz is not None:
                 uv = uv_from_image_xyz(xyz)
                 if uv is not None:
-
                     pt_uv = self.epm.point_mappings.get_xy(pt, self.image_name)
                     if pt_uv is not None:
                         glLineWidth(2.0)
@@ -336,7 +338,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         pass
 
     #f __init__
-    def __init__(self, **kwargs):
+    def __init__(self, point_mapping_filename, **kwargs):
         opengl_app.c_opengl_app.__init__(self, **kwargs)
         self.tick = 0
         self.aspect = 1.0
@@ -345,6 +347,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         self.images = {}
         self.undo_buffer = c_undo_buffer()
         self.image_projections = {}
+        self.point_mapping_filename = point_mapping_filename
         pass
     #f save_point_mapping
     def save_point_mapping(self, point_map_filename):
@@ -370,12 +373,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         image_names = self.point_mappings.get_images()
         for k in image_names:
             image_data = self.point_mappings.get_image_data(k)
-
-            self.image_projections[k] = c_image_projection(name=k, image_filename=image_data["filename"], size=image_data["size"])
-            self.image_projections[k].set_projection(projection=image_data["projection"])
-            self.point_mappings.add_image(k, size=image_data["size"],)
-            self.point_mappings.set_projection(k, self.image_projections[k])
-
+            self.image_projections[k] = image_data["projection"]
             self.images[k] = c_edit_point_map_image(epm=self,
                                                     pm = self.point_mappings,
                                                     image_name=k,
@@ -389,7 +387,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         font_dir = "../../fonts/"
         self.load_font(font_dir+"cabin-bold")
         self.point_mappings = c_point_mapping()
-        self.load_point_mapping("pencils.map")
+        self.load_point_mapping(self.point_mapping_filename)
         self.epm_info = c_edit_point_map_info(epm=self, pm=self.point_mappings)
         self.load_images()
 
@@ -420,7 +418,8 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         self.epm_info.update()
 
         #self.displayed_images = ["img_1", "img_2"]
-        self.displayed_images = ["left", "middle"]
+        #self.displayed_images = ["left", "middle"]
+        self.displayed_images = [self.image_names[0], self.image_names[1]]
         self.focus_image = 0
         self.layers = opengl_layer.c_opengl_layer_set()
         self.image_layers = (self.layers.new_layer( (0,300,900,900), depth=10),
@@ -655,7 +654,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
                 self.change_point(point_name=value[1])
                 return True
             if value[0]=="save":
-                self.save_point_mapping("pencils.map")
+                self.save_point_mapping(self.point_mapping_filename)
                 return True
             pass
         print menu, value
@@ -782,7 +781,10 @@ class c_edit_point_map(opengl_app.c_opengl_app):
 
 #a Main
 def main():
-    m = c_edit_point_map(window_size = (1800,1100))
+    point_mapping_filename="pencils.map"
+    point_mapping_filename="sidsussexbell.map"
+    m = c_edit_point_map( point_mapping_filename=point_mapping_filename,
+                          window_size = (1800,1100))
     m.init_opengl()
     m.main_loop()
 

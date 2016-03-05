@@ -1,6 +1,7 @@
 #a Imports
 from gjslib.math.line_sets import c_set_of_lines
 from gjslib.math.quaternion import c_quaternion
+import image_projection
 
 #a c_point_mapping
 class c_point_mapping(object):
@@ -71,6 +72,10 @@ class c_point_mapping(object):
         image_filename = data[1]
         image_size = (int(data[2])+0.0,int(data[3])+0.0)
         self.add_image(image=data[0], filename=image_filename, size=image_size)
+        proj = image_projection.c_image_projection(name=image_name,
+                                                   image_filename=image_filename,
+                                                   size=image_size)
+        self.set_projection(image_name, proj)
         pass
     #f load_data_add_point
     def load_data_add_point(self, data):
@@ -88,12 +93,19 @@ class c_point_mapping(object):
         self.add_named_point(data[1])
         self.add_image_location(point, image, xy)
         pass
+    #f load_data_set_projection
+    def load_data_set_projection(self, data):
+        print data
+        image = data[0]
+        self.images[image]["projection"].load_projection_strings(data[1:])
+        pass
     #f load_data
     def load_data(self, data_filename):
         data_load_callbacks = {}
         data_load_callbacks["Images"] = (self.load_data_add_image,4)
         data_load_callbacks["Points"] = (self.load_data_add_point,2)
         data_load_callbacks["References"] = (self.load_data_add_reference,4)
+        data_load_callbacks["Projections"] = (self.load_data_set_projection,10)
         data_load_callbacks["Mapping"] = (self.load_data_add_mapping,4)
         f = open(data_filename,"r")
         if not f:
@@ -104,7 +116,7 @@ class c_point_mapping(object):
             if len(l)==0: continue
             if l[0]=='#': continue
             if l[1]=='-':
-                if l[2:-1] in ["Images", "Points", "References", "Mapping"]:
+                if l[2:-1] in data_load_callbacks:
                     data_stage = l[2:-1]
                     pass
                 else:
@@ -121,26 +133,7 @@ class c_point_mapping(object):
             pass
         f.close()
 
-        # Initial projections getting vectors of length 1 volume 1 z=8.0 fov=55 after round 9 with optimization
-        self.images['left']['projection'] = {'fov': 55, 'camera': [-4.038762854186469, -21.206514157839614, 25.010518964884074], 'orientation': c_quaternion(euler=(-29.4341,-0.1706,51.9197),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.800000000000004}
-        self.images['middle']['projection'] = {'fov': 55, 'camera': [19.387365465233962, -22.577081868286523, 25.87674258122117], 'orientation': c_quaternion(euler=(11.0912, 3.3991,51.1938),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.800000000000004}
-
-        # Initial projections getting vectors of length 1 volume 1 z=7.0 fov=55 after round 9 with optimization - worse match
-        self.images['middle']['projection'] = {'fov': 55, 'camera': [17.816981664150397, -23.48825610121041, 23.491317904811194], 'orientation': c_quaternion(euler=( 9.8608, 1.2127,54.4761),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.800000000000004}
-        self.images['left']['projection'] = {'fov': 55, 'camera': [-4.126998897755683, -21.17723612904874, 22.473153323580597], 'orientation': c_quaternion(euler=(-29.4860,-0.0741,54.7598),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.800000000000004}
-
-        self.images['left']['projection'] = {'fov': 55, 'camera': [-3.972587809728597, -21.01617749939462, 25.433223910032236], 'orientation': c_quaternion(euler=(-29.4546,-0.2261,51.2953),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.800000000000004}
-        self.images['middle']['projection'] = {'fov': 55, 'camera': [19.64759874333746, -22.479670729165402, 26.118703485899044], 'orientation': c_quaternion(euler=(11.2141, 3.8553,50.9107),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.800000000000004}
-
-        # Initial projections z=8.0 after shuffling points a bit
-        self.images['middle']['projection'] = {'fov': 55, 'camera': [20.037700287961712, -22.674115385801343, 25.72099158093772], 'orientation': c_quaternion(euler=(11.6877, 4.0290,51.5663),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.800000000000004}
-        self.images['left']['projection'] = {'fov': 55, 'camera': [-4.1343398356796275, -20.84776250450365, 24.888904114709263], 'orientation': c_quaternion(euler=(-29.6367,-0.5462,51.8645),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.800000000000004}
-
-        self.images['middle']['projection'] = {'fov': 54.81275844366993, 'camera': [18.768800287962534, -22.940115385800826, 26.38569158093818], 'orientation': c_quaternion(euler=(10.5443, 2.2394,50.8263),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.800000000000004}
-        self.images['left']['projection'] = {'fov': 55.079789849221406, 'camera': [-4.264639835679665, -20.84646250450396, 24.31590411470965], 'orientation': c_quaternion(euler=(-29.7391,-0.6842,52.5410),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.8}
-
         return
-
         # horizontal FOV for 35mm camera: 12.5mm:110 15mm:100 18mm:90 20mm:85 23mm:75 28mm:65 31mm:60 35mm:55 40mm:50 50mm:40 54mm:35 65mm:30 80mm:35 100mm:20
         # yaw is left-right (-ve,+ve)
         # pitch is -ve up
@@ -178,6 +171,15 @@ class c_point_mapping(object):
         for name in image_names:
             image = self.images[name]
             print >>f,"%s,%s,%d,%d"%(name,image["filename"],image["size"][0],image["size"][1])
+            pass
+        print >>f, "\n"
+
+        print >>f, "--Projections:"
+        for name in image_names:
+            proj = self.images[name]["projection"]
+            if proj is not None:
+                print >>f, "%s,%s"%(name,proj.save_projection_string())
+                pass
             pass
         print >>f, "\n"
 
@@ -304,7 +306,9 @@ class c_point_mapping(object):
                 if p is not None:
                     xy = self.uniform_mapping(n,img_name)
                     line = p.model_line_for_image(xy)
-                    line_sets[n].add_line(line[0],line[1])
+                    if line is not None:
+                        line_sets[n].add_line(line[0],line[1])
+                        pass
                     pass
                 pass
             line_sets[n].generate_meeting_points()

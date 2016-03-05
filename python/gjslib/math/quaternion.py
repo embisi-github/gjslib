@@ -35,8 +35,8 @@ class c_quaternion( object ):
         return q
     #f classmethod of_euler
     @classmethod
-    def of_euler( cls, roll, pitch, yaw, degrees=False ):
-        return cls().from_euler( roll, pitch, yaw, degrees=degrees )
+    def of_euler( cls, roll=0, pitch=0, yaw=0, rpy=None, degrees=False ):
+        return cls().from_euler( rpy=rpy, roll=roll, pitch=pitch, yaw=yaw, degrees=degrees )
     #f __init__
     def __init__( self, quat=None, euler=None, degrees=False, repr_fmt=None ):
         self.quat = {"r":1, "i":0, "j":0, "k":0}
@@ -124,7 +124,7 @@ class c_quaternion( object ):
         self.matrix = m
         pass
     #f from_euler
-    def from_euler( self, pitch=0, yaw=0, roll=0, degrees=False ):
+    def from_euler( self, rpy=None, pitch=0, yaw=0, roll=0, degrees=False ):
         """
         Euler angles are roll, pitch and yaw. (Z, Y then X axis rotations)
 
@@ -134,6 +134,9 @@ class c_quaternion( object ):
         Pitch is around Y
         Yaw is around X
         """
+        if rpy is not None:
+            (roll, pitch, yaw) = rpy
+            pass
         if degrees:
             roll  = 3.14159265/180.0 * roll
             pitch = 3.14159265/180.0 * pitch
@@ -381,6 +384,8 @@ def test():
                 c_quaternion.roll(math.radians(10)))) )
     print k, k.get_matrix(), k.to_euler(degrees=True)
 
+    print c_quaternion({'r': 0.6330, 'i': 0.7226, 'j':-0.2194, 'k':-0.1705})
+    print c_quaternion({'r': 0.7607, 'i': 0.5670, 'j': 0.2328, 'k': 0.2133})
 def main():
     test()
 

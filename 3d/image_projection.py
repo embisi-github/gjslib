@@ -49,6 +49,38 @@ class c_image_projection(object):
         self.mvp = None
         self.ip = None
         self.size = size
+        self.projection = None
+        pass
+    #f save_projection_string
+    def save_projection_string(self):
+        """
+        Save string - should be a set of 'n' comma separated items
+        """
+        repr = "%f,%f,%f "%(self.projection["camera"][0],
+                            self.projection["camera"][1],
+                            self.projection["camera"][2])
+        rpy = self.projection["orientation"].to_euler(degrees=True)
+        repr += ", %f,%f,%f "%(rpy[0], rpy[1], rpy[2])
+        repr += ", %f, %f, %f "%(self.projection["fov"],
+                                 self.projection["aspect"],
+                                 self.projection["zFar"])
+        return repr
+    #f load_projection_strings
+    def load_projection_strings(self, data):
+        """
+        Load a list of strings (undo the save)
+        """
+        camera = (float(data[0]), float(data[1]), float(data[2]))
+        rpy    = (float(data[3]), float(data[4]), float(data[5]))
+        fov    = float(data[6])
+        aspect = float(data[7])
+        zFar   = float(data[8])
+        projection = {"camera":camera,
+                      "orientation":quaternion.c_quaternion.of_euler(rpy=rpy, degrees=True),
+                      "fov":fov,
+                      "aspect":aspect,
+                      "zFar":zFar}
+        self.set_projection(projection)
         pass
     #f set_projection
     def set_projection(self, projection=None, deltas=None, delta_scale=1.0, resultant_projection=None, verbose=False ):
@@ -82,14 +114,8 @@ class c_image_projection(object):
         self.mvp.mult3x3(m=orientation.get_matrix3())
         self.mvp.translate(camera, scale=-1)
 
-        if False:
-            self.ip = self.mvp.projection()
-            self.ip.invert()
-            pass
-        else:
-            self.ip = self.mvp.projection()
-            self.ip.invert()
-            pass
+        self.ip = self.mvp.projection()
+        self.ip.invert()
 
         self.projection = { "camera":      camera[:],
                             "orientation": orientation,
@@ -124,11 +150,15 @@ class c_image_projection(object):
         pass
     #f image_of_model
     def image_of_model(self,xyz):
+        if self.mvp is None:
+            return None
         xy = self.mvp.apply(xyz,perspective=True)
         img_xy = ((1.0+xy[0])/2.0*self.size[0], (1.0-xy[1])/2.0*self.size[1])
         return (xy,img_xy)
     #f model_line_for_image
     def model_line_for_image(self,xy):
+        if self.ip is None:
+            return None
         dirn = self.ip.apply((xy[0],xy[1],self.projection["z_of_w_1"],1))
         return (self.projection["camera"], dirn[0:3])
     #f mapping_error
@@ -521,7 +551,7 @@ class c_image_projection(object):
         for i in range(steps):
             for j in range(steps):
                 for k in range(steps/2): # don't need to look behind - we get the same 'error'
-                    q.from_euler(i*angle,j*angle,k*angle,degrees=True)
+                    q.from_euler(roll=i*angle,pitch=j*angle,yaw=k*angle,degrees=True)
                     self.set_projection(projection=base_projection)
                     (pts,e,corr) = self.calc_point_errors(point_mappings, pt_names,
                                                           use_references=use_references,
@@ -537,7 +567,7 @@ class c_image_projection(object):
         (pts,e,ijk) = smallest_error
         if ijk is not None:
             print "Best initial orientation has error ",e,"from",pts,"pts",ijk
-            q.from_euler(ijk[0],ijk[1],ijk[2],degrees=True)
+            q.from_euler(rpy=ijk, degrees=True)
             self.set_projection(projection=base_projection)
             if True:
                 self.calc_point_errors(point_mappings, pt_names,
