@@ -211,6 +211,16 @@ class c_edit_point_map_image(object):
             if xyz is not None:
                 uv = uv_from_image_xyz(xyz)
                 if uv is not None:
+
+                    pt_uv = self.epm.point_mappings.get_xy(pt, self.image_name)
+                    if pt_uv is not None:
+                        glLineWidth(2.0)
+                        glBegin(GL_LINES);
+                        glVertex3f(uv[0],uv[1],-0.1)
+                        glVertex3f(pt_uv[0],pt_uv[1],-0.1)
+                        glEnd()
+                        pass
+
                     glPushMatrix()
                     glTranslate(uv[0],uv[1],-0.1)
                     sc = 0.005/self.scale[0]
@@ -615,7 +625,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
             self.point_mappings.initial_orientation(image=image_name, steps=20, verbose=False)
             pass
         else:
-            self.point_mappings.optimize_projections(image=image_name, fov_iterations=10, orientation_iterations=50, camera_iterations=20, delta_scale=0.03) # .01
+            self.point_mappings.optimize_projections(image=image_name, fov_iterations=1, orientation_iterations=20, camera_iterations=20, delta_scale=0.03) # .01
             pass
         self.point_mappings.find_line_sets()
         self.point_mappings.approximate_positions()

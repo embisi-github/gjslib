@@ -235,6 +235,16 @@ class c_point_mapping(object):
         self.images['left']['projection'] = {'fov': 91.35997029635297, 'camera': [7.2223000000017725, -1.6367999999989744, 19.01070000000158], 'orientation': c_quaternion(euler=(-27.4649,-0.3220,25.3080),degrees=True), 'aspect': 1.0}
         self.images['middle']['projection'] = {'fov': 88.60668709379165, 'camera': [12.134099999998202, -1.5395999999989478, 20.169299999998604], 'orientation': c_quaternion(euler=( 7.8401,-2.5141,25.7756),degrees=True), 'aspect': 1.0}
 
+        self.images['left']['projection'] = {'fov': 55, 'camera': [-3.0952007134724084, -15.22537113311452, 32.6511858150726], 'orientation': c_quaternion(euler=(22.4627,-33.7671,-159.4854),degrees=True), 'aspect': 1.3}
+        self.images['left']['projection'] = {'fov': 55, 'orientation': c_quaternion(euler=(-33.3100,-4.0788,57.4284),degrees=True), 'zNear': 1.0, 'camera': [-2.8051065341676513, -14.588340058150987, 19.058852527873785], 'aspect': 1.3333333333333333, 'zFar': 437.8938903808594}
+        self.images['left']['projection'] = {'fov': 55, 'orientation': c_quaternion(euler=(-32.5431,-2.6443,54.7910),degrees=True), 'zNear': 1.0, 'camera': [-3.143011750949032, -16.409028333969225, 20.008320498192244], 'aspect': 1.3333333333333333, 'zFar': 437.8938903808594}
+        self.images['left']['projection'] = {'fov': 55, 'orientation': c_quaternion(euler=(-33.3049,-3.3227,54.9989),degrees=True), 'zNear': 1.0, 'camera': [-3.3037020970175632, -17.079037776325986, 20.597534696301732], 'aspect': 1.3333333333333333, 'zFar': 437.8938903808594}
+        self.images['middle']['projection'] = {'fov': 55, 'orientation': c_quaternion(euler=( 9.9911, 1.2925,49.0520),degrees=True), 'zNear': 1.0, 'camera': [15.08143115507383, -20.26484711015609, 23.65248485923216], 'aspect': 1.3333333333333333, 'zFar': 437.8938903808594}
+        self.images['middle']['projection'] = {'fov': 55, 'orientation': c_quaternion(euler=(10.5822, 1.5966,47.0957),degrees=True), 'zNear': 1.0, 'camera': [16.4111826045998, -22.82219152023835, 25.46886081935879], 'aspect': 1.3333333333333333, 'zFar': 20.0}
+        self.images['left']['projection'] = {'fov': 55, 'orientation': c_quaternion(euler=(-32.0188,-2.1418,54.3836),degrees=True), 'zNear': 1.0, 'camera': [-3.189573753281724, -16.84260470937981, 20.265574955728262], 'aspect': 1.3333333333333333, 'zFar': 20.0}
+
+        self.images['left']['projection'] = {'fov': 55, 'orientation': c_quaternion(euler=(-30.1468, 0.0556,50.5165),degrees=True), 'zNear': 1.0, 'camera': [-4.0635663317585555, -22.09486616982664, 23.535241461831752], 'aspect': 1.3333333333333333, 'zFar': 20.0}
+
         return
         # horizontal FOV for 35mm camera: 12.5mm:110 15mm:100 18mm:90 20mm:85 23mm:75 28mm:65 31mm:60 35mm:55 40mm:50 50mm:40 54mm:35 65mm:30 80mm:35 100mm:20
         # yaw is left-right (-ve,+ve)
@@ -437,6 +447,7 @@ class c_point_mapping(object):
             return None
         if name in object_guess_locations:
             return object_guess_locations[name]
+        #return None
         return self.get_approx_position(name)
     #f initial_orientation
     def initial_orientation(self, image=None, **kwargs):

@@ -1,22 +1,29 @@
 #!/usr/bin/env python
+#a Imports
 import math
-from matrix import c_matrix3x3, c_matrix4x4
+from matrix import c_matrix3x3, c_matrix4x4, c_matrixNxN
 
+#a c_quaternion
 class c_quaternion( object ):
     fmt = "%7.4f"
     default_fmt = "euler"
+    #f classmethod identity - return identity quarternion
     @classmethod
     def identity( cls ):
         return cls()
+    #f classmethod pitch
     @classmethod
     def pitch( cls, angle, degrees=False ):
         return cls().from_euler( pitch=angle, degrees=degrees )
+    #f classmethod yaw
     @classmethod
     def yaw( cls, angle, degrees=False ):
         return cls().from_euler( yaw=angle, degrees=degrees )
+    #f classmethod roll
     @classmethod
     def roll( cls, angle, degrees=False ):
         return cls().from_euler( roll=angle, degrees=degrees )
+    #f classmethod from_sequence
     @classmethod
     def from_sequence( cls, rotations, degrees=False ):
         q = cls()
@@ -26,9 +33,11 @@ class c_quaternion( object ):
             q = r.multiply(q)
             pass
         return q
+    #f classmethod of_euler
     @classmethod
     def of_euler( cls, roll, pitch, yaw, degrees=False ):
         return cls().from_euler( roll, pitch, yaw, degrees=degrees )
+    #f __init__
     def __init__( self, quat=None, euler=None, degrees=False, repr_fmt=None ):
         self.quat = {"r":1, "i":0, "j":0, "k":0}
         self.matrix = None
@@ -45,8 +54,10 @@ class c_quaternion( object ):
             self.from_euler(roll=euler[0], pitch=euler[1], yaw=euler[2], degrees=degrees)
             pass
         pass
+    #f copy
     def copy(self):
         return c_quaternion(quat=self.quat)
+    #f __repr__
     def __repr__( self ):
         if self.repr_fmt=="euler":
             result = ("c_quaternion(euler=("+self.fmt+","+self.fmt+","+self.fmt+"),degrees=True)") % self.to_euler(degrees=True)
@@ -56,14 +67,17 @@ class c_quaternion( object ):
                                                                                        self.quat["j"],
                                                                                        self.quat["k"] )
         return result
+    #f get_matrix
     def get_matrix( self ):
         if self.matrix is None: self.create_matrix()
         return self.matrix
+    #f get_matrix3
     def get_matrix3( self ):
         m = self.get_matrix()
         return c_matrix3x3((m[0][0], m[0][1], m[0][2],
                             m[1][0], m[1][1], m[1][2],
                             m[2][0], m[2][1], m[2][2],))
+    #f get_matrix4
     def get_matrix4( self ):
         m = self.get_matrix()
         m4 = c_matrix4x4( r0=(m[0][0], m[0][1], m[0][2], 0.0),
@@ -71,6 +85,13 @@ class c_quaternion( object ):
                                  r2=(m[2][0], m[2][1], m[2][2], 0.0),
                                  r3=(0.0, 0.0, 0.0, 1.0) )
         return m4
+    #f get_matrixn
+    def get_matrixn( self ):
+        m = self.get_matrix()
+        return c_matrixNxN(data=(m[0][0], m[0][1], m[0][2],
+                                 m[1][0], m[1][1], m[1][2],
+                                 m[2][0], m[2][1], m[2][2],))
+    #f create_matrix
     def create_matrix( self ):
         # From http://www.gamasutra.com/view/feature/131686/rotating_objects_using_quaternions.php?page=2
         # calculate coefficients
@@ -102,6 +123,7 @@ class c_quaternion( object ):
 
         self.matrix = m
         pass
+    #f from_euler
     def from_euler( self, pitch=0, yaw=0, roll=0, degrees=False ):
         """
         Euler angles are roll, pitch and yaw. (Z, Y then X axis rotations)
@@ -134,6 +156,7 @@ class c_quaternion( object ):
         self.quat["k"] = cp * sr * cy - sp * cr * sy
         self.matrix = None
         return self
+    #f to_euler
     def to_euler( self, degrees=False ):
         """
         Euler angles are roll, pitch and yaw.
@@ -143,8 +166,20 @@ class c_quaternion( object ):
         i = self.quat["i"]
         j = self.quat["j"]
         k = self.quat["k"]
+        l = math.sqrt(r*r+i*i+j*j+k*k)
+        if (l>1E-9):
+            r=r/l
+            i=i/l
+            j=j/l
+            k=k/l
+            pass
         yaw   = math.atan2(2*(r*i+j*k), 1-2*(i*i+j*j))
-        pitch = math.asin( 2*(r*j-i*k))
+        if 2*(r*j-i*k)<-1 or 2*(r*j-i*k)>1:
+            pitch = math.asin( 1.0 )
+            pass
+        else:
+            pitch = math.asin( 2*(r*j-i*k))
+            pass
         roll  = math.atan2(2*(r*k+i*j), 1-2*(j*j+k*k))
         if degrees:
             roll  = 180.0/3.14159265 * roll
@@ -152,6 +187,26 @@ class c_quaternion( object ):
             yaw   = 180.0/3.14159265 * yaw
             pass
         return (roll, pitch, yaw)
+    #f from_matrix
+    def from_matrix( self, matrix, epsilon=1E-6 ):
+        """
+        """
+        d = matrix.determinant()
+        if (d>-epsilon) and (d<epsilon):
+            raise Exception("Singular matrix supplied")
+        m = matrix.copy()
+        scale = 1.0
+        if d<0: scale=-1.0
+        m.scale(1.0/math.pow(d*scale,1/3.0))
+
+        yaw   = math.atan2(m[1,2],m[2,2])
+        roll  = math.atan2(m[0,1],m[0,0])
+        if m[0,2]<-1 or m[0,2]>1:
+            pitch=-math.asin(1)
+        else:
+            pitch = -math.asin(m[0,2])
+        return self.from_euler(roll=roll, pitch=pitch, yaw=yaw, degrees=False)
+    #f multiply
     def multiply( self, other ):
         A = (self.quat["r"] + self.quat["i"])*(other.quat["r"] + other.quat["i"])
         B = (self.quat["k"] - self.quat["j"])*(other.quat["j"] - other.quat["k"])
@@ -166,6 +221,7 @@ class c_quaternion( object ):
         j = C + (E - F + G - H)/2 
         k = D + (E - F - G + H)/2
         return c_quaternion( quat={"r":r, "i":i, "j":j, "k":k } )
+    #f interpolate
     def interpolate( self, other, t ):
         cosom = ( self.quat["i"] * other.quat["i"] +
                   self.quat["j"] * other.quat["j"] +
@@ -200,22 +256,40 @@ class c_quaternion( object ):
         r = scale0 * self.quat["r"] + scale1 * sgn_cosom * other.quat["r"]
         return c_quaternion( quat={"r":r, "i":i, "j":j, "k":k } )
 
+#a Toplevel
 def test():
-    c_quaternion.default_fmt = "quat"
+    #c_quaternion.default_fmt = "quat"
 
-    print "Identity, roll30, yaw30, pitch30..."
+    print "Identity, roll30, pitch30, yaw30..."
     i = c_quaternion.identity()
     print i, i.get_matrix(), i.to_euler(degrees=True)
 
     roll30 = c_quaternion.roll(math.radians(30))
     print roll30, roll30.get_matrix(), roll30.to_euler(degrees=True)
 
-    yaw30 = c_quaternion.yaw(math.radians(30))
-    print yaw30, yaw30.get_matrix(), yaw30.to_euler(degrees=True)
-
     pitch30 = c_quaternion.pitch(math.radians(30))
     print pitch30, pitch30.get_matrix(), pitch30.to_euler(degrees=True)
 
+    yaw30 = c_quaternion.yaw(math.radians(30))
+    print yaw30, yaw30.get_matrix(), yaw30.to_euler(degrees=True)
+
+    print
+    print "To/from matrix"
+    print "Roll30"
+    roll30_m = roll30.get_matrixn()
+    print c_quaternion.identity().from_matrix(roll30_m)
+    print "Pitch30"
+    pitch30_m = pitch30.get_matrixn()
+    print c_quaternion.identity().from_matrix(pitch30_m)
+    print "Yaw30"
+    yaw30_m = yaw30.get_matrixn()
+    print c_quaternion.identity().from_matrix(yaw30_m)
+    print "Roll30 of Pitch30"
+    q = roll30.multiply(pitch30)
+    print q, c_quaternion.identity().from_matrix(q.get_matrixn())
+    print "Roll30 of Pitch30 of Yaw30"
+    q = roll30.multiply(pitch30.multiply(yaw30))
+    print q, c_quaternion.identity().from_matrix(q.get_matrixn())
 
     print
     print "90 degrees roll, pitch, yaw from 3*roll30 etc"

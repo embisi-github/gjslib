@@ -6,6 +6,13 @@ def vector_prod3(a,b):
           a[0]*b[1] - a[1]*b[0] ]
     return r
 
+def vector_length(v):
+    return math.sqrt(dot_product(v,v))
+
+def vector_separation(a,b):
+    d = vector_add(a,b,scale=-1.0)
+    return math.sqrt(dot_product(d,d))
+
 def vector_normalize(v, epsilon=1E-8):
     d = math.sqrt(dot_product(v,v))
     if d<epsilon: d=1
@@ -24,6 +31,11 @@ def vector_add(a,b,scale=1.0):
         d.append(a[i]+b[i]*scale)
         pass
     return d
+
+def cos_angle_between(a,b, epsilon=1E-16):
+    l = vector_length(a) * vector_length(b)
+    if l<epsilon: return 1.0
+    return dot_product(a,b)/l
 
 def dot_product(a,b):
     r = 0

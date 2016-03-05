@@ -285,7 +285,7 @@ class c_matrix4x4(object):
             pass
         return r
 
-#a c_matrix
+#a c_matrixNxN
 class c_matrixNxN(object):
     """
     N x N matrix, held in a linear list in row-major order
@@ -341,7 +341,7 @@ class c_matrixNxN(object):
         else:
             if len(data) != order*order:
                 raise Exception("Bad data for order %d matrix"%order)
-            self.matrix = data[:]
+            self.matrix = list(data[:])
             pass
         pass
     #f get_matrix
@@ -351,9 +351,27 @@ class c_matrixNxN(object):
         m = self.copy()
         m.transpose()
         return m.matrix
+    #f get_row
+    def get_row(self, r):
+        n = self.order
+        return self.matrix[r*n:(r+1)*n]
+    #f get_column
+    def get_column(self, c):
+        n = self.order
+        return self.matrix[c:n*n+c:n]
     #f copy
     def copy(self):
         return c_matrixNxN(data=self.matrix)
+    #f scale
+    def scale(self, scale=1.0):
+        n = self.order
+        for r in range(n):
+            for c in range(n):
+                self[r,c] *= scale
+                pass
+            pass
+        pass
+        return self
     #f apply
     def apply(self, v):
         n = self.order
@@ -430,7 +448,7 @@ class c_matrixNxN(object):
             # Swap row i with r_max and update the pivot list
             if r_max != d:
                 (P[d], P[r_max]) = (P[r_max], P[d])
-                for c in range(d,n):
+                for c in range(n):
                     (LU[d,c], LU[r_max,c]) = (LU[r_max,c], LU[d,c])
                     pass
                 pass
@@ -481,6 +499,7 @@ class c_matrixNxN(object):
             x = a
             for r in range(n-1,-1,-1):
                 # Now divide a[r] by Urr, which is not 1
+                if self[r,r]==0.0: return None
                 x[r] = x[r]/self[r,r]
                 # For the rest of the column remove multiples of x[r] (Uir, r>i>=0)
                 for i in range(0,r):
@@ -497,6 +516,43 @@ class c_matrixNxN(object):
             pass
         R.transpose()
         return R
+    #f unpivot
+    def unpivot(self, P):
+        """
+        'Unapply' the pivot P
+        """
+        n = self.order
+
+        data = []
+        for r in range(n):
+            data.extend(self.get_row(P.index(r)))
+            pass
+        return c_matrixNxN(data=data)
+    #f determinant
+    def determinant(self):
+        """
+        Decompose to LUP, then det(U).det(P)
+        det(P) = +-1 depending on the number of swaps required
+        """
+        n = self.order
+        lup = self.lup_decompose()
+        if lup is None:
+            return 0.0
+        (LU, P) = lup
+        det_P = 1
+        for i in range(n):
+            if P[i] != i:
+                det_P = -det_P
+                P_i = P.index(i)
+                P[P_i] = P[i]
+                P[i] = i
+                pass
+            pass
+        det = 1.0 * det_P
+        for rc in range(n):
+            det *= LU[rc,rc]
+            pass
+        return det
     #f lu_split
     def lu_split(self):
         """
@@ -562,24 +618,43 @@ def main():
     print "A inverse", a_i
     print c_matrixNxN.multiply_matrices(a,a_i)
 
-    print
-    print "4 by 4..."
-    a = c_matrixNxN(data=[-1.,3.,4.,5.,  0.,4.,2.,1., -5.,5.,2.,-3., -4.,3.,2.,1.])
-    print "A",a
-    lup = a.lup_decompose()
-    print "LUP", lup
-    L,U = lup[0].lu_split()
-    print "U",U
-    print "L",L
-    print "L.U", c_matrixNxN.multiply_matrices(L,U)
+    for a in [c_matrixNxN(data=[1.,0.,0.,0.,  0.,4.,2.,0., -5.,0.,0.,1., 0.,0.,1.,0.]),
+              c_matrixNxN(data=[-1.,3.,4.,5.,  0.,4.,2.,1., -5.,5.,2.,-3., -4.,3.,2.,1.]),
+              c_matrixNxN(data=[-8.780454382560094, 4.24389067150205, 4.057661342681895, 1.1304208758453387, 0.2038639118735965, 6.330794706227703, -5.484817504274374, -0.16412212696591522, 25.412595302329905, 26.87675575660128, 20.381364036786152, 11.636150566231086, -13.519396156451739, -14.71734561903741, -9.402934211915941, -2.2477595541890696])
+              ]:
+        print
+        print "4 by 4..."
+        print "A",a
+        lup = a.lup_decompose()
+        print "LUP", lup
+        L,U = lup[0].lu_split()
+        print "U",U
+        print "L",L
+        LU=c_matrixNxN.multiply_matrices(L,U)
+        print "L.U", LU
+        print "L.U.P which should be A", LU.unpivot(lup[1])
 
-    print "A inverse",a.inverse()
-    b = a.copy()
-    print "B",b
-    b.invert()
-    print "B inverted",b
-    b.postmult(a)
-    print "Identity?",b
+        print 
+        print "Continuing"
+        print "A inverse"
+        a_i = a.inverse()
+        print a_i
+        b = a.copy()
+        print "B = copy of A",b
+        b.invert()
+        print "B inverted"
+        print b
+        b.postmult(a)
+        print "B inverted . A = Identity?"
+        print b
+
+        print
+        print "Continuing"
+        print "Determinant of A", a.determinant()
+        print "Determinant of A_inverse", a_i.determinant()
+        print "1?", a.determinant() *a_i.determinant()
+
+        pass
     return
     a = c_matrix4x4((1.0,0.0,0.0,0.0),
               (0.0,1.0,0.0,0.0),
