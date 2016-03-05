@@ -13,6 +13,7 @@ class c_set_of_lines(object):
         pass
     def generate_meeting_points(self, too_close=0.0001):
         self.line_meetings = []
+        self.weighted_points = []
         self.posn = None
         for i in range(len(self.lines)):
             (p0,d0) = self.lines[i]
@@ -37,6 +38,7 @@ class c_set_of_lines(object):
             posn = vectors.vector_add(posn, c1, scale=0.5*weight)
             total_weight += weight
             #print c0,c1,weight,total_weight,posn
+            self.weighted_points.append((weight,c0,c1))
             pass
         #print posn, total_weight
         if posn is not None:

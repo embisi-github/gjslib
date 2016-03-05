@@ -8,6 +8,7 @@ from gjslib.math import matrix, vectors, statistics, quaternion
 class c_image_projection(object):
     delta_angle = 0.005  # radians - 0.1 is 6 degrees
     camera_step = 0.01 
+    fov_step = 0.01    
     camera_deltas = [{"camera":(-camera_step,0.0,0.0)},
                      {"camera":(+camera_step,0.0,0.0)},
                      {"camera":(0.0,-camera_step,0.0)},
@@ -38,8 +39,8 @@ class c_image_projection(object):
                           {"yaw":-delta_angle, "pitch":+delta_angle},
                           {"yaw":-delta_angle, "pitch":-delta_angle},
                      {}]
-    fov_deltas = [{"fov":-0.01},
-                  {"fov":+0.01},
+    fov_deltas = [{"fov":-fov_step},
+                  {"fov":+fov_step},
                   {}]
     #f __init__
     def __init__(self,name,image_filename,size=(1.0,1.0)):
@@ -77,17 +78,26 @@ class c_image_projection(object):
         if "zFar" in projection:zFar=projection["zFar"]
         self.mvp.perspective(fov=yfov, aspect=aspect, zFar=zFar, zNear=1.0)
         persp = self.mvp.copy()
+        z_of_w_1 = self.mvp.apply((0.0,0.0,-1.0,0.0))
         self.mvp.mult3x3(m=orientation.get_matrix3())
         self.mvp.translate(camera, scale=-1)
 
-        self.ip = self.mvp.projection()
-        self.ip.invert()
+        if False:
+            self.ip = self.mvp.projection()
+            self.ip.invert()
+            pass
+        else:
+            self.ip = self.mvp.projection()
+            self.ip.invert()
+            pass
 
         self.projection = { "camera":      camera[:],
                             "orientation": orientation,
                             "fov": fov,
                             "zFar": zFar,
-                            "aspect": aspect}
+                            "aspect": aspect,
+                            "z_of_w_1":z_of_w_1[2]
+                            }
 
         if resultant_projection is not None:
             resultant_projection["camera"]      = camera[:]
@@ -105,7 +115,9 @@ class c_image_projection(object):
             c = matrix.c_matrixNxN(data=self.mvp.get_matrix(linear=True))
             print c
             c.invert()
+            print "c, ip"
             print c
+            print self.ip
             c.postmult(matrix.c_matrixNxN(data=persp.get_matrix(linear=True)))
             print c
 
@@ -117,9 +129,8 @@ class c_image_projection(object):
         return (xy,img_xy)
     #f model_line_for_image
     def model_line_for_image(self,xy):
-        dirn = [xy[0],xy[1],-1]
-        dirn = self.ip.apply(dirn)
-        return (self.projection["camera"], dirn)
+        dirn = self.ip.apply((xy[0],xy[1],self.projection["z_of_w_1"],1))
+        return (self.projection["camera"], dirn[0:3])
     #f mapping_error
     def mapping_error(self, name, xyz, xy, corr=None, epsilon=1E-6, verbose=False ):
         abs_error = 0
@@ -149,7 +160,7 @@ class c_image_projection(object):
             pass
         return (pts,err,corr)
     #f improve_projection
-    def improve_projection(self, object_guess_locations, image_locations, projection, coarseness, verbose=False):
+    def improve_projection(self, object_guess_locations, image_locations, projection, guess_z, coarseness, initial_max_error=1E9, sq_dist_divide=20.0, verbose=False):
         """
         Take 4 object reference points with u,v and X, Y, Z
         In object space make a matrix O that is column vectors XYZ1
@@ -201,7 +212,6 @@ class c_image_projection(object):
 
         pts = object_guess_locations.keys()
         pts.sort()
-        print pts
 
         camera = projection["camera"]
         aspect = projection["aspect"]
@@ -216,19 +226,23 @@ class c_image_projection(object):
             pass
         obj_data.extend([1.0,1.0,1.0,1.0])
         O=matrix.c_matrixNxN(data=obj_data)
-        print "O"
-        print O
+        if verbose:
+            print "O"
+            print O
+            pass
 
         persp = matrix.c_matrix4x4()
         yfov = math.atan(math.tan(fov/2.0/180.0*3.1415926)/aspect)*2.0*180.0/3.14159256
         persp.perspective(fov=yfov, aspect=aspect, zFar=2.0, zNear=1.0) # do not use zFar, zNear here
         Pe = matrix.c_matrixNxN(data=persp.get_matrix(linear=True))
 
-        print "Pe"
-        print Pe
+        if verbose:
+            print "Pe"
+            print Pe
+            pass
 
-        smallest_error = (1E9,None)
-        for gi in range(7*7*7*7*15):
+        smallest_error = (initial_max_error,None)
+        for gi in range(7*7*7*7*5):
             if verbose:
                 print "-"*80
                 print "Iteration",gi,camera
@@ -239,7 +253,7 @@ class c_image_projection(object):
             ci = (gi2/(7*7*7*7)) % 15
             zNear = 1.0
             #zFar = 1.5*math.pow(1.0,ci+1)
-            zFar = 20.0*math.pow(1.0,ci+1)
+            zFar = 20.0*math.pow(1.3,1+5-ci)
             Pe[2,2] = (zNear+zFar)/(zFar-zNear)
             Pe[2,3] = 2*zNear*zFar/(zFar-zNear)
             def dist(x, camera):
@@ -248,17 +262,14 @@ class c_image_projection(object):
                 y -= camera[1]
                 z -= camera[2]
                 return math.sqrt(x*x+y*y+z*z)
-            guess_z = {}
-            for k in pts:
-                guess_z[k] = dist(k, camera)
-                pass
 
             U = matrix.c_matrixNxN(order=4)
             for c in range(4):
                 pt = pts[c]
                 ci = (gi2 % 7)
                 gi2 = gi2 / 7
-                z = -guess_z[pt]*math.pow(1.013,((ci-3)*coarseness))
+                z = -guess_z[pt]*math.pow(coarseness,(ci-3))
+                #z = -guess_z[pt]*math.pow(1.013,((ci-3)*coarseness))
                 w = (Pe[2,3]-z)/Pe[2,2]
                 U[2,c] = z
                 U[3,c] = w
@@ -327,22 +338,27 @@ class c_image_projection(object):
             e2 = volume_r
             if (e2<=0): e2=1E9
             if (e2<1):e2=1/e2
-            error = e2 + sum_sq_dist/20.0
+            
+            for l in lens_r:
+                if (l<1E-8): l=1E8
+                if l<1: l=1/l
+                e2 *= l
+            error = e2 + sum_sq_dist/sq_dist_divide
             if error<smallest_error[0]:#*1.01:
-                print "Error %6f Volume %6f == +1, sq_dist %6f == 0.0, det^2 (or/det^-2) %6f == 1.0"%(error, volume_r, sum_sq_dist, R.determinant())
+                print "%d:Error %6f Volume %6f == +1, sq_dist %6f == 0.0, lens %s"%(gi,error, volume_r, sum_sq_dist, str(lens_r))
                 #print angles_r
                 #print angles_c
                 #print lens_r
                 #print lens_c
                 #print volume_r
                 #print volume_c
-                sum_sq_dist = 0
-                for i in range(len(pts)):
-                    k = pts[i]
-                    sum_sq_dist += (U[2,i] - dist(k, C)) * (U[2,i] - dist(k, C))
-                    print k, U[2,i], dist(k, C), dist(k,camera)
-                    pass
-                print sum_sq_dist
+                #sum_sq_dist = 0
+                #for i in range(len(pts)):
+                #    k = pts[i]
+                #    sum_sq_dist += (U[2,i] - dist(k, C)) * (U[2,i] - dist(k, C))
+                #    #print k, U[2,i], dist(k, C), dist(k,camera)
+                #    pass
+                #print sum_sq_dist
 
                 R_t = R.copy().transpose()
                 #R_R_t = R.copy().postmult(R_t)
@@ -356,15 +372,12 @@ class c_image_projection(object):
                 #print
 
                 smallest_error = (error, None)
-                print "ERROR",gi, error, e0+e1, math.sqrt((e0-e1)*(e0-e1)), (e0, e1), C, q, zNear, zFar
+                #print "ERROR",gi, error, e0+e1, math.sqrt((e0-e1)*(e0-e1)), (e0, e1), C, q, zNear, zFar
                 orientation = quaternion.c_quaternion().from_matrix(R_t)
                 best_projection = {"camera":C, "orientation":orientation, "fov":fov, "aspect":aspect, "zNear":zNear, "zFar":zFar}
-                if True:
-                    self.set_projection( best_projection )
-                    for k in pts:
-                        print k, self.image_of_model(object_guess_locations[k])
-                        pass
-                    #print U
+                best_z = {}
+                for c in range(4):
+                    best_z[pts[c]] = -U[2,c]
                     pass
                 pass
 
@@ -378,41 +391,121 @@ class c_image_projection(object):
                 pass
 
             pass
-        return best_projection
+        if True:
+            self.set_projection( best_projection )
+            for k in pts:
+                print k, self.image_of_model(object_guess_locations[k])
+                pass
+            pass
+        return (best_projection, best_z, smallest_error[0])
     #f guess_initial_projection_matrix
-    def guess_initial_projection_matrix(self):
-        object_guess_locations = {}
-        object_guess_locations["calc.b.fr"]   = ( 24.0,  0.0, 0.0)
-        object_guess_locations["calc.t.bl"]   = ( 10.2, 19.0, 2.0)
-        object_guess_locations["clips.b.fr"]  = ( 0.0,   0.0, 0.0)
-        object_guess_locations["clips.t.fr"]  = ( 0.0,   0.0, 7.5)
+    def guess_initial_projection_matrix(self, point_mappings ):
+        object_guess_locations = point_mappings.object_guess_locations
 
         image_locations = {}
-        image_locations["calc.b.fr"]   = ( 2691.936508,1205.542857 )
-        image_locations["calc.t.bl"]   = ( 1161.396825,697.485714 )
-        image_locations["clips.b.fr"]  = ( 927.740759,1937.970392 )
-        image_locations["clips.t.fr"]  = ( 811.250794,1313.371429 )
-        camera = [10, -10, 20]
+        for pt in point_mappings.object_guess_locations.keys():
+            image_locations[pt] = point_mappings.image_mappings[pt][self.name]
+            pass
 
-        image_locations["calc.b.fr"]   = ( 2616.035556,1841.569524 )
-        image_locations["calc.t.bl"]   = ( 1644.606984,697.550476 )
-        image_locations["clips.b.fr"]  = ( 513.173333,1598.000000 )
-        image_locations["clips.t.fr"]  = ( 328.213333,1081.200000 )
-        camera = [30, 0, 20]
+        camera = [10, -10, 20]
+        if self.name=="middle":camera = [30, 0, 20]
 
         # iphone 6s has XFOV of about 55, YFOV is therefore about 47
         projection = {"camera":camera,
                       "aspect":self.size[0]/float(self.size[1]),
                       "fov":55,
                       }
-        #for c in [5.0,3.0,1.5]:
-        for c in [5.0,4.0,3.0,2.0,1.4,1.0,0.8,0.6,0.5,0.4,0.3,0.25]:#,0.4,0.3,0.15]:
-            improved_projection = self.improve_projection( object_guess_locations=object_guess_locations,
-                                                           image_locations = image_locations,
-                                                           projection = projection,
-                                                           coarseness = c )
+        def dist(x, camera):
+            (x,y,z) = object_guess_locations[x]
+            x -= camera[0]
+            y -= camera[1]
+            z -= camera[2]
+            return math.sqrt(x*x+y*y+z*z)
+        guess_z = {}
+        for k in object_guess_locations.keys():
+            guess_z[k] = dist(k, camera)
+            print k, ( (image_locations[k][0] / float(self.size[0]))*2.0-1.0,
+                       -(image_locations[k][1] / float(self.size[1]))*2.0+1.0 )
+            pass
+        print guess_z
+        max_error = 1E9
+        #for c in range(30):
+        #for c in range(10):
+        for c in range(0):
+            # Each run uses coarseness^-3 ... 1.0 ... coarseness^3
+            # So an overlap of coarseness^1.5 seems sensible
+            coarseness = math.pow(1.0667,(1.5/(1.5*(c+1))))
+            print
+            print "Run with coarseness",c,coarseness
+            (improved_projection, improved_z, max_error) = self.improve_projection( object_guess_locations=object_guess_locations,
+                                                                                    image_locations = image_locations,
+                                                                                    projection = projection,
+                                                                                    guess_z = guess_z,
+                                                                                    initial_max_error = max_error,
+                                                                                    sq_dist_divide=200.0,
+                                                                                    coarseness = coarseness )
             print improved_projection
-            projection["camera"] = improved_projection["camera"]
+            print improved_z
+            max_error *= 1.01
+            if False:
+                projection["camera"] = improved_projection["camera"]
+                pass
+            else:
+                guess_z = improved_z
+                pass
+            pass
+
+        opt_projection = {'fov': 55, 'camera': [-4.1343398356796275, -20.84776250450365, 24.888904114709263], 'orientation': quaternion.c_quaternion(euler=(-29.6367,-0.5462,51.8645),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.800000000000004}
+        opt_projection = {'fov': 54.81878845558125, 'camera': [-4.251539835679651, -20.852262504503784, 24.337104114709394], 'orientation': quaternion.c_quaternion(euler=(-29.7185,-0.6768,52.5134),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.8000000000}
+        opt_projection = {'fov': 54.960948967453, 'camera': [-4.291839835679663, -20.91236250450392, 24.383004114709568], 'orientation': quaternion.c_quaternion(euler=(-29.7301,-0.6800,52.5281),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.8}
+        #middle opt_projection = {'fov': 55, 'camera': [19.629700287961107, -22.754115385801185, 26.45199158093836], 'orientation': quaternion.c_quaternion(euler=(11.2628, 3.4030,50.7644),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.800000000000004}
+        #middle opt opt_projection = {'fov': 54.81878845558125, 'camera': [18.768800287962506, -22.989415385800875, 26.421191580938203], 'orientation': quaternion.c_quaternion(euler=(10.6040, 2.1842,50.8145),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.800000000000004}
+        opt_projection = {'fov': 54.81878845558125, 'camera': [18.768800287962506, -22.989415385800875, 26.421191580938203], 'orientation': quaternion.c_quaternion(euler=(10.6040, 2.1842,50.8145),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.800000000000004}
+        self.set_projection(opt_projection)
+        #opt_projection = self.optimize_projection(point_mappings = point_mappings,
+        #                                          fov_iterations=2000, orientation_iterations=1, camera_iterations=1, delta_scale=0.01, do_fov=True, do_camera=False )
+
+        self.set_projection(opt_projection)
+        opt_projection = self.optimize_projection(point_mappings = point_mappings,
+                                                  fov_iterations=100, orientation_iterations=100, camera_iterations=10, delta_scale=1 )
+        self.set_projection(opt_projection)
+        opt_projection = self.optimize_projection(point_mappings = point_mappings,
+                                                  fov_iterations=100, orientation_iterations=100, camera_iterations=10, delta_scale=0.1 )
+
+        self.set_projection(opt_projection)
+        opt_projection = self.optimize_projection(point_mappings = point_mappings,
+                                                  fov_iterations=2000, orientation_iterations=1, camera_iterations=1, delta_scale=0.01, do_fov=True, do_camera=False )
+
+        self.set_projection(opt_projection)
+        opt_projection = self.optimize_projection(point_mappings = point_mappings,
+                                                  fov_iterations=100, orientation_iterations=100, camera_iterations=10, delta_scale=0.05 )
+        self.set_projection(opt_projection)
+        opt_projection = self.optimize_projection(point_mappings = point_mappings,
+                                                  fov_iterations=200, orientation_iterations=100, camera_iterations=10, delta_scale=0.03 )
+        #opt_projection = {'fov': 55, 'camera': [18.946400287962323, -22.74361538580119, 26.758691580937942], 'orientation': quaternion.c_quaternion(euler=(10.6165, 2.6457,50.3051),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.800000000000004}
+        self.set_projection(opt_projection)
+        opt_projection = self.optimize_projection(point_mappings = point_mappings,
+                                                  fov_iterations=200, orientation_iterations=100, camera_iterations=10, delta_scale=0.03 )
+        #opt_projection = {'fov': 55, 'camera': [18.718700287962854, -22.75111538580117, 26.84179158093775], 'orientation': quaternion.c_quaternion(euler=(10.4051, 2.3963,50.1888),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.800000000000004}
+        self.set_projection(opt_projection)
+        opt_projection = self.optimize_projection(point_mappings = point_mappings,
+                                                  fov_iterations=2000, orientation_iterations=1, camera_iterations=1, delta_scale=0.001, do_fov=True, do_camera=False )
+
+        self.set_projection(opt_projection)
+        opt_projection = self.optimize_projection(point_mappings = point_mappings,
+                                                  fov_iterations=1, orientation_iterations=100, camera_iterations=100, delta_scale=0.001 )
+
+        print "Optimized:\nself.images['%s']['projection'] = %s"%(self.name,str(opt_projection))
+        pts = object_guess_locations.keys()
+        pts.sort()
+        sum_d = 0
+        for k in pts:
+            (xyzw,uv) = self.image_of_model(object_guess_locations[k])
+            d = vectors.vector_separation(uv,image_locations[k])
+            sum_d += d
+            print k, d, uv, image_locations[k]
+            pass
+        print "Total error",sum_d
         return
     #f guess_initial_orientation
     def guess_initial_orientation(self, point_mappings, use_references=False, steps=20, verbose=False):
@@ -489,10 +582,10 @@ class c_image_projection(object):
                              orientation_iterations=10,
                              camera_iterations=10,
                              delta_scale=0.05,
+                            do_fov=False,
+                            do_camera=True,
                              verbose=False):
         base_projection = self.projection
-        do_fov = True
-        do_camera = True
         for k in range(fov_iterations):
             (xsc,ysc)=(1.0,1.0)
             for i in range(camera_iterations):
@@ -529,6 +622,13 @@ class c_image_projection(object):
 
 #a Toplevel
 if __name__=="__main__":
-    a = c_image_projection("name","img_filename", size=(3264.0,2448.0))
-    a.guess_initial_projection_matrix()
+    import image_point_mapping
+    pm = image_point_mapping.c_point_mapping()
+    image_name = "left"
+    image_name = "middle"
+    pm.load_data("pencils.map")
+    pm.add_image(image_name,size=(3264.0,2448.0))
+    proj = c_image_projection(image_name,"img_filename", size=(3264.0,2448.0))
+    pm.set_projection(image_name,proj)
+    proj.guess_initial_projection_matrix(point_mappings = pm)
     pass

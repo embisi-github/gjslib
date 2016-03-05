@@ -224,7 +224,7 @@ class c_edit_point_map_image(object):
                     glPushMatrix()
                     glTranslate(uv[0],uv[1],-0.1)
                     sc = 0.005/self.scale[0]
-                    glRotate(4*self.epm.tick,0.0,0.0,1.0)
+                    glRotate(-6*self.epm.tick,0.0,0.0,1.0)
                     glPushMatrix()
                     glScale(sc,4*sc,1.0)
                     glutSolidCube(1.0)
@@ -625,7 +625,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
             self.point_mappings.initial_orientation(image=image_name, steps=20, verbose=False)
             pass
         else:
-            self.point_mappings.optimize_projections(image=image_name, fov_iterations=1, orientation_iterations=20, camera_iterations=20, delta_scale=0.03) # .01
+            self.point_mappings.optimize_projections(image=image_name, fov_iterations=1, orientation_iterations=20, camera_iterations=20, delta_scale=0.3)#03) # .01
             pass
         self.point_mappings.find_line_sets()
         self.point_mappings.approximate_positions()
@@ -685,6 +685,21 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         if ord(k)==27:
             self.point_set_end()
             return True
+        if k in ["f"]:
+            self.point_mappings.find_line_sets()
+            self.point_mappings.approximate_positions()
+            for n in self.point_mappings.line_sets:
+                print n, 
+                print "positions:",self.point_mappings.positions[n]
+                print "line meetings:", self.point_mappings.line_sets[n].line_meetings
+                print "weighted_points:", self.point_mappings.line_sets[n].weighted_points
+                #for meet in self.point_mappings.line_sets[n].line_meetings:
+                #    (p0,p1,g,d) = meet
+                #    proj = self.point_mappings.images['left']["projection"]
+                #    print proj.image_of_model(p0)
+                #    print proj.image_of_model(p1)
+                pass
+            pass
         if k in ["o", "O"]:
             image_name = None
             if k=="o": image_name=self.displayed_images[self.focus_image]

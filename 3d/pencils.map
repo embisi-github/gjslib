@@ -25,6 +25,11 @@ clips.t.bl,
 clips.t.br,
 clips.t.fl,
 clips.t.fr,
+extra.1,
+extra.2,
+extra.3,
+extra.4,
+extra.5,
 
 
 --References:
@@ -32,22 +37,22 @@ clips.t.fr,
 
 --Mapping:
 middle,calc.b.fl,1229.153560,1132.188830
-left,calc.b.fr,2691.936508,1205.542857
-middle,calc.b.fr,2616.035556,1841.569524
-left,calc.t.bl,1161.396825,697.485714
+left,calc.b.fr,2698.844445,1213.314286
+middle,calc.b.fr,2614.596403,1846.966349
+left,calc.t.bl,1144.990476,699.428571
 middle,calc.t.bl,1644.606984,697.550476
 left,calc.t.br,2508.444444,690.361905
-middle,calc.t.br,2992.000000,1196.800000
+middle,calc.t.br,2991.177627,1190.786395
 middle,calc.t.fl,1216.782760,981.006225
-left,calc.t.fr,2736.838095,1069.542857
-middle,calc.t.fr,2663.786667,1717.680000
-left,clips.b.br,1248.727957,1552.842435
+left,calc.t.fr,2737.495994,1069.851247
+middle,calc.t.fr,2661.319547,1700.564354
+left,clips.b.br,1247.083210,1553.767605
 middle,clips.b.br,1017.280000,1437.520000
 left,clips.b.fl,446.857143,1750.838095
 left,clips.b.fr,927.740759,1937.970392
-middle,clips.b.fr,513.173333,1598.000000
-left,clips.m.br,1231.339683,1137.219048
-middle,clips.m.br,959.253333,1092.080000
+middle,clips.b.fr,511.528586,1595.532880
+left,clips.m.br,1188.684047,1193.037580
+middle,clips.m.br,877.097396,1113.559819
 left,clips.m.fl,294.450794,1338.628571
 left,clips.m.fr,850.539683,1521.257143
 middle,clips.m.fr,378.986667,1244.400000
@@ -55,9 +60,19 @@ left,clips.t.bl,693.384127,833.161905
 middle,clips.t.bl,788.800000,689.520000
 left,clips.t.br,1199.717153,967.007281
 middle,clips.t.br,918.365411,936.542706
-left,clips.t.fl,234.999158,1140.897648
-middle,clips.t.fl,249.785367,801.905966
-left,clips.t.fr,811.250794,1313.371429
-middle,clips.t.fr,328.213333,1081.200000
+left,clips.t.fl,231.545190,1133.773838
+middle,clips.t.fl,256.782567,799.203955
+left,clips.t.fr,811.045201,1318.922449
+middle,clips.t.fr,324.714733,1079.611350
+left,extra.1,803.475253,1067.177506
+middle,extra.1,650.258866,895.959365
+left,extra.2,679.626539,712.886911
+middle,extra.2,1407.521286,590.819576
+left,extra.3,1599.558317,352.712337
+middle,extra.3,2538.602150,487.879164
+left,extra.4,2304.087624,641.217798
+middle,extra.4,2974.120825,1051.777937
+left,extra.5,189.912063,330.860311
+middle,extra.5,1387.630387,159.794236
 
 
