@@ -4,8 +4,7 @@
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 from OpenGL.GL import *
-import gjslib.graphics.obj
-from gjslib.graphics import opengl
+from gjslib.graphics import opengl, opengl_obj
 from gjslib.math import mesh
 from gjslib.math.bezier import c_point
 
@@ -93,7 +92,7 @@ class c_opengl_textured_mesh(object):
         pass
     #f create_opengl_surface
     def create_opengl_surface(self,projection_callback=None):
-        self.object = gjslib.graphics.obj.c_obj()
+        self.object = opengl_obj.c_opengl_obj()
         for t in self.mesh.triangles:
             #print t.winding_order
             #if (t.winding_order%2)==0: continue

@@ -70,6 +70,7 @@ from gjslib.math.quaternion import c_quaternion
 from gjslib.math import matrix, vectors, statistics
 from image_point_mapping import c_point_mapping
 from image_projection import c_image_projection
+from gjslib.graphics import opengl_obj
 
 #a Class
 #c c_plane
@@ -409,20 +410,26 @@ del(image_mapping_data["img_3"])
 #a c_opengl_image_projection
 class c_opengl_image_projection(c_image_projection):
     #f __init__
-    def __init__(self, **kwargs):
+    def __init__(self, projection=None, **kwargs):
         self.texture = None
         self.object = None
-        c_image_projection.__init__(self, **kwargs)
+        self.projection = projection
         pass
     #f load_texture
     def load_texture(self):
-        self.texture = opengl_utils.texture_from_png(self.image_filename)
-        self.object = gjslib.graphics.obj.c_obj()
+        if self.projection is None:
+            return
+        self.texture = opengl_utils.texture_from_png(self.projection.image_filename)
+        self.object = opengl_obj.c_opengl_obj()
         self.object.add_rectangle( (-10.0,10.0,0.0), (20.0,0.0,0.0), (0.0,-20.0,0.0) )
         self.object.create_opengl_surface()
         pass
     #f display
     def display(self):
+        if self.projection is None:
+            return
+        if self.projection.projection is None:
+            return
         glPushMatrix()
         if self.texture is not None:
             glBindTexture(GL_TEXTURE_2D, self.texture)
@@ -430,7 +437,7 @@ class c_opengl_image_projection(c_image_projection):
             glPopMatrix()
             return
         glPushMatrix()
-        camera = self.projection["camera"]
+        camera = self.projection.projection["camera"]
         glTranslate(camera[0],camera[1],camera[2])
         glutSolidCube(0.1)
         glPopMatrix()
@@ -506,31 +513,22 @@ class c_mapping(opengl_app.c_opengl_camera_app):
         self.point_mappings.reset()
         self.point_mappings.load_data(point_map_filename)
         pass
-    #f load_image
-    def load_image(self, name, image_filename, projection, size):
-        self.image_projections[name] = c_opengl_image_projection(name=name,
-                                                                 image_filename=image_filename,
-                                                                 size=size)
-        self.image_projections[name].set_projection(projection=projection)
-        self.point_mappings.add_image(name, size=size)
-        self.point_mappings.set_projection(name, self.image_projections[name])
-        pass
     #f load_images
     def load_images(self):
         image_names = self.point_mappings.get_images()
         for k in image_names:
             image_data = self.point_mappings.get_image_data(k)
-            self.load_image(k,
-                            image_filename=image_data["filename"],
-                            projection=image_data["projection"],
-                            size=image_data["size"])
+            self.image_projections[k] = c_opengl_image_projection(name = k,
+                                                                  image_filename = image_data["filename"],
+                                                                  size           = image_data["size"],
+                                                                  projection     = image_data["projection"])
             pass
         pass
     #f generate_faces
     def generate_faces(self):
         global faces
         self.meshes = []
-        proj = self.image_projections["main"]
+        proj = self.image_projections["main"].projection
         pts = {}
         def uv_from_image_xyz(xyz, proj=proj):
             (uvzw,img_xy) = proj.image_of_model(xyz)
@@ -591,7 +589,7 @@ class c_mapping(opengl_app.c_opengl_camera_app):
             ogm.create_opengl_surface(projection_callback=xyz_from_image_uv)
             self.meshes.append(ogm)
             pass
-        proj.load_texture()
+        self.image_projections["main"].load_texture()
         #die
         pass
     #f display_image_faces
@@ -635,10 +633,10 @@ class c_mapping(opengl_app.c_opengl_camera_app):
                    "belltl":(0.3,1.0,1.0),
                    "belltr":(0.3,1.0,1.0),}[pt]
             for k in self.image_projections:
-                p = self.image_projections[k]
+                proj = self.image_projections[k]
                 xy = self.point_mappings.get_xy(pt, k)
                 if xy is not None:
-                    (p0,d0) = p.model_line_for_image(xy)
+                    (p0,d0) = proj.model_line_for_image(xy)
                     glMaterialfv(GL_FRONT,GL_AMBIENT,[r,g,b,1.0])
                     glLineWidth(2.0)
                     glBegin(GL_LINES);
@@ -753,8 +751,10 @@ class c_mapping(opengl_app.c_opengl_camera_app):
         return (k01,k02)
     #f mouse
     def mouse(self,b,s,m,x,y):
+        if self.projection is None:
+            return
         print "button, state, window x/y",b,s,x,y
-        ip = self.mvp.projection()
+        ip = self.projection.mvp.projection()
         ip.invert()
 
         p0 = [0,0,0]
