@@ -192,8 +192,114 @@ class c_image_projection(object):
                 pass
             pass
         return (pts,err,corr)
-    #f improve_projection
-    def improve_projection(self, object_guess_locations, image_locations, projection, guess_z, coarseness, initial_max_error=1E9, sq_dist_divide=20.0, verbose=False):
+    #f select_best_z_set
+    def select_best_z_set(self, O, Pe, uv, guess_Z, max_results=20, verbose=False):
+        """
+        O = Object matrix (must be c_matrixNxN of order 4)
+        Pe = perspective matrix (from projection aspect, FOV, zFar, zNear)
+        image_locations = list of four (u,v) locations for the 4 columns of O
+        guess_Z = dictionary of key -> four Z values to use (should all be -ve since they must be in front of the camera)
+
+        Take an Object matrix with columns being 4 object reference points X, Y, Z, 1
+        For each column have an image location (u,v) and a guess of distance from camera (Z), such that
+        the image space vector would be u,v,z,w where w=-Z and z=((zF+zN).Z + 2*zF*zN)/(zF-zN).
+        We can build an image matrix U with each column being (u,v,z,w)
+
+        Now for a valid projection P we have P.O = U
+        Hence P = U.O' (O' == O inverse)
+        Further, P = Persp.Orient.Camera (Pe.Or.Ca)
+        If we know the aspect ratio and FOV for the camera and zF and zN, we know Pe
+        So Pe.Or.Ca = U.O', Or.Ca = Pe'.U.O'
+        Inverting both sides yields Ca'.Or' = O.U'.Pe
+
+        Ca'.Or' is a translation of a rotation; the translation can be determined by the fourth column
+        of the matrix. The bottom row of the matrix should be (0,0,0,1).
+        The top 3x3 should be the orientation matrix - a rotation.
+        A rotation is supposed to be a unit orthogonal matrix.
+        To test for orthogonality find the volume of the unit cube post-rotation; this is V0.V1xV2
+        where Vi are the column vectors of the rotation matrix (also this is the determinant...)
+        Also, the lengths of each column vector should be 1.
+        So a measure of non-orthogonality is:
+        NO(Vol) * NO(|V0|) * NO(|V1|) * NO(|V2|)
+        where NO(x)=x if x>1, NO(x)=1/x if 0<x<1, NO(x)=1E9 if x<=0
+        """
+        smallest_error = None
+        result_list = []
+        U = matrix.c_matrixNxN(order=4)
+        for Zk in guess_Z:
+            Z_list    = guess_Z[Zk]
+            for c in range(4):
+                (_, _, z, w) = Pe.apply( (0.0,0.0,Z_list[c],1.0) )
+                U[0,c] = w * uv[c][0]
+                U[1,c] = w * uv[c][1]
+                U[2,c] = z
+                U[3,c] = w
+                pass
+
+            U_i = U.inverse()
+            if U_i is None:
+                continue
+
+            Ca_i_Or_i = O.copy()
+            Ca_i_Or_i.postmult(U_i)
+            Ca_i_Or_i.postmult(Pe)
+
+            # Rotation is top-left 3x3 of Or_i
+            R = matrix.c_matrixNxN(order=3)
+            for r in range(3):
+                for c in range(3):
+                    R[r,c] = Ca_i_Or_i[r,c]
+                    pass
+                pass
+
+            camera = Ca_i_Or_i.get_column(3)[0:3]
+            zs_okay = True
+            for c in range(4):
+                if vectors.vector_separation(O.get_column(c)[:3],camera)*1.1 < -Z_list[c]:
+                    zs_okay = False
+                    break
+                pass
+            if not zs_okay:
+                continue
+
+            v = (R.get_column(0),R.get_column(1),R.get_column(2))
+            volume_r  = vectors.dot_product(vectors.vector_prod3(v[0],v[1]),v[2])
+            lengths_r = (vectors.dot_product(v[0],v[0]), vectors.dot_product(v[1],v[1]), vectors.dot_product(v[2],v[2]))
+            def NO(x, epsilon=1E-9):
+                if (x>1): return x
+                if (x>1E-9): return 1/x
+                return 1E9
+            error = NO(volume_r) * NO(lengths_r[0]) * NO(lengths_r[1]) * NO(lengths_r[2])
+            if (volume_r<0): volume_r=1E9
+            error = NO(volume_r/lengths_r[0]/lengths_r[1]/lengths_r[2])
+            def sum_sq(xs):
+                v = 0
+                for x in xs:
+                    v += x*x
+                    pass
+                return v
+            error = sum_sq((NO(volume_r)-1, NO(lengths_r[0])-1, NO(lengths_r[1])-1, NO(lengths_r[2])-1))
+            if (error<1E9):
+                if (len(result_list)<max_results) or (error<result_list[-1][0]):
+                    orientation = quaternion.c_quaternion().from_matrix(R.transpose())
+                    r = (Zk, camera, orientation)
+                    print "%s:Error %6f Volume %6f == +1, lengths %s, cam [%5f,%5f,%5f]"%(str(Zk),error, volume_r, str(lengths_r), camera[0],camera[1],camera[2])
+                    index = 0
+                    for i in range(len(result_list)):
+                        if error<result_list[i][0]:
+                            index = i
+                            break
+                        pass
+                    result_list.insert(index,(error,r))
+                    if len(result_list)>max_results:
+                        result_list = result_list[:max_results]
+                        pass
+                    pass
+                pass
+            pass
+        return result_list
+    #f improve_projection_old
+    def improve_projection_old(self, object_guess_locations, image_locations, projection, guess_z, coarseness, initial_max_error=1E9, sq_dist_divide=20.0, verbose=False):
         """
         Take 4 object reference points with u,v and X, Y, Z
         In object space make a matrix O that is column vectors XYZ1
@@ -242,11 +348,10 @@ class c_image_projection(object):
 
         (note... object measurements here are in 0.8cm)
         """
-
         pts = object_guess_locations.keys()
         pts.sort()
 
-        camera = projection["camera"]
+        #camera = projection["camera"]
         aspect = projection["aspect"]
         fov    = projection["fov"] # xFOV
         # Do not use orientation
@@ -274,11 +379,12 @@ class c_image_projection(object):
             print Pe
             pass
 
+        best_projection = None
         smallest_error = (initial_max_error,None)
         for gi in range(7*7*7*7*5):
             if verbose:
                 print "-"*80
-                print "Iteration",gi,camera
+                print "Iteration",gi
                 print "-"*80
                 pass
 
@@ -346,39 +452,25 @@ class c_image_projection(object):
                 pass
 
             v = (R.get_column(0),R.get_column(1),R.get_column(2))
-            volume_r = vectors.dot_product(vectors.vector_prod3(v[0],v[1]),v[2])
-            angles_r = (vectors.cos_angle_between(v[0],v[1]), vectors.cos_angle_between(v[1],v[2]), vectors.cos_angle_between(v[2],v[0]))
-            lens_r = (vectors.dot_product(v[0],v[0]), vectors.dot_product(v[1],v[1]), vectors.dot_product(v[2],v[2]))
-            e0 = angles_r[0]*angles_r[0] + angles_r[1]*angles_r[1] + angles_r[2]*angles_r[2]
-            v = (R.get_row(0),R.get_row(1),R.get_row(2))
-            volume_c = vectors.dot_product(vectors.vector_prod3(v[0],v[1]),v[2])
-            angles_c = (vectors.cos_angle_between(v[0],v[1]), vectors.cos_angle_between(v[1],v[2]), vectors.cos_angle_between(v[2],v[0]))
-            lens_c = (vectors.dot_product(v[0],v[0]), vectors.dot_product(v[1],v[1]), vectors.dot_product(v[2],v[2]))
-            e1 = angles_c[0]*angles_c[0] + angles_c[1]*angles_c[1] + angles_c[2]*angles_c[2]
-
-            if volume_c>0:
-                pass
-            else:
-                volume_c = 100-volume_c
-                #error=1E19
-                pass
-
-            sum_sq_dist = 0
-            for i in range(len(pts)):
-                k = pts[i]
-                sum_sq_dist += (-U[2,i] - dist(k, C)) * (-U[2,i] - dist(k, C))
-                pass
-            e2 = volume_r
-            if (e2<=0): e2=1E9
-            if (e2<1):e2=1/e2
-            
-            for l in lens_r:
-                if (l<1E-8): l=1E8
-                if l<1: l=1/l
-                e2 *= l
-            error = e2 + sum_sq_dist/sq_dist_divide
+            volume_r  = vectors.dot_product(vectors.vector_prod3(v[0],v[1]),v[2])
+            lengths_r = (vectors.dot_product(v[0],v[0]), vectors.dot_product(v[1],v[1]), vectors.dot_product(v[2],v[2]))
+            def NO(x, epsilon=1E-9):
+                if (x>1): return x
+                if (x>1E-9): return 1/x
+                return 1E9
+            error = NO(volume_r) * NO(lengths_r[0]) * NO(lengths_r[1]) * NO(lengths_r[2])
+            if (volume_r<0): volume_r=1E9
+            error = NO(volume_r/lengths_r[0]/lengths_r[1]/lengths_r[2])
+            def sum_sq(xs):
+                v = 0
+                for x in xs:
+                    v += x*x
+                    pass
+                return v
+            error = sum_sq((NO(volume_r)-1, NO(lengths_r[0])-1, NO(lengths_r[1])-1, NO(lengths_r[2])-1, NO(volume_r/lengths_r[0]/lengths_r[1]/lengths_r[2])-1))
+            sum_sq_dist = 0.0
             if error<smallest_error[0]:#*1.01:
-                print "%d:Error %6f Volume %6f == +1, sq_dist %6f == 0.0, lens %s"%(gi,error, volume_r, sum_sq_dist, str(lens_r))
+                print "%d:Error %6f Volume %6f == +1, sq_dist %6f == 0.0, lens %s"%(gi,error, volume_r, sum_sq_dist, str(lengths_r))
                 #print angles_r
                 #print angles_c
                 #print lens_r
@@ -424,6 +516,8 @@ class c_image_projection(object):
                 pass
 
             pass
+        if best_projection is None:
+            return None
         if True:
             self.set_projection( best_projection )
             for k in pts:
@@ -431,8 +525,190 @@ class c_image_projection(object):
                 pass
             pass
         return (best_projection, best_z, smallest_error[0])
+    #f improve_projection
+    def improve_projection(self, O, Pe, uv, guess_Z, coarseness, initial_max_error=1E9, sq_dist_divide=20.0, verbose=False):
+
+        aspect = projection["aspect"]
+        fov    = projection["fov"] # xFOV
+
+        best_projection = None
+        smallest_error = (initial_max_error,None)
+        for gi in range(7*7*7*7*1):
+            if verbose:
+                print "-"*80
+                print "Iteration",gi
+                print "-"*80
+                pass
+
+            gi2 = gi
+            ci = (gi2/(7*7*7*7)) % 15
+            zNear = 1.0
+            zFar = 20.0*math.pow(1.3,1+5-ci)
+            Pe[2,2] = (zNear+zFar)/(zFar-zNear)
+            Pe[2,3] = 2*zNear*zFar/(zFar-zNear)
+
+            U = matrix.c_matrixNxN(order=4)
+            for c in range(4):
+                pt = pts[c]
+                ci = (gi2 % 7)
+                gi2 = gi2 / 7
+                z = guess_Z[pt]*math.pow(coarseness,(ci-3))
+                w = (Pe[2,3]-z)/Pe[2,2]
+                U[2,c] = z
+                U[3,c] = w
+                U[0,c] = w * uv[c][0]
+                U[1,c] = w * uv[c][1]
+                pass
+
+            U_i = U.inverse()
+            if U_i is None:
+                continue
+
+            Ca_i_Or_i = O.copy()
+            Ca_i_Or_i.postmult(U_i)
+            Ca_i_Or_i.postmult(Pe)
+
+            # Deduced camera location is Ca_i
+            C = Ca_i_Or_i.get_column(3)[0:3]
+
+            # Rotation is top-left 3x3 of Or_i
+            R = matrix.c_matrixNxN(order=3)
+            for r in range(3):
+                for c in range(3):
+                    R[r,c] = Ca_i_Or_i[r,c]
+                    pass
+                pass
+
+            # Note that bottom row of Ca_i_Or_i is going to be 0.0,0.0,0.0,-1.0
+            # It always is
+            if verbose:
+                br = Ca_i_Or_i.get_row(3)
+                br = vectors.vector_add(br,(0.0,0.0,0.0,-1.0))
+                print "br check",vectors.dot_product(br,br)
+                print "C"
+                print C
+                print "R"
+                print R
+                pass
+
+            if verbose:
+                print "Check of perp vectors"
+                pass
+
+            v = (R.get_column(0),R.get_column(1),R.get_column(2))
+            volume_r  = vectors.dot_product(vectors.vector_prod3(v[0],v[1]),v[2])
+            lengths_r = (vectors.dot_product(v[0],v[0]), vectors.dot_product(v[1],v[1]), vectors.dot_product(v[2],v[2]))
+            def NO(x, epsilon=1E-9):
+                if (x>1): return x
+                if (x>1E-9): return 1/x
+                return 1E9
+            error = NO(volume_r) * NO(lengths_r[0]) * NO(lengths_r[1]) * NO(lengths_r[2])
+            if (volume_r<0): volume_r=1E9
+            error = NO(volume_r/lengths_r[0]/lengths_r[1]/lengths_r[2])
+            def sum_sq(xs):
+                v = 0
+                for x in xs:
+                    v += x*x
+                    pass
+                return v
+            error = sum_sq((NO(volume_r)-1, NO(lengths_r[0])-1, NO(lengths_r[1]-1), NO(lengths_r[2]-1)))
+            sum_sq_dist = 0.0
+            print error, smallest_error, volume_r, lengths_r
+            if error<smallest_error[0]:#*1.01:
+                print "%d:Error %6f Volume %6f == +1, sq_dist %6f == 0.0, lens %s"%(gi,error, volume_r, sum_sq_dist, str(lengths_r))
+                #print angles_r
+                #print angles_c
+                #print lens_r
+                #print lens_c
+                #print volume_r
+                #print volume_c
+                #sum_sq_dist = 0
+                #for i in range(len(pts)):
+                #    k = pts[i]
+                #    sum_sq_dist += (U[2,i] - dist(k, C)) * (U[2,i] - dist(k, C))
+                #    #print k, U[2,i], dist(k, C), dist(k,camera)
+                #    pass
+                #print sum_sq_dist
+
+                R_t = R.copy().transpose()
+                #R_R_t = R.copy().postmult(R_t)
+                #print "R.R_t"
+                #print R_R_t.determinant(), R_R_t
+
+                q = quaternion.c_quaternion().from_matrix(R)
+                #print "R and q - should be the same..."
+                #print R
+                #print q.get_matrix3()
+                #print
+
+                smallest_error = (error, None)
+                #print "ERROR",gi, error, e0+e1, math.sqrt((e0-e1)*(e0-e1)), (e0, e1), C, q, zNear, zFar
+                orientation = quaternion.c_quaternion().from_matrix(R_t)
+                best_projection = {"camera":C, "orientation":orientation, "fov":fov, "aspect":aspect, "zNear":zNear, "zFar":zFar}
+                best_z = {}
+                for c in range(4):
+                    best_z[pts[c]] = -U[2,c]
+                    pass
+                pass
+
+            if verbose:
+                OrCa = Ca_i_Or_i.inverse()
+                print "OrCa"
+                print OrCa
+                mvp = OrCa.copy()
+                mvp.premult(Pe)
+                print mvp
+                pass
+
+            pass
+        if best_projection is None:
+            return None
+        if True:
+            self.set_projection( best_projection )
+            for k in pts:
+                print k, self.image_of_model(object_guess_locations[k])
+                pass
+            pass
+        return (best_projection, best_z, smallest_error[0])
+    #f get_best_projection_for_guess_z
+    def get_best_projection_for_guess_z(self, projection, guess_z, pt_names, object_guess_locations, image_locations, spread=1.15, iterations=5):
+        max_error = 1E9
+        gz_dict = {}
+        for c in range(4):
+            gz_dict[pt_names[c]] = -guess_z[c]
+            pass
+        guess_z = gz_dict
+        for c in range(iterations):
+            # Each run uses coarseness^-3 ... 1.0 ... coarseness^3
+            # So an overlap of coarseness^1.5 seems sensible
+            coarseness = math.pow(spread,(1.5/(1.5*(c+1))))
+            print "Run with coarseness",c,coarseness
+            r = self.improve_projection_old( object_guess_locations=object_guess_locations,
+                                         image_locations = image_locations,
+                                         projection = projection,
+                                         guess_z = guess_z,
+                                         initial_max_error = max_error*1.01,
+                                         sq_dist_divide=20000.0,
+                                         coarseness = coarseness )
+            if r is None:
+                return None
+            (improved_projection, improved_z, max_error) = r
+            guess_z = improved_z
+            pass
+        return (improved_projection, improved_z, max_error)
+
     #f guess_initial_projection_matrix
     def guess_initial_projection_matrix(self, point_mappings ):
+        # iphone 6s has XFOV of about 55, YFOV is therefore about 47
+        projection = {"aspect":self.size[0]/float(self.size[1]),
+                      "fov":55.0,
+                      "zFar":40.0
+                      }
+        zNear = 1.0
+        zFar  = projection["zFar"]
+        aspect = projection["aspect"]
+        fov = projection["fov"]
+
         object_guess_locations = {}
         for pt in point_mappings.object_guess_locations:
             if pt in point_mappings.image_mappings:
@@ -450,59 +726,75 @@ class c_image_projection(object):
                 pass
             pass
 
-        if len(object_guess_locations)!=4:
+        if len(image_locations)!=4:
             print "Require 4 object guess locations with image locations for initial projection matrix"
             return None
 
-        camera = [10, -10, 20]
-        if self.name=="middle":camera = [30, 0, 20]
+        pt_names = image_locations.keys()
+        pt_names.sort()
 
-        # iphone 6s has XFOV of about 55, YFOV is therefore about 47
-        projection = {"camera":camera,
-                      "aspect":self.size[0]/float(self.size[1]),
-                      "fov":55,
-                      }
-        def dist(x, camera):
-            (x,y,z) = object_guess_locations[x]
-            x -= camera[0]
-            y -= camera[1]
-            z -= camera[2]
-            return math.sqrt(x*x+y*y+z*z)
-        guess_z = {}
-        for k in object_guess_locations.keys():
-            guess_z[k] = dist(k, camera)
-            print k, ( (image_locations[k][0] / float(self.size[0]))*2.0-1.0,
-                       -(image_locations[k][1] / float(self.size[1]))*2.0+1.0 )
+        O = matrix.c_matrixNxN(order=4)
+        objs = []
+        uv = []
+        Oc = (0.0,0.0,0.0)
+        for c in range(4):
+            pt = pt_names[c]
+            obj = object_guess_locations[pt]
+            O[0,c] = obj[0]
+            O[1,c] = obj[1]
+            O[2,c] = obj[2]
+            O[3,c] = 1.0
+            u = -1.0 + (image_locations[pt][0]/self.size[0])*2.0
+            v =  1.0 - (image_locations[pt][1]/self.size[1])*2.0
+            uv.append((u,v))
+            Oc = vectors.vector_add(Oc,obj,scale=0.25)
+            objs.append(obj)
             pass
-        print guess_z
-        max_error = 1E9
-        #for c in range(30):
-        for c in range(10):
-            # Each run uses coarseness^-3 ... 1.0 ... coarseness^3
-            # So an overlap of coarseness^1.5 seems sensible
-            coarseness = math.pow(1.0667,(1.5/(1.5*(c+1))))
-            print
-            print "Run with coarseness",c,coarseness
-            (improved_projection, improved_z, max_error) = self.improve_projection( object_guess_locations=object_guess_locations,
-                                                                                    image_locations = image_locations,
-                                                                                    projection = projection,
-                                                                                    guess_z = guess_z,
-                                                                                    initial_max_error = max_error,
-                                                                                    sq_dist_divide=200.0,
-                                                                                    coarseness = coarseness )
-            print improved_projection
-            print improved_z
-            max_error *= 1.01
-            if False:
-                projection["camera"] = improved_projection["camera"]
+
+        Pe = matrix.c_matrixNxN(data=[0.0]*16)
+        f = 1.0/math.tan(fov*3.14159265/180.0/2)
+        Pe[0,0] = f
+        Pe[1,1] = f*aspect
+        Pe[2,2] = -(zNear+zFar)/(zFar-zNear)
+        Pe[2,3] = -2*zNear*zFar/(zFar-zNear)
+        Pe[3,2] = -1.0
+
+        guess_Z = {}
+        n = 11
+        for i in range(n*n*n*n):
+            v = (i%n, (i/n)%n, (i/n/n%n), (i/n/n/n%n))
+            zs = []
+            for c in range(4):
+                zs.append( -1.0*(v[c]*1.7) )
+                pass
+            guess_Z[v] = zs
+            pass
+        results = self.select_best_z_set(O, Pe, uv, guess_Z, max_results=10)
+
+        best_zs_guesses = []
+        for r in results:
+            (error, (ijkl, camera, orientation)) = r
+            print "error, ijkl, camera, zs",error, ijkl, camera, guess_Z[ijkl]
+            best_zs_guesses.append(guess_Z[ijkl])
+            pass
+
+        for gz in best_zs_guesses:
+            print "-"*80
+            print "Looking for best of",gz
+            r = self.get_best_projection_for_guess_z(projection, gz, pt_names, object_guess_locations, image_locations, spread=1.05, iterations=3)
+            if r is None:
+                print "FAILED"
                 pass
             else:
-                guess_z = improved_z
+                (improved_projection, improved_z, max_error) = r
+                print improved_projection, max_error
                 pass
             pass
+        return
+            
 
         opt_projection = improved_projection
-        if False:
+        if True:
             self.set_projection(opt_projection)
             opt_projection = self.optimize_projection(point_mappings = point_mappings,
                                                   fov_iterations=100, orientation_iterations=100, camera_iterations=10, delta_scale=1 )

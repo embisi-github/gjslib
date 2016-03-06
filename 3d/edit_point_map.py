@@ -586,7 +586,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
                     self.point_mappings.images[image_name]["projection"].guess_initial_projection_matrix(self.point_mappings)
                     pass
                 elif operation in ["much"]:
-                    self.point_mappings.images[image_name]["projection"].run_optimization(point_mappings=self.point_mappings)
+                    self.point_mappings.images[image_name]["projection"].run_optimization(point_mappings=self.point_mappings, coarse=False)
                     pass
                 else:
                     self.point_mappings.optimize_projections(image=image_name, fov_iterations=1, orientation_iterations=20, camera_iterations=20, delta_scale=0.3)#03) # .01
@@ -723,8 +723,10 @@ class c_edit_point_map(opengl_app.c_opengl_app):
                 #    print proj.image_of_model(p1)
                 pass
             pass
-        if k in ["o"]:
-            self.change_projection(image_name=self.displayed_images[self.focus_image], operation="small")
+        if k in ["o", "O"]:
+            op = "small"
+            if k == "O": op="much"
+            self.change_projection(image_name=self.displayed_images[self.focus_image], operation=op)
             return True
         if k in ["i"]:
             self.change_projection(image_name=self.displayed_images[self.focus_image], operation="initial")
@@ -803,7 +805,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
 #a Main
 def main():
     point_mapping_filename="pencils.map"
-    point_mapping_filename="sidsussexbell.map"
+    #point_mapping_filename="sidsussexbell.map"
     m = c_edit_point_map( point_mapping_filename=point_mapping_filename,
                           window_size = (1800,1100))
     m.init_opengl()

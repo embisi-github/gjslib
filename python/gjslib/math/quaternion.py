@@ -62,6 +62,9 @@ class c_quaternion( object ):
         if self.repr_fmt=="euler":
             result = ("c_quaternion(euler=("+self.fmt+","+self.fmt+","+self.fmt+"),degrees=True)") % self.to_euler(degrees=True)
             return result
+        elif self.repr_fmt=="euler_mod":
+            result = ("c_quaternion(euler=("+self.fmt+","+self.fmt+","+self.fmt+"),length="+self.fmt+",degrees=True)") % self.to_euler(degrees=True,include_modulus=True)
+            return result
         result = ("c_quaternion({'r':"+self.fmt+", 'i':"+self.fmt+", 'j':"+self.fmt+", 'k':"+self.fmt+"})") % (self.quat["r"],
                                                                                        self.quat["i"],
                                                                                        self.quat["j"],
@@ -95,6 +98,8 @@ class c_quaternion( object ):
     def create_matrix( self ):
         # From http://www.gamasutra.com/view/feature/131686/rotating_objects_using_quaternions.php?page=2
         # calculate coefficients
+        l = self.modulus()
+
         x2 = self.quat["i"] + self.quat["i"]
         y2 = self.quat["j"] + self.quat["j"] 
         z2 = self.quat["k"] + self.quat["k"]
@@ -109,22 +114,22 @@ class c_quaternion( object ):
         wz = self.quat["r"] * z2
         m = [[0,0,0,0.],[0,0,0,0.],[0,0,0,0.],[0.,0.,0.,1.]]
 
-        m[0][0] = 1.0 - (yy + zz)
-        m[1][0] = xy - wz
-        m[2][0] = xz + wy
+        m[0][0] = l - (yy + zz)/l
+        m[1][0] = (xy - wz)/l
+        m[2][0] = (xz + wy)/l
 
-        m[0][1] = xy + wz
-        m[1][1] = 1.0 - (xx + zz)
-        m[2][1] = yz - wx
+        m[0][1] = (xy + wz)/l
+        m[1][1] = l - (xx + zz)/l
+        m[2][1] = (yz - wx)/l
 
-        m[0][2] = xz - wy
-        m[1][2] = yz + wx;
-        m[2][2] = 1.0 - (xx + yy)
+        m[0][2] = (xz - wy)/l
+        m[1][2] = (yz + wx)/l
+        m[2][2] = l - (xx + yy)/l
 
         self.matrix = m
         pass
     #f from_euler
-    def from_euler( self, rpy=None, pitch=0, yaw=0, roll=0, degrees=False ):
+    def from_euler( self, rpy=None, pitch=0, yaw=0, roll=0, modulus=None, degrees=False ):
         """
         Euler angles are roll, pitch and yaw. (Z, Y then X axis rotations)
 
@@ -135,8 +140,13 @@ class c_quaternion( object ):
         Yaw is around X
         """
         if rpy is not None:
-            (roll, pitch, yaw) = rpy
+            if len(rpy)==4:
+                (roll, pitch, yaw, modulus) = rpy
+            else:
+                (roll, pitch, yaw) = rpy
             pass
+        if modulus is None:
+            modulus = 1.0
         if degrees:
             roll  = 3.14159265/180.0 * roll
             pitch = 3.14159265/180.0 * pitch
@@ -157,10 +167,11 @@ class c_quaternion( object ):
         self.quat["i"] = sp * crcy - cp * srsy
         self.quat["j"] = cp * cr * sy + sp * sr * cy
         self.quat["k"] = cp * sr * cy - sp * cr * sy
+        self.scale(modulus)
         self.matrix = None
         return self
     #f to_euler
-    def to_euler( self, degrees=False ):
+    def to_euler( self, include_modulus=False, degrees=False ):
         """
         Euler angles are roll, pitch and yaw.
         The rotations are performed in the order 
@@ -189,6 +200,8 @@ class c_quaternion( object ):
             pitch = 180.0/3.14159265 * pitch
             yaw   = 180.0/3.14159265 * yaw
             pass
+        if include_modulus:
+            return (roll, pitch, yaw, self.modulus())
         return (roll, pitch, yaw)
     #f from_matrix
     def from_matrix( self, matrix, epsilon=1E-6 ):
@@ -209,6 +222,27 @@ class c_quaternion( object ):
         else:
             pitch = -math.asin(m[0,2])
         return self.from_euler(roll=roll, pitch=pitch, yaw=yaw, degrees=False)
+    #f modulus
+    def modulus( self ):
+        r = self.quat["r"]
+        i = self.quat["i"]
+        j = self.quat["j"]
+        k = self.quat["k"]
+        return math.sqrt(r*r+i*i+j*j+k*k)
+    #f scale
+    def scale( self, scale ):
+        self.quat["r"] *= scale
+        self.quat["i"] *= scale
+        self.quat["j"] *= scale
+        self.quat["k"] *= scale
+        self.matrix = None
+        return self
+    #f normalize
+    def normalize( self, epsilon=1E-9 ):
+        l = self.modulus()
+        if (l>-epsilon) and (l<epsilon):
+            return self
+        return self.scale(1.0/l)
     #f multiply
     def multiply( self, other ):
         A = (self.quat["r"] + self.quat["i"])*(other.quat["r"] + other.quat["i"])

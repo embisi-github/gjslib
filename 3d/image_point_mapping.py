@@ -12,7 +12,7 @@ class c_point_mapping(object):
         self.object_guess_locations["clk.center"] = (  0.0, -0.32,  8.4)
         self.object_guess_locations["lspike.t"]   = ( -3.3,  0.0, 10.9)
         self.object_guess_locations["rspike.t"]   = (  3.3,  0.0, 10.9)
-        self.object_guess_locations["cp"]         = (  0.0,  1.5, 4.5)
+        self.object_guess_locations["cp"]         = (  0.0,  -2.0, 4.2)
 
         self.object_guess_locations["calc.t.bl"]   = ( 10.2, 18.993, 2.01)
         self.object_guess_locations["calc.b.fr"]   = ( 24.0,  0.00, 0.01)
@@ -302,6 +302,7 @@ class c_point_mapping(object):
             if name in self.object_guess_locations:
                 return self.object_guess_locations[name]
             pass
+        return None
         return self.get_approx_position(name)
     #f initial_orientation
     def initial_orientation(self, image=None, **kwargs):
