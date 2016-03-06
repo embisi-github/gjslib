@@ -604,6 +604,50 @@ class c_image_projection(object):
             print
             pass
         return (smallest_error[0], smallest_error[2])
+    #f run_optimization
+    def run_optimization(self, point_mappings, coarse=True):
+        opt_projection = self.optimize_projection(point_mappings = point_mappings,
+                                                  fov_iterations=500, orientation_iterations=100, camera_iterations=10, delta_scale=1 )
+        self.set_projection(opt_projection)
+        opt_projection = self.optimize_projection(point_mappings = point_mappings,
+                                                  fov_iterations=500, orientation_iterations=100, camera_iterations=10, delta_scale=0.1 )
+
+        self.set_projection(opt_projection)
+        opt_projection = self.optimize_projection(point_mappings = point_mappings,
+                                                  fov_iterations=2000, orientation_iterations=1, camera_iterations=1, delta_scale=0.01, do_fov=True, do_camera=False )
+
+        self.set_projection(opt_projection)
+
+        if coarse:
+            print "Optimized:\nself.images['%s']['projection'] = %s"%(self.name,str(opt_projection))
+            return
+
+        opt_projection = self.optimize_projection(point_mappings = point_mappings,
+                                                  fov_iterations=100, orientation_iterations=100, camera_iterations=10, delta_scale=0.05 )
+        self.set_projection(opt_projection)
+        opt_projection = self.optimize_projection(point_mappings = point_mappings,
+                                                  fov_iterations=200, orientation_iterations=100, camera_iterations=10, delta_scale=0.03 )
+        #opt_projection = {'fov': 55, 'camera': [18.946400287962323, -22.74361538580119, 26.758691580937942], 'orientation': quaternion.c_quaternion(euler=(10.6165, 2.6457,50.3051),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.800000000000004}
+        self.set_projection(opt_projection)
+        opt_projection = self.optimize_projection(point_mappings = point_mappings,
+                                                  fov_iterations=200, orientation_iterations=100, camera_iterations=10, delta_scale=0.03 )
+        #opt_projection = {'fov': 55, 'camera': [18.718700287962854, -22.75111538580117, 26.84179158093775], 'orientation': quaternion.c_quaternion(euler=(10.4051, 2.3963,50.1888),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.800000000000004}
+        self.set_projection(opt_projection)
+        opt_projection = self.optimize_projection(point_mappings = point_mappings,
+                                                  fov_iterations=2000, orientation_iterations=1, camera_iterations=1, delta_scale=0.001, do_fov=True, do_camera=False )
+        self.set_projection(opt_projection)
+        opt_projection = self.optimize_projection(point_mappings = point_mappings,
+                                                  fov_iterations=1, orientation_iterations=100, camera_iterations=100, delta_scale=0.01 )
+        self.set_projection(opt_projection)
+        opt_projection = self.optimize_projection(point_mappings = point_mappings,
+                                                  fov_iterations=1, orientation_iterations=100, camera_iterations=100, delta_scale=0.003 )
+        self.set_projection(opt_projection)
+        opt_projection = self.optimize_projection(point_mappings = point_mappings,
+                                                  fov_iterations=1, orientation_iterations=100, camera_iterations=100, delta_scale=0.001 )
+
+        self.set_projection(opt_projection)
+        print "Optimized:\nself.images['%s']['projection'] = %s"%(self.name,str(opt_projection))
+        pass
     #f optimize_projection
     def optimize_projection(self,
                             point_mappings,

@@ -621,7 +621,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         self.point_mappings.find_line_sets()
         self.point_mappings.approximate_positions()
         if initial:
-            self.point_mappings.initial_orientation(image=image_name, steps=20, verbose=False)
+            self.point_mappings.images[image_name]["projection"].run_optimization(point_mappings=self.point_mappings)
             pass
         else:
             self.point_mappings.optimize_projections(image=image_name, fov_iterations=1, orientation_iterations=20, camera_iterations=20, delta_scale=0.3)#03) # .01
