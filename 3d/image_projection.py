@@ -82,6 +82,9 @@ class c_image_projection(object):
                       "zFar":zFar}
         self.set_projection(projection)
         pass
+    #f get_projection
+    def get_projection(self):
+        return self.projection
     #f set_projection
     def set_projection(self, projection=None, deltas=None, delta_scale=1.0, resultant_projection=None, verbose=False ):
         if projection is None:
@@ -430,12 +433,26 @@ class c_image_projection(object):
         return (best_projection, best_z, smallest_error[0])
     #f guess_initial_projection_matrix
     def guess_initial_projection_matrix(self, point_mappings ):
-        object_guess_locations = point_mappings.object_guess_locations
+        object_guess_locations = {}
+        for pt in point_mappings.object_guess_locations:
+            if pt in point_mappings.image_mappings:
+                object_guess_locations[pt] = point_mappings.object_guess_locations[pt]
+                pass
+            pass
 
         image_locations = {}
-        for pt in point_mappings.object_guess_locations.keys():
-            image_locations[pt] = point_mappings.image_mappings[pt][self.name]
+        for pt in object_guess_locations:
+            if self.name in point_mappings.image_mappings[pt]:
+                image_locations[pt] = point_mappings.image_mappings[pt][self.name]
+                pass
+            else:
+                del(object_guess_locations[pt])
+                pass
             pass
+
+        if len(object_guess_locations)!=4:
+            print "Require 4 object guess locations with image locations for initial projection matrix"
+            return None
 
         camera = [10, -10, 20]
         if self.name=="middle":camera = [30, 0, 20]
@@ -460,8 +477,7 @@ class c_image_projection(object):
         print guess_z
         max_error = 1E9
         #for c in range(30):
-        #for c in range(10):
-        for c in range(0):
+        for c in range(10):
             # Each run uses coarseness^-3 ... 1.0 ... coarseness^3
             # So an overlap of coarseness^1.5 seems sensible
             coarseness = math.pow(1.0667,(1.5/(1.5*(c+1))))
@@ -485,45 +501,39 @@ class c_image_projection(object):
                 pass
             pass
 
-        opt_projection = {'fov': 55, 'camera': [-4.1343398356796275, -20.84776250450365, 24.888904114709263], 'orientation': quaternion.c_quaternion(euler=(-29.6367,-0.5462,51.8645),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.800000000000004}
-        opt_projection = {'fov': 54.81878845558125, 'camera': [-4.251539835679651, -20.852262504503784, 24.337104114709394], 'orientation': quaternion.c_quaternion(euler=(-29.7185,-0.6768,52.5134),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.8000000000}
-        opt_projection = {'fov': 54.960948967453, 'camera': [-4.291839835679663, -20.91236250450392, 24.383004114709568], 'orientation': quaternion.c_quaternion(euler=(-29.7301,-0.6800,52.5281),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.8}
-        #middle opt_projection = {'fov': 55, 'camera': [19.629700287961107, -22.754115385801185, 26.45199158093836], 'orientation': quaternion.c_quaternion(euler=(11.2628, 3.4030,50.7644),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.800000000000004}
-        #middle opt opt_projection = {'fov': 54.81878845558125, 'camera': [18.768800287962506, -22.989415385800875, 26.421191580938203], 'orientation': quaternion.c_quaternion(euler=(10.6040, 2.1842,50.8145),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.800000000000004}
-        opt_projection = {'fov': 54.81878845558125, 'camera': [18.768800287962506, -22.989415385800875, 26.421191580938203], 'orientation': quaternion.c_quaternion(euler=(10.6040, 2.1842,50.8145),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.800000000000004}
-        self.set_projection(opt_projection)
-        #opt_projection = self.optimize_projection(point_mappings = point_mappings,
-        #                                          fov_iterations=2000, orientation_iterations=1, camera_iterations=1, delta_scale=0.01, do_fov=True, do_camera=False )
-
-        self.set_projection(opt_projection)
-        opt_projection = self.optimize_projection(point_mappings = point_mappings,
+        opt_projection = improved_projection
+        if False:
+            self.set_projection(opt_projection)
+            opt_projection = self.optimize_projection(point_mappings = point_mappings,
                                                   fov_iterations=100, orientation_iterations=100, camera_iterations=10, delta_scale=1 )
-        self.set_projection(opt_projection)
-        opt_projection = self.optimize_projection(point_mappings = point_mappings,
+            self.set_projection(opt_projection)
+            opt_projection = self.optimize_projection(point_mappings = point_mappings,
                                                   fov_iterations=100, orientation_iterations=100, camera_iterations=10, delta_scale=0.1 )
 
-        self.set_projection(opt_projection)
-        opt_projection = self.optimize_projection(point_mappings = point_mappings,
+            self.set_projection(opt_projection)
+            opt_projection = self.optimize_projection(point_mappings = point_mappings,
                                                   fov_iterations=2000, orientation_iterations=1, camera_iterations=1, delta_scale=0.01, do_fov=True, do_camera=False )
 
-        self.set_projection(opt_projection)
-        opt_projection = self.optimize_projection(point_mappings = point_mappings,
+            self.set_projection(opt_projection)
+            opt_projection = self.optimize_projection(point_mappings = point_mappings,
                                                   fov_iterations=100, orientation_iterations=100, camera_iterations=10, delta_scale=0.05 )
-        self.set_projection(opt_projection)
-        opt_projection = self.optimize_projection(point_mappings = point_mappings,
+
+            self.set_projection(opt_projection)
+            opt_projection = self.optimize_projection(point_mappings = point_mappings,
                                                   fov_iterations=200, orientation_iterations=100, camera_iterations=10, delta_scale=0.03 )
-        #opt_projection = {'fov': 55, 'camera': [18.946400287962323, -22.74361538580119, 26.758691580937942], 'orientation': quaternion.c_quaternion(euler=(10.6165, 2.6457,50.3051),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.800000000000004}
-        self.set_projection(opt_projection)
-        opt_projection = self.optimize_projection(point_mappings = point_mappings,
+
+            self.set_projection(opt_projection)
+            opt_projection = self.optimize_projection(point_mappings = point_mappings,
                                                   fov_iterations=200, orientation_iterations=100, camera_iterations=10, delta_scale=0.03 )
-        #opt_projection = {'fov': 55, 'camera': [18.718700287962854, -22.75111538580117, 26.84179158093775], 'orientation': quaternion.c_quaternion(euler=(10.4051, 2.3963,50.1888),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.800000000000004}
-        self.set_projection(opt_projection)
-        opt_projection = self.optimize_projection(point_mappings = point_mappings,
+
+            self.set_projection(opt_projection)
+            opt_projection = self.optimize_projection(point_mappings = point_mappings,
                                                   fov_iterations=2000, orientation_iterations=1, camera_iterations=1, delta_scale=0.001, do_fov=True, do_camera=False )
 
-        self.set_projection(opt_projection)
-        opt_projection = self.optimize_projection(point_mappings = point_mappings,
-                                                  fov_iterations=1, orientation_iterations=100, camera_iterations=100, delta_scale=0.001 )
+            self.set_projection(opt_projection)
+            opt_projection = self.optimize_projection(point_mappings = point_mappings,
+                                                      fov_iterations=1, orientation_iterations=100, camera_iterations=100, delta_scale=0.001 )
+            pass
 
         print "Optimized:\nself.images['%s']['projection'] = %s"%(self.name,str(opt_projection))
         pts = object_guess_locations.keys()

@@ -303,7 +303,13 @@ class c_edit_point_map_info(opengl_widget.c_opengl_container_widget):
         pass
     #f update
     def update(self):
-        info = "Current pt '%s'"%(self.epm.point_mapping_names[self.epm.point_mapping_index])
+        cur_pt = self.epm.point_mapping_names[self.epm.point_mapping_index]
+        xyz = self.point_mappings.get_xyz(cur_pt)
+        if xyz is None:
+            xyz = "<unknown>"
+        else:
+            xyz = "(%4f,%4f,%4f)"%(xyz[0],xyz[1],xyz[2])
+        info = "Current pt '%s'\nXYZ: %s"%(cur_pt,xyz)
         self.info_widget.replace_text(info, baseline_xy=(0.0,64.0), scale=(1.0,1.0))
 
         import string
@@ -566,6 +572,30 @@ class c_edit_point_map(opengl_app.c_opengl_app):
                 undo_data = self.point_mappings.delete_image_location(pt_name,image_name,verbose=True)
                 pass
             pass
+        elif op[0] == "change_projection":
+            (image_name, operation) = op[1]
+            if undo:
+                self.point_mappings.set_projection(image=image_name, projection=op[2])
+                print "Undo set projection",image_name,op[2]
+                pass
+            else:
+                undo_data = self.point_mappings.get_projection(image=image_name)
+                self.point_mappings.find_line_sets()
+                self.point_mappings.approximate_positions()
+                if operation in ["initial"]:
+                    self.point_mappings.images[image_name]["projection"].guess_initial_projection_matrix(self.point_mappings)
+                    pass
+                elif operation in ["much"]:
+                    self.point_mappings.images[image_name]["projection"].run_optimization(point_mappings=self.point_mappings)
+                    pass
+                else:
+                    self.point_mappings.optimize_projections(image=image_name, fov_iterations=1, orientation_iterations=20, camera_iterations=20, delta_scale=0.3)#03) # .01
+                    pass
+                print "Set projection (through optimization)",image_name,self.point_mappings.get_projection(image=image_name)
+                pass
+            self.point_mappings.find_line_sets()
+            self.point_mappings.approximate_positions()
+            pass
         else:
             raise Exception("Unknown operation to perform '%s'"%str(op))
         if record:
@@ -616,18 +646,9 @@ class c_edit_point_map(opengl_app.c_opengl_app):
             return
         self.do_undoable_operation( ("delete_image_location",(pt_name,image_name)) )
         pass
-    #f optimize_projection
-    def optimize_projection(self, image_name=None, initial=False):
-        self.point_mappings.find_line_sets()
-        self.point_mappings.approximate_positions()
-        if initial:
-            self.point_mappings.images[image_name]["projection"].run_optimization(point_mappings=self.point_mappings)
-            pass
-        else:
-            self.point_mappings.optimize_projections(image=image_name, fov_iterations=1, orientation_iterations=20, camera_iterations=20, delta_scale=0.3)#03) # .01
-            pass
-        self.point_mappings.find_line_sets()
-        self.point_mappings.approximate_positions()
+    #f change_projection
+    def change_projection(self, image_name=None, operation="small"):
+        self.do_undoable_operation( ("change_projection",(image_name,operation)) )
         pass
     #f select_image
     def select_image(self, image_name, image=None):
@@ -652,6 +673,9 @@ class c_edit_point_map(opengl_app.c_opengl_app):
                 return True
             if value[0]=="point":
                 self.change_point(point_name=value[1])
+                return True
+            if value[0]=="projection":
+                self.change_projection(image_name=self.displayed_images[self.focus_image], operation="small")
                 return True
             if value[0]=="save":
                 self.save_point_mapping(self.point_mapping_filename)
@@ -699,14 +723,11 @@ class c_edit_point_map(opengl_app.c_opengl_app):
                 #    print proj.image_of_model(p1)
                 pass
             pass
-        if k in ["o", "O"]:
-            image_name = None
-            if k=="o": image_name=self.displayed_images[self.focus_image]
-            self.optimize_projection(image_name=image_name)
+        if k in ["o"]:
+            self.change_projection(image_name=self.displayed_images[self.focus_image], operation="small")
             return True
         if k in ["i"]:
-            image_name=self.displayed_images[self.focus_image]
-            self.optimize_projection(image_name=image_name, initial=True)
+            self.change_projection(image_name=self.displayed_images[self.focus_image], operation="initial")
             return True
         if (ord(k)==127) and (m&GLUT_ACTIVE_CTRL):
             self.point_delete(image_name=self.displayed_images[self.focus_image],

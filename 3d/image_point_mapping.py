@@ -9,43 +9,11 @@ class c_point_mapping(object):
     def __init__(self):
         self.reset()
         self.object_guess_locations = {}
-        #self.object_guess_locations["clk.center"] = (  0.0, -0.32,  8.4)
-        #self.object_guess_locations["lspike.t"]   = ( -3.3,  0.0, 10.9)
-        #self.object_guess_locations["rspike.t"]   = (  3.3,  0.0, 10.9)
+        self.object_guess_locations["clk.center"] = (  0.0, -0.32,  8.4)
+        self.object_guess_locations["lspike.t"]   = ( -3.3,  0.0, 10.9)
+        self.object_guess_locations["rspike.t"]   = (  3.3,  0.0, 10.9)
+        self.object_guess_locations["cp"]         = (  0.0,  1.5, 4.5)
 
-        self.object_guess_locations["calc.t.bl"]   = ( 10.2, 19.0, 2.0)
-        self.object_guess_locations["calc.b.fr"]   = ( 24.0,  0.0, 0.0)
-        self.object_guess_locations["clips.b.fr"]  = ( 0.0,   0.0, 0.0)
-        # for fov of 55
-        # 7.0  had error 176 after 6 iterations for left, 330 for middle
-        # 7.5  had error 97  after 6 iterations for left, 199 for miaddle
-        # 8.0  had error 51  after 6 iterations for left, 97 for middle
-        # 8.25 had error 56  after 6 iterations for left, 78 for middle
-        # 8.5  had error 65  after 60 iterations for left, 102 for middle
-
-        # 8.25 FOV 55 had error 56  after 6 iterations for left, 78 for middle
-        # 8.25 FOV 53 had error 86  after 6 iterations for left, 83 for middle
-        # 8.00 FOV 53 had error 97  after 6 iterations for left, 83 for middle
-        # 8.00 FOV 56 had error 53.4 after 6 iterations for left, 83 for middle
-        # 8.25 FOV 56 had error 53.9 after 6 iterations for left, 110 for middle
-        # 8.25 FOV 55 had error 50  after 30 iterations for left, 100 for middle
-        self.object_guess_locations["clips.t.fr"]  = ( 0.0,   0.0, 8.25)
-
-        # Rearranged the points a bit
-        # 8.00 FOV 55 error 26 after 10 iterations for left, 81 for middle
-        self.object_guess_locations["clips.t.fr"]  = ( 0.0,   0.0, 8.00)
-        # 7.8 yields 19.8 error on full optimization
-        self.object_guess_locations["clips.t.fr"]  = ( 0.0,   0.0, 7.80)
-        # 7.7 yields 13.4 error on full optimization
-        self.object_guess_locations["clips.t.fr"]  = ( 0.0,   0.0, 7.70)
-        # 7.6 yields 9.3 error on full optimization
-        self.object_guess_locations["clips.t.fr"]  = ( 0.0,   0.0, 7.60)
-        # 7.5 yields 11.3 error on full optimization
-        self.object_guess_locations["clips.t.fr"]  = ( 0.0,   0.0, 7.50)
-        # 7.63 yields 9.93 error on full optimization, 9.76 on reoptimization
-        self.object_guess_locations["clips.t.fr"]  = ( 0.0,   0.0, 7.63)
-
-        # Tweaking away... error 2.811 on middle
         self.object_guess_locations["calc.t.bl"]   = ( 10.2, 18.993, 2.01)
         self.object_guess_locations["calc.b.fr"]   = ( 24.0,  0.00, 0.01)
         self.object_guess_locations["clips.b.fr"]  = ( 0.0,   0.05, 0.02)
@@ -72,10 +40,6 @@ class c_point_mapping(object):
         image_filename = data[1]
         image_size = (int(data[2])+0.0,int(data[3])+0.0)
         self.add_image(image=data[0], filename=image_filename, size=image_size)
-        proj = image_projection.c_image_projection(name=image_name,
-                                                   image_filename=image_filename,
-                                                   size=image_size)
-        self.set_projection(image_name, proj)
         pass
     #f load_data_add_point
     def load_data_add_point(self, data):
@@ -95,7 +59,6 @@ class c_point_mapping(object):
         pass
     #f load_data_set_projection
     def load_data_set_projection(self, data):
-        print data
         image = data[0]
         self.images[image]["projection"].load_projection_strings(data[1:])
         pass
@@ -217,8 +180,11 @@ class c_point_mapping(object):
             pass
         pass
     #f add_image
-    def add_image(self,image, filename=None, size=(1.0,1.0), projection=None):
+    def add_image(self,image, filename=None, size=(1.0,1.0)):
         if image not in self.images:
+            projection = image_projection.c_image_projection(name=image,
+                                                             image_filename=filename,
+                                                             size=size)
             self.images[image] = {}
             self.images[image]["filename"] = filename
             self.images[image]["projection"] = projection
@@ -277,9 +243,12 @@ class c_point_mapping(object):
         self.add_image_location(name,image,xy,verbose=verbose)
         pass
     #f set_projection
-    def set_projection(self,image,projection):
-        self.images[image]["projection"] = projection
+    def set_projection(self, image, projection):
+        self.images[image]["projection"].set_projection(projection)
         pass
+    #f get_projection
+    def get_projection(self, image):
+        return self.images[image]["projection"].get_projection()
     #f get_mapping_names
     def get_mapping_names(self):
         return self.image_mappings.keys()
@@ -328,16 +297,11 @@ class c_point_mapping(object):
             return None
         return self.positions[name]
     #f get_xyz
-    def get_xyz(self, name, use_references=False ):
-        # clk.center (  0.0, -0.2,   8.4)  error 7.421E-5
-        # clk.center (  0.0, -0.25,  8.4)  error 7.265E-5
-        # clk.center (  0.0, -0.30,  8.4)  error 0.8185E-5
-        # clk.center (  0.0, -0.32,  8.4)  error 0.1824E-5
-        # That was with tower spikes +-3.0
+    def get_xyz(self, name, use_references=True ):
         if use_references:
-            return None
-        if name in self.object_guess_locations:
-            return self.object_guess_locations[name]
+            if name in self.object_guess_locations:
+                return self.object_guess_locations[name]
+            pass
         return self.get_approx_position(name)
     #f initial_orientation
     def initial_orientation(self, image=None, **kwargs):
