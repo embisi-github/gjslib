@@ -13,6 +13,7 @@ class c_point_mapping(object):
         self.object_guess_locations["lspike.t"]   = ( -3.3,  0.0, 10.9)
         self.object_guess_locations["rspike.t"]   = (  3.3,  0.0, 10.9)
         self.object_guess_locations["cp"]         = (  0.0,  -2.0, 4.2)
+        self.object_guess_locations["cp"]         = (  0.0,  -1.5, 3.8)
 
         self.object_guess_locations["calc.t.bl"]   = ( 10.2, 18.993, 2.01)
         self.object_guess_locations["calc.b.fr"]   = ( 24.0,  0.00, 0.01)

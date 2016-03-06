@@ -526,174 +526,51 @@ class c_image_projection(object):
             pass
         return (best_projection, best_z, smallest_error[0])
     #f improve_projection
-    def improve_projection(self, O, Pe, uv, guess_Z, coarseness, initial_max_error=1E9, sq_dist_divide=20.0, verbose=False):
+    def improve_projection(self, O, Pe, uv, guess_Z, coarseness, initial_max_error=1E9, verbose=False):
+        base_guess_Z = guess_Z
 
-        aspect = projection["aspect"]
-        fov    = projection["fov"] # xFOV
-
-        best_projection = None
-        smallest_error = (initial_max_error,None)
-        for gi in range(7*7*7*7*1):
-            if verbose:
-                print "-"*80
-                print "Iteration",gi
-                print "-"*80
-                pass
+        guess_Z = {}
+        for gi in range(7*7*7*7):
 
             gi2 = gi
-            ci = (gi2/(7*7*7*7)) % 15
-            zNear = 1.0
-            zFar = 20.0*math.pow(1.3,1+5-ci)
-            Pe[2,2] = (zNear+zFar)/(zFar-zNear)
-            Pe[2,3] = 2*zNear*zFar/(zFar-zNear)
+            if False:
+                ci = (gi2/(7*7*7*7)) % 15
+                zNear = 1.0
+                zFar = 20.0*math.pow(1.3,1+5-ci)
+                Pe[2,2] = (zNear+zFar)/(zFar-zNear)
+                Pe[2,3] = 2*zNear*zFar/(zFar-zNear)
+                pass
 
-            U = matrix.c_matrixNxN(order=4)
+            gZ = []
             for c in range(4):
-                pt = pts[c]
                 ci = (gi2 % 7)
                 gi2 = gi2 / 7
-                z = guess_Z[pt]*math.pow(coarseness,(ci-3))
-                w = (Pe[2,3]-z)/Pe[2,2]
-                U[2,c] = z
-                U[3,c] = w
-                U[0,c] = w * uv[c][0]
-                U[1,c] = w * uv[c][1]
+                gZ.append(base_guess_Z[c]*math.pow(coarseness,(ci-3)))
                 pass
-
-            U_i = U.inverse()
-            if U_i is None:
-                continue
-
-            Ca_i_Or_i = O.copy()
-            Ca_i_Or_i.postmult(U_i)
-            Ca_i_Or_i.postmult(Pe)
-
-            # Deduced camera location is Ca_i
-            C = Ca_i_Or_i.get_column(3)[0:3]
-
-            # Rotation is top-left 3x3 of Or_i
-            R = matrix.c_matrixNxN(order=3)
-            for r in range(3):
-                for c in range(3):
-                    R[r,c] = Ca_i_Or_i[r,c]
-                    pass
-                pass
-
-            # Note that bottom row of Ca_i_Or_i is going to be 0.0,0.0,0.0,-1.0
-            # It always is
-            if verbose:
-                br = Ca_i_Or_i.get_row(3)
-                br = vectors.vector_add(br,(0.0,0.0,0.0,-1.0))
-                print "br check",vectors.dot_product(br,br)
-                print "C"
-                print C
-                print "R"
-                print R
-                pass
-
-            if verbose:
-                print "Check of perp vectors"
-                pass
-
-            v = (R.get_column(0),R.get_column(1),R.get_column(2))
-            volume_r  = vectors.dot_product(vectors.vector_prod3(v[0],v[1]),v[2])
-            lengths_r = (vectors.dot_product(v[0],v[0]), vectors.dot_product(v[1],v[1]), vectors.dot_product(v[2],v[2]))
-            def NO(x, epsilon=1E-9):
-                if (x>1): return x
-                if (x>1E-9): return 1/x
-                return 1E9
-            error = NO(volume_r) * NO(lengths_r[0]) * NO(lengths_r[1]) * NO(lengths_r[2])
-            if (volume_r<0): volume_r=1E9
-            error = NO(volume_r/lengths_r[0]/lengths_r[1]/lengths_r[2])
-            def sum_sq(xs):
-                v = 0
-                for x in xs:
-                    v += x*x
-                    pass
-                return v
-            error = sum_sq((NO(volume_r)-1, NO(lengths_r[0])-1, NO(lengths_r[1]-1), NO(lengths_r[2]-1)))
-            sum_sq_dist = 0.0
-            print error, smallest_error, volume_r, lengths_r
-            if error<smallest_error[0]:#*1.01:
-                print "%d:Error %6f Volume %6f == +1, sq_dist %6f == 0.0, lens %s"%(gi,error, volume_r, sum_sq_dist, str(lengths_r))
-                #print angles_r
-                #print angles_c
-                #print lens_r
-                #print lens_c
-                #print volume_r
-                #print volume_c
-                #sum_sq_dist = 0
-                #for i in range(len(pts)):
-                #    k = pts[i]
-                #    sum_sq_dist += (U[2,i] - dist(k, C)) * (U[2,i] - dist(k, C))
-                #    #print k, U[2,i], dist(k, C), dist(k,camera)
-                #    pass
-                #print sum_sq_dist
-
-                R_t = R.copy().transpose()
-                #R_R_t = R.copy().postmult(R_t)
-                #print "R.R_t"
-                #print R_R_t.determinant(), R_R_t
-
-                q = quaternion.c_quaternion().from_matrix(R)
-                #print "R and q - should be the same..."
-                #print R
-                #print q.get_matrix3()
-                #print
-
-                smallest_error = (error, None)
-                #print "ERROR",gi, error, e0+e1, math.sqrt((e0-e1)*(e0-e1)), (e0, e1), C, q, zNear, zFar
-                orientation = quaternion.c_quaternion().from_matrix(R_t)
-                best_projection = {"camera":C, "orientation":orientation, "fov":fov, "aspect":aspect, "zNear":zNear, "zFar":zFar}
-                best_z = {}
-                for c in range(4):
-                    best_z[pts[c]] = -U[2,c]
-                    pass
-                pass
-
-            if verbose:
-                OrCa = Ca_i_Or_i.inverse()
-                print "OrCa"
-                print OrCa
-                mvp = OrCa.copy()
-                mvp.premult(Pe)
-                print mvp
-                pass
-
+            guess_Z[gi] = gZ
             pass
-        if best_projection is None:
+        r = self.select_best_z_set(O=O, Pe=Pe, uv=uv, guess_Z=guess_Z, max_results=1, verbose=False)
+        if r is None:
             return None
-        if True:
-            self.set_projection( best_projection )
-            for k in pts:
-                print k, self.image_of_model(object_guess_locations[k])
-                pass
-            pass
-        return (best_projection, best_z, smallest_error[0])
-    #f get_best_projection_for_guess_z
-    def get_best_projection_for_guess_z(self, projection, guess_z, pt_names, object_guess_locations, image_locations, spread=1.15, iterations=5):
+        (error, (gi, camera, orientation)) = r[0]
+        return ({"camera":camera, "orientation":orientation}, guess_Z[gi], error)
+
+    #f get_best_projection_for_guess_Z
+    def get_best_projection_for_guess_Z(self, O, Pe, uv, guess_Z, spread=1.15, iterations=5):
         max_error = 1E9
-        gz_dict = {}
-        for c in range(4):
-            gz_dict[pt_names[c]] = -guess_z[c]
-            pass
-        guess_z = gz_dict
         for c in range(iterations):
             # Each run uses coarseness^-3 ... 1.0 ... coarseness^3
             # So an overlap of coarseness^1.5 seems sensible
             coarseness = math.pow(spread,(1.5/(1.5*(c+1))))
             print "Run with coarseness",c,coarseness
-            r = self.improve_projection_old( object_guess_locations=object_guess_locations,
-                                         image_locations = image_locations,
-                                         projection = projection,
-                                         guess_z = guess_z,
+            r = self.improve_projection( O=O, Pe=Pe, uv=uv,
+                                         guess_Z = guess_Z,
                                          initial_max_error = max_error*1.01,
-                                         sq_dist_divide=20000.0,
                                          coarseness = coarseness )
             if r is None:
                 return None
             (improved_projection, improved_z, max_error) = r
-            guess_z = improved_z
+            guess_Z = improved_z
             pass
         return (improved_projection, improved_z, max_error)
 
@@ -762,14 +639,18 @@ class c_image_projection(object):
         guess_Z = {}
         n = 11
         for i in range(n*n*n*n):
+            # vi in range 0 to n-1
+            # zs in range 0 to 1.7*(n-1) in steps of 1.7
             v = (i%n, (i/n)%n, (i/n/n%n), (i/n/n/n%n))
             zs = []
             for c in range(4):
-                zs.append( -1.0*(v[c]*1.7) )
+                #zs.append( -1.0*(v[c]*1.7) ) # was 1.7 for 'img_1'
+                #zs.append( -1.0*(v[c]*2.5)-10 ) # was 1.7 for 'img_1'
+                zs.append( -1.0*(v[c]*1.7)-5 ) # was 1.7 for 'img_1'
                 pass
             guess_Z[v] = zs
             pass
-        results = self.select_best_z_set(O, Pe, uv, guess_Z, max_results=10)
+        results = self.select_best_z_set(O, Pe, uv, guess_Z, max_results=5)
 
         best_zs_guesses = []
         for r in results:
@@ -778,53 +659,59 @@ class c_image_projection(object):
             best_zs_guesses.append(guess_Z[ijkl])
             pass
 
-        for gz in best_zs_guesses:
+        best_zs_results = []
+        for gZ in best_zs_guesses:
             print "-"*80
-            print "Looking for best of",gz
-            r = self.get_best_projection_for_guess_z(projection, gz, pt_names, object_guess_locations, image_locations, spread=1.05, iterations=3)
+            print "Looking for best of",gZ
+            r = self.get_best_projection_for_guess_Z(O, Pe, uv, gZ, spread=1.05, iterations=5)
             if r is None:
                 print "FAILED"
                 pass
             else:
                 (improved_projection, improved_z, max_error) = r
-                print improved_projection, max_error
+                print improved_projection, improved_z, max_error
+                best_zs_results.append(r)
                 pass
             pass
-        return
-            
 
+        def cmp_results(a,b):
+            if a[2]<b[2]: return True
+            return False
+
+        best_zs_results.sort(cmp=cmp_results)
+        print best_zs_results
+        for (proj,gZ,error) in best_zs_results:
+            r = self.get_best_projection_for_guess_Z(O, Pe, uv, gZ, spread=math.pow(1.05,1/(1.5*(5-1))), iterations=15)
+            if r is None:
+                continue
+            print r
+            (improved_projection, improved_z, max_error) = r
+            improved_projection = {"camera":improved_projection["camera"],
+                                   "orientation":improved_projection["orientation"],
+                                   "fov":projection["fov"],
+                                   "aspect":projection["aspect"],
+                                   "zFar":projection["zFar"],
+                                   }
+            break
+            
         opt_projection = improved_projection
         if True:
+            print "Optimizing orientation (which is not refined yet)... delta scale 1"
             self.set_projection(opt_projection)
             opt_projection = self.optimize_projection(point_mappings = point_mappings,
-                                                  fov_iterations=100, orientation_iterations=100, camera_iterations=10, delta_scale=1 )
+                                                  fov_iterations=1, orientation_iterations=1000, camera_iterations=10, delta_scale=1 )
+            print "Optimizing orientation (which is not refined yet)... delta scale 0."
             self.set_projection(opt_projection)
             opt_projection = self.optimize_projection(point_mappings = point_mappings,
-                                                  fov_iterations=100, orientation_iterations=100, camera_iterations=10, delta_scale=0.1 )
-
+                                                  fov_iterations=1, orientation_iterations=1000, camera_iterations=10, delta_scale=0.1 )
+            print "Optimizing orientation (which is not refined yet)... delta scale 0.01"
             self.set_projection(opt_projection)
             opt_projection = self.optimize_projection(point_mappings = point_mappings,
-                                                  fov_iterations=2000, orientation_iterations=1, camera_iterations=1, delta_scale=0.01, do_fov=True, do_camera=False )
-
+                                                  fov_iterations=1, orientation_iterations=1000, camera_iterations=10, delta_scale=0.01 )
+            print "Optimizing orientation (which is not refined yet)... delta scale 0.001"
             self.set_projection(opt_projection)
             opt_projection = self.optimize_projection(point_mappings = point_mappings,
-                                                  fov_iterations=100, orientation_iterations=100, camera_iterations=10, delta_scale=0.05 )
-
-            self.set_projection(opt_projection)
-            opt_projection = self.optimize_projection(point_mappings = point_mappings,
-                                                  fov_iterations=200, orientation_iterations=100, camera_iterations=10, delta_scale=0.03 )
-
-            self.set_projection(opt_projection)
-            opt_projection = self.optimize_projection(point_mappings = point_mappings,
-                                                  fov_iterations=200, orientation_iterations=100, camera_iterations=10, delta_scale=0.03 )
-
-            self.set_projection(opt_projection)
-            opt_projection = self.optimize_projection(point_mappings = point_mappings,
-                                                  fov_iterations=2000, orientation_iterations=1, camera_iterations=1, delta_scale=0.001, do_fov=True, do_camera=False )
-
-            self.set_projection(opt_projection)
-            opt_projection = self.optimize_projection(point_mappings = point_mappings,
-                                                      fov_iterations=1, orientation_iterations=100, camera_iterations=100, delta_scale=0.001 )
+                                                  fov_iterations=1, orientation_iterations=1000, camera_iterations=10, delta_scale=0.001 )
             pass
 
         print "Optimized:\nself.images['%s']['projection'] = %s"%(self.name,str(opt_projection))
@@ -953,7 +840,7 @@ class c_image_projection(object):
     #f optimize_projection
     def optimize_projection(self,
                             point_mappings,
-                             use_references = False,
+                             use_references = True,
                              fov_iterations=10,
                              orientation_iterations=10,
                              camera_iterations=10,
