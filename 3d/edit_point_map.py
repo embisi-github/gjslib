@@ -104,13 +104,26 @@ class c_edit_point_map_image(object):
         point mappings; if the image has no map, then either do not move the centering
         or force the focus to move to the center of the image.
         """
-        pt = self.point_mappings.get_xy(pt_name, self.image_name )
-        if pt is None:
+        xy = self.point_mappings.get_xy(pt_name, self.image_name )
+        if xy is None:
+            if self.projection is not None:
+                xyz = self.point_mappings.get_approx_position(pt_name)
+                if xyz is not None:
+                    ui = self.projection.image_of_model(xyz)
+                    if ui is not None:
+                        (uvzw,img_xy) = ui
+                        xy = (uvzw[0],uvzw[1])
+                        pass
+                    pass
+                pass
+            pass
+            
+        if xy is None:
             if force_focus:
                 self.center = (0,0)
                 pass
             return
-        self.center = (-pt[0],-pt[1])
+        self.center = (-xy[0],-xy[1])
         pass
     #f adjust
     def adjust(self, scale=(1.0,1.0), translate=(0.0,0.0), scaled=True ):
@@ -303,13 +316,17 @@ class c_edit_point_map_info(opengl_widget.c_opengl_container_widget):
         pass
     #f update
     def update(self):
+        info = ""
+        cur_image = self.epm.displayed_images[self.epm.focus_image]
+        image_data = self.epm.point_mappings.get_image_data(cur_image)
+        info += "Image %s (%s) (use for pts %d)\n"%(cur_image, image_data["filename"], image_data["use_for_points"])
         cur_pt = self.epm.point_mapping_names[self.epm.point_mapping_index]
         xyz = self.point_mappings.get_xyz(cur_pt)
         if xyz is None:
             xyz = "<unknown>"
         else:
             xyz = "(%4f,%4f,%4f)"%(xyz[0],xyz[1],xyz[2])
-        info = "Current pt '%s'\nXYZ: %s"%(cur_pt,xyz)
+        info += "Current pt '%s'\nXYZ: %s"%(cur_pt,xyz)
         self.info_widget.replace_text(info, baseline_xy=(0.0,64.0), scale=(1.0,1.0))
 
         import string
@@ -417,14 +434,11 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         self.menus.add_menu("main_menu")
         self.menus.add_submenu("Images","images")
         self.menus.add_submenu("Points","points")
+        self.menus.add_item("Toggle image use",("use_for_points",0))
         self.menus.add_item("Save",("save",0))
         self.menus.create_opengl_menus()
         self.attach_menu(self.menus, "main_menu")
 
-        self.epm_info.update()
-
-        #self.displayed_images = ["img_1", "img_2"]
-        #self.displayed_images = ["left", "middle"]
         self.displayed_images = [self.image_names[0], self.image_names[1]]
         self.focus_image = 0
         self.layers = opengl_layer.c_opengl_layer_set()
@@ -438,6 +452,9 @@ class c_edit_point_map(opengl_app.c_opengl_app):
             self.images[self.displayed_images[i]].set_focus(False)
             pass
         self.images[self.displayed_images[self.focus_image]].set_focus(True)
+
+        self.epm_info.update()
+
         pass
     #f display_image_points
     def display_image_points(self):
@@ -589,7 +606,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
                     self.point_mappings.images[image_name]["projection"].run_optimization(point_mappings=self.point_mappings, coarse=False)
                     pass
                 else:
-                    self.point_mappings.optimize_projections(image=image_name, fov_iterations=1, orientation_iterations=20, camera_iterations=20, delta_scale=0.3)#03) # .01
+                    self.point_mappings.optimize_projections(image=image_name, fov_iterations=1, orientation_iterations=20, camera_iterations=20, delta_scale=0.01)
                     pass
                 print "Set projection (through optimization)",image_name,self.point_mappings.get_projection(image=image_name)
                 pass
@@ -602,6 +619,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
             op = (op[0], op[1], undo_data)
             self.undo_buffer.add_operation( op )
             pass
+        self.epm_info.update()
         pass
     #f undo_redo
     def undo_redo(self,redo=False):
@@ -664,6 +682,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         if image==self.focus_image:
             self.images[image_name].set_focus(True)
             pass
+        self.epm_info.update()
         pass
     #f menu_select
     def menu_select(self, menu, value):
@@ -676,6 +695,10 @@ class c_edit_point_map(opengl_app.c_opengl_app):
                 return True
             if value[0]=="projection":
                 self.change_projection(image_name=self.displayed_images[self.focus_image], operation="small")
+                return True
+            if value[0]=="use_for_points":
+                self.point_mappings.use_for_points(image=self.displayed_images[self.focus_image], toggle=True)
+                self.epm_info.update()
                 return True
             if value[0]=="save":
                 self.save_point_mapping(self.point_mapping_filename)

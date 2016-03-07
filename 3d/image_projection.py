@@ -569,7 +569,8 @@ class c_image_projection(object):
             pass
 
         image_locations = {}
-        for pt in object_guess_locations:
+        pt_names = object_guess_locations.keys()
+        for pt in pt_names:
             if self.name in point_mappings.image_mappings[pt]:
                 image_locations[pt] = point_mappings.image_mappings[pt][self.name]
                 pass
@@ -612,20 +613,27 @@ class c_image_projection(object):
         Pe[3,2] = -1.0
 
         guess_Z = {}
-        n = 11
+        # The range we need has got to cover the camera position
+        # For img_1 we used 0, -1.7, ... -17
+        # For left  we used -10, -12.5, -15.0, ... -35
+        #Since this is early doors we can use a big range.
+        # However, an exponential range may be too much - is linear too small?
+        # Change from 11 n to 20 n
+        # That means range is now -10 to -60, which is not enough for the pencil image right
+        # So going to scale it up
+        n = 20
         for i in range(n*n*n*n):
             # vi in range 0 to n-1
             # zs in range 0 to 1.7*(n-1) in steps of 1.7
             v = (i%n, (i/n)%n, (i/n/n%n), (i/n/n/n%n))
             zs = []
             for c in range(4):
-                #zs.append( -1.0*(v[c]*1.7) ) # was 1.7 for 'img_1'
-                zs.append( -1.0*(v[c]*2.5)-10 ) # was 1.7 for 'img_1'
-                #zs.append( -1.0*(v[c]*1.7)-5 ) # was 1.7 for 'img_1'
+                #zs.append( -1.0*(v[c]*2.5)-10 ) # was 1.7 for 'img_1'
+                zs.append( 2.0*(-1.0*(v[c]*2.5)-10) ) # was 1.7 for 'img_1'
                 pass
             guess_Z[v] = zs
             pass
-        results = self.select_best_z_set(O, Pe, uv, guess_Z, max_results=2)
+        results = self.select_best_z_set(O, Pe, uv, guess_Z, max_results=10)
 
         best_zs_guesses = []
         for r in results:

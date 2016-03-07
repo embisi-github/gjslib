@@ -20,6 +20,9 @@ class c_point_mapping(object):
         self.object_guess_locations["clips.b.fr"]  = ( 0.0,   0.05, 0.02)
         self.object_guess_locations["clips.t.fr"]  = ( 0.02,   0.08, 7.60)
 
+        self.object_guess_locations["clips.b.fr"]  = ( 0.0,   0.05, 0.1)
+        self.object_guess_locations["clips.t.fr"]  = ( 0.02,   0.08, 7.80)
+
         pass
     #f reset
     def reset(self):
@@ -28,6 +31,7 @@ class c_point_mapping(object):
         self.reference_positions = {}
         self.positions = {}
         self.images = {}
+        self.images_for_point_resoluion = []
         pass
     #f get_images
     def get_images(self):
@@ -40,7 +44,11 @@ class c_point_mapping(object):
         image_name = data[0]
         image_filename = data[1]
         image_size = (int(data[2])+0.0,int(data[3])+0.0)
-        self.add_image(image=data[0], filename=image_filename, size=image_size)
+        use_for_points = True
+        if len(data)<5 or not int(data[4]):
+            use_for_points = False
+            pass
+        self.add_image(image=data[0], filename=image_filename, size=image_size, use_for_points=use_for_points)
         pass
     #f load_data_add_point
     def load_data_add_point(self, data):
@@ -134,7 +142,7 @@ class c_point_mapping(object):
         print >>f, "--Images:"
         for name in image_names:
             image = self.images[name]
-            print >>f,"%s,%s,%d,%d"%(name,image["filename"],image["size"][0],image["size"][1])
+            print >>f,"%s,%s,%d,%d,%d"%(name,image["filename"],image["size"][0],image["size"][1],image["use_for_points"])
             pass
         print >>f, "\n"
 
@@ -181,7 +189,7 @@ class c_point_mapping(object):
             pass
         pass
     #f add_image
-    def add_image(self,image, filename=None, size=(1.0,1.0)):
+    def add_image(self,image, filename=None, size=(1.0,1.0), use_for_points=True):
         if image not in self.images:
             projection = image_projection.c_image_projection(name=image,
                                                              image_filename=filename,
@@ -190,6 +198,10 @@ class c_point_mapping(object):
             self.images[image]["filename"] = filename
             self.images[image]["projection"] = projection
             self.images[image]["size"] = size
+            self.images[image]["use_for_points"] = use_for_points
+            if use_for_points:
+                self.images_for_point_resoluion.append(image)
+                pass
             pass
         pass
     #f add_image_location
@@ -250,6 +262,21 @@ class c_point_mapping(object):
     #f get_projection
     def get_projection(self, image):
         return self.images[image]["projection"].get_projection()
+    #f use_for_points
+    def use_for_points(self, image, value=None, toggle=None):
+        if toggle is not None:
+            value = 1 ^ self.images[image]["use_for_points"]
+            pass
+        if value is not None:
+            self.images[image]["use_for_points"] = value
+            if value is 0 and image in self.images_for_point_resoluion:
+                self.images_for_point_resoluion.remove(image)
+                pass
+            if value is 1 and image not in self.images_for_point_resoluion:
+                self.images_for_point_resoluion.append(image)
+                pass
+            pass
+        pass
     #f get_mapping_names
     def get_mapping_names(self):
         return self.image_mappings.keys()
@@ -262,24 +289,28 @@ class c_point_mapping(object):
         return self.uniform_mapping(name,image)
     #f uniform_mapping
     def uniform_mapping(self, name, image):                                
-        xy = self.image_mappings[name][image]
+        image_map = self.image_mappings[name]
+        if image not in image_map:
+            return None
+        xy = image_map[image]
         scaled_xy = (-1.0+2.0*xy[0]/(self.images[image]["size"][0]+0.0), 1.0-2.0*xy[1]/(self.images[image]["size"][1]+0.0))
         return scaled_xy
     #f find_line_sets
     def find_line_sets(self):
         line_sets = {}
-        for n in self.image_mappings:
+        for n in self.image_mappings: # for each mapping of a point
             line_sets[n] = c_set_of_lines()
-            for img_name in self.image_mappings[n].keys():
-                ##if img_name not in ["main", "img_1"]: continue
+            for img_name in self.images_for_point_resoluion:
                 p = self.images[img_name]["projection"]
-                if p is not None:
-                    xy = self.uniform_mapping(n,img_name)
-                    line = p.model_line_for_image(xy)
-                    if line is not None:
-                        line_sets[n].add_line(line[0],line[1])
-                        pass
-                    pass
+                if p is None:
+                    continue
+                xy = self.uniform_mapping(n,img_name)
+                if xy is None: 
+                    continue
+                line = p.model_line_for_image(xy)
+                if line is None:
+                    continue
+                line_sets[n].add_line(line[0],line[1])
                 pass
             line_sets[n].generate_meeting_points()
             #print n, line_sets[n].line_meetings
@@ -303,7 +334,6 @@ class c_point_mapping(object):
             if name in self.object_guess_locations:
                 return self.object_guess_locations[name]
             pass
-        return None
         return self.get_approx_position(name)
     #f initial_orientation
     def initial_orientation(self, image=None, **kwargs):
