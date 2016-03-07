@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import math
 import vectors
+import polynomial
         
 #a c_matrix2x2
 class c_matrix2x2(object):
@@ -344,6 +345,19 @@ class c_matrixNxN(object):
             self.matrix = list(data[:])
             pass
         pass
+    #f __getitem__
+    def __getitem__(self,key):
+        if type(key)==tuple:
+            key = self.order*key[0]+key[1]
+        return self.matrix[key]
+    #f __setitem__
+    def __setitem__(self,key, value):
+        if type(key)==tuple:
+            key = self.order*key[0]+key[1]
+        self.matrix[key] = value
+    #f __repr__
+    def __repr__(self):
+        return str(self.matrix)
     #f get_matrix
     def get_matrix(self, row_major=True):
         if row_major:
@@ -407,16 +421,6 @@ class c_matrixNxN(object):
         self.matrix = c_matrixNxN.multiply_matrix_data(self.order, self.matrix, data)
         return self
 
-    #f __getitem__
-    def __getitem__(self,key):
-        if type(key)==tuple:
-            key = self.order*key[0]+key[1]
-        return self.matrix[key]
-    #f __setitem__
-    def __setitem__(self,key, value):
-        if type(key)==tuple:
-            key = self.order*key[0]+key[1]
-        self.matrix[key] = value
     #f lup_decompose
     def lup_decompose(self):
         """
@@ -587,12 +591,73 @@ class c_matrixNxN(object):
         m = self.inverse()
         self.matrix = m.matrix
         return self
-    #f __repr__
-    def __repr__(self):
-        return str(self.matrix)
-
+    #f eigenvalues
+    def eigenvalues(self, real=True):
+        if self.order==1:
+            return self.matrix[0]
+        if self.order==2:
+            (a,b,c,d) = self.matrix
+            q = polynomial.c_quadratic(1,-(a+d),a*d-b*c)
+            if real:
+                return q.find_real_roots()
+            return q.find_all_roots()
+        if self.order!=3:
+            raise Exception("Eigenvalues can only be found for matrices of order <=3 currently")
+        (a,b,c, d,e,f, g,h,i) = self.matrix
+        q = polynomial.c_cubic(-1, a+e+i, b*d-a*e + f*h-e*i + c*g-a*i, 
+                                a*e*i + b*f*g + c*d*h - a*f*h - b*d*i - c*e*g)
+        if real:
+            return q.find_real_roots()
+        return q.find_all_roots()
+    #f eigenvector
+    def eigenvector(self, eigenvalue):
+        """
+        We know that M.v = kv.
+        If we try v=(1,_,_) then we get n equations with n-1 unknowns
+        We can drop one equation (any) and attempt to resolve the other coordinates
+        """
+        n = self.order
+        for c in range(n):
+            m = self.copy()
+            for i in range(n):
+                if c!=i:
+                    m[i,i] = m[i,i] - eigenvalue
+                    pass
+                pass
+            m_i = m.inverse()
+            if m_i is None:
+                continue
+            v = [0.0]*n
+            v[c] = 1.0
+            return m_i.apply(v)
+            pass
+        pass
+    #f All done
+    pass
 #a Main
 def main():
+    print "Eigenvectors of (3,0, 2,1)"
+    a = c_matrixNxN(data=[3.,0.,2.,1.])
+    print "Eigen values",a.eigenvalues()
+    for e in a.eigenvalues():
+        print a.eigenvector(e)
+    print "Eigenvectors of (1,0, -2,3)"
+    a = c_matrixNxN(data=[1.,0.,-2.,3.])
+    print "Eigen values",a.eigenvalues()
+    for e in a.eigenvalues():
+        print a.eigenvector(e)
+    print "Eigenvectors of (1,0,1, 4,3,1, -2,3,2)"
+    a = c_matrixNxN(data=[1.,0.,1., 4.,3.,1., -2.,3.,2.])
+    print "Eigen values",a.eigenvalues()
+    for e in a.eigenvalues():
+        print a.eigenvector(e)
+        pass
+    a.invert()
+    print "Eigen values of a_inverse",a.eigenvalues()
+    for e in a.eigenvalues():
+        print a.eigenvector(e)
+        pass
+    die
     print "LU decompose of 1,2 4,3 should be U=4,3 0,1.25  L= 1,0 0.25,1, P = 2,1; as one matrix this is 4,3, 0.25,1.25"
     a = c_matrixNxN(data=[1.,2.,4.,3.])
     print "A", a

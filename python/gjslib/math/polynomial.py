@@ -1,4 +1,155 @@
 #!/usr/bin/env python
+import math
+import fractions
+
+from complex import c_complex
+#a Classes
+#c c_quadratic
+class c_quadratic(object):
+    """
+    Quadratic class, with solution - convenience really
+    """
+    def __init__(self, a,b,c, notes=None):
+        self.coeffs = (float(a),float(b),float(c))
+        self.notes = notes
+        pass
+    def discriminant(self):
+        (a,b,c) = self.coeffs
+        return b*b/(4*a*a)-c/a
+    def find_all_roots(self):
+        (a,b,c) = self.coeffs
+        r = c_complex(real=self.discriminant).pow(1/2.0)
+        r0 = c_complex(real=-b/(2*a)).add(r)
+        r1 = c_complex(real=-b/(2*a)).add(r,scale=-1.0)
+        return (r0, r1)
+    def find_real_roots(self,epsilon=1E-6):
+        (a,b,c) = self.coeffs
+        d = self.discriminant()
+        if d<0:
+            return []
+        r = math.sqrt(d)
+        return [-b/(2*a) + r, -b/(2*a) - r]
+    def __repr__(self):
+        r = "%6fx^2 + %6fx + %6f"%self.coeffs
+        return r+str(self.notes)
+
+#c c_cubic
+class c_cubic(object):
+    """
+    Cubic class, with solution and number of real roots
+
+    A cubic is a.x^3 + b.x^2 + c.x + d = C
+    A depressed cubic for C=0 has a=1, b=0; a substitution of y=x+b/3a, or x=y-b/3a yields
+
+    a.y^3 -a.3.b/3a.y^2 + 3.a.b*b/(9a.a).y - a.b*b*b/(27.a.a.a) +
+          b.y^2 - b.2.b/3a.y + b.b.b/(9a.a) +
+          cy - c.b/3a + d
+    = a.y^3 -b.y^2 + b.b/3a.y   - b.b.b/(27.a.a) 
+            +b.y^2 - 2.b.b/3a.y + b.b.b/(9.a.a) +
+                            c.y - c.b/3a + d
+    = a.y^3 + (c-b.b/3a).y - c.b/3a + d + 2b.b.b/(27.a.a)
+    = C
+    C/a = y^3 + (c/a-b.b/3a.a).y  - c/a.b/3a    + d/a + 2b.b.b/(27.a.a.a) = 0
+    C/a = y^3 + (c/a-3(b/3a)^2).y - c/a.(b/3a) + d/a + 2(b/3a)^3 = 0
+    
+
+    """
+    def __init__(self, a,b,c,d, notes=None):
+        self.coeffs = (float(a),float(b),float(c),float(d))
+        self.notes = notes
+        pass
+    def discriminant(self):
+        (a,b,c,d) = self.coeffs
+        return  ( 18*a*b*c*d + 
+                  -4*b*b*b*d + 
+                  b*b*c*c +
+                  -4*a*c*c*c +
+                  -27*a*a*d*d )
+    def get_depressed_cubic(self):
+        (a,b,c,d) = self.coeffs
+        ba3 = b/(3*a)
+        ca = c/a
+        p = ca - 3*ba3*ba3
+        q = 2*ba3*ba3*ba3 - ba3*ca + d/a
+        return c_cubic(a=1, b=0, c=p, d=q, notes=(self, -ba3, "+y"))
+    def cardano_u3(self):
+        """
+        Cardano started with a depressed cubic
+        x^3 + Cx + D = 0
+        and substituted in x=u+v, hence x^3 = u^3 + v^3 + 3uv(u+v)
+        u^3 + v^3 + 3uv(u+v) + C(u+v) + D = 0
+        u^3 + v^3 + (u+v)(C+3uv) + D = 0
+        Now, setting also uv = -C/3 we get:
+        u^3 + v^3 + D = 0
+        u^6 + v^3.u^3 + D.u^3 = 0
+        But v=-C/3u, or v^3 = -C^3/27u^3
+        u^6 + v^3.u^3 + D.u^3 = 0
+        u^6 + D.u^3 - C^3/27 = 0
+        If w = u^3, then w^2 + D.w - C^3/27 = 0
+        and w = -D/2 +- sqrt( D^2/4 - C^3/27)
+
+        Note that if w = 0 then we must have C=0,
+        and if C=0 we can go back as we have x^3 + D = 0,
+        and hence X=cube_root(-D)
+        """
+        (a,b,c,d) = self.coeffs
+        # a should be 1, b should be 0
+        #print "a,b,c,d",(a,b,c,d)
+        return (-d/2, d*d/4+c*c*c/27)
+    def find_all_roots(self):
+        cube_root_1 = c_complex(polar=(1,3.14159265*2/3))
+        roots = []
+
+        dc = self.get_depressed_cubic()
+        (C,D) = dc.coeffs[2:]
+        if (C==0):
+            for i in range(3):
+                sel_cube_root_1 = cube_root_1.copy().pow(i)
+                x = c_complex(real=-D).multiply(sel_cube_root_1).add(c_complex(real=dc.notes[1]))
+                roots.append(x)
+                pass
+            return roots
+
+        u3 = dc.cardano_u3()
+        #print "u3",u3
+        # u3 for one root is cubert(u3[0] + sqrt(u3[1]))
+        s = c_complex(real=u3[1]).sqrt()
+        #print "s",s
+        u3 = s.add(c_complex(real=u3[0]))
+        for i in range(3):
+            sel_cube_root_1 = cube_root_1.copy().pow(i)
+            u = s.pow(1/3.0)
+            #print "s",s
+            u.multiply(sel_cube_root_1)
+            #print "u.cube_root_1",u
+            v = u.copy().reciprocal().multiply(c_complex(real=-C/3.0))
+            #print "u, v",u, v
+            mu = u.copy().add(v)
+            #print "mu",mu
+            x = mu.add(c_complex(real=dc.notes[1]))
+            #print "x", x
+            roots.append(x)
+            pass
+        return roots
+    def find_real_roots(self,epsilon=1E-6):
+        roots = self.find_all_roots()
+        real_roots = []
+        for r in roots:
+            real = r.real(epsilon=epsilon)
+            if real is not None:
+                real_roots.append(real)
+            pass
+        return real_roots
+    def num_real_roots(self):
+        d = self.discriminant()
+        if d>=0:
+            return 3
+        return 1
+    def __repr__(self):
+        r = "%6fx^3 + %6fx^2 + %6fx + %6f"%self.coeffs
+        return r+str(self.notes)
+
+#c c_polynomial
 class c_polynomial( object ):
     def __init__( self, coeffs=[0] ):
         self.coeffs=coeffs
@@ -187,10 +338,8 @@ class c_polynomial( object ):
             pass
         result.reverse()
         return (c_polynomial(coeffs=result),c_polynomial(coeffs=remainder))
-            
-import math
-import fractions
 
+#f find_eqn            
 def find_eqn( x ):
     epsilon = 0.00001
     tests = {}
@@ -232,7 +381,46 @@ def find_eqn( x ):
         pass
     pass
 
+#a Toplevel
 def main():
+
+    for coeffs in [ (1,-5,3,9),
+                    (1,3,3,2),
+                    (1,6,11,6),
+                    (1,0,-1,0),
+                    (1,2,3,4),
+                    (5,4,3,2),
+                    (1,0,0,0),
+                    (-1,-2,-3,-4),
+                    ]:
+        print "-"*80
+        c = c_cubic(coeffs[0], coeffs[1], coeffs[2], coeffs[3])
+        print "Cubic", c
+        print "Discriminant", c.discriminant()
+        print "Should have %d real roots"%c.num_real_roots()
+        dc = c.get_depressed_cubic()
+        print "Depressed cubic version",dc
+        print "All roots",c.find_all_roots()
+        print "Real roots",c.find_real_roots()
+        for x in c.find_real_roots():
+            r = coeffs[0]*x*x*x + coeffs[1]*x*x + coeffs[2]*x + coeffs[3]
+            print "Poly result",r 
+            if (r<-1E-6) or (r>1E-6):
+                raise Exception("Cubic solving failed")
+            pass
+        for c in c.find_all_roots():
+            c3 = c.copy().pow(3.0)
+            c2 = c.copy().pow(2.0)
+            c3 = c3.multiply(c_complex(real=coeffs[0]))
+            c2 = c2.multiply(c_complex(real=coeffs[1]))
+            c  = c.multiply(c_complex(real=coeffs[2]))
+            r = c_complex(real=coeffs[3]).add(c).add(c2).add(c3)
+            print "Poly result",r
+            r = r.real()
+            if r is None or (r<-1E-6) or (r>1E-6):
+                raise Exception("Cubic solving failed")
+            pass
+        pass
 
     a = c_polynomial( [1] )
     b = a.multiply( c_polynomial([0, 1]) )
