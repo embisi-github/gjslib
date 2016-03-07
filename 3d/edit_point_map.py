@@ -805,7 +805,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
 #a Main
 def main():
     point_mapping_filename="pencils.map"
-    point_mapping_filename="sidsussexbell.map"
+    #point_mapping_filename="sidsussexbell.map"
     m = c_edit_point_map( point_mapping_filename=point_mapping_filename,
                           window_size = (1800,1100))
     m.init_opengl()

@@ -1,4 +1,192 @@
 #!/usr/bin/env python
+"""
+
+notes
+errors with eigenvalues for left pencil
+FOV 54
+844:Error 0.000148 Volume 0.992691 == +1, lengths (1.0078140092456882, 1.0013901914673606, 1.0037499802024081), eigen 0.995977, cam [-4.118176,-22.091639,25.235017]
+({'camera': [-4.118176484981601, -22.09163869232736, 25.235017329384764], 'orientation': c_quaternion(euler=(-30.3542,-1.5250,55.0333),degrees=True)}, [-41.931872286369945, -49.024723441728256, -30.951076609604502, -27.293052127230027], 0.00014757983430260937)
+self.images['left']['projection'] = {'fov': 54.0, 'camera': [-4.092276484981596, -22.017538692327353, 25.19801732938475], 'orientation': c_quaternion(euler=(-29.0414, 0.0653,52.3864),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 40.0}
+calc.b.fr 8.25172609418 (2707.080872999666, 1213.816518356337) (2698.844445, 1213.314286)
+calc.t.bl 10.0330238807 (1139.6759147671573, 707.9383892761459) (1144.990476, 699.428571)
+clips.b.fr 22.0035207986 (925.7754701019085, 1916.0548138172874) (927.740759, 1937.970392)
+clips.t.fr 14.1325465997 (807.5927860626681, 1332.626817080778) (811.045201, 1318.922449)
+Total error 54.4208173732
+
+FOV 55 (with eigenvalue in error)
+1551:Error 0.000100 Volume 0.993356 == +1, lengths (1.005833434032479, 1.0021666921630537, 1.00306832528539), eigen 0.997367, cam [-3.969025,-21.371357,24.741859]
+({'camera': [-3.9690252239724186, -21.37135722594334, 24.741859026906628], 'orientation': c_quaternion(euler=(-30.2679,-1.5487,54.8575),degrees=True)}, [-41.07583968388289, -48.11676049573742, -30.18394736025642, -26.464277840700085], 9.984178329298273e-05)
+self.images['left']['projection'] = {'fov': 55.0, 'camera': [-3.966125223972422, -21.316257225943332, 24.685859026906613], 'orientation': c_quaternion(euler=(-29.2335,-0.1879,52.3514),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 40.0}
+calc.b.fr 6.40489597874 (2705.2197905310804, 1213.9288279902291) (2698.844445, 1213.314286)
+calc.t.bl 9.01956484986 (1140.236977855537, 707.0938697855245) (1144.990476, 699.428571)
+clips.b.fr 19.9902806733 (926.5077439987215, 1918.0181741933484) (927.740759, 1937.970392)
+clips.t.fr 12.7483917447 (808.3774313060314, 1331.388583001176) (811.045201, 1318.922449)
+Total error 48.1631332466
+
+FOV 55 (without eigenvalue)
+1947:Error 0.000022 Volume 0.996323 == +1, lengths (1.0024151285290603, 1.00067474043002, 1.0015250690005377), eigen 0.965743, cam [-4.274075,-21.118481,24.315561]
+({'camera': [-4.274075080968033, -21.118481270360572, 24.3155605088203], 'orientation': c_quaternion(euler=(-33.6516,-3.7032,53.7132),degrees=True)}, [-41.77465647836781, -46.62780319434795, -30.0227812140341, -25.775680900567192], 2.2231744744901346e-05)
+self.images['left']['projection'] = {'fov': 55.0, 'camera': [-4.251975080968039, -21.047381270360557, 24.275560508820295], 'orientation': c_quaternion(euler=(-29.6901,-0.4857,52.7584),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 40.0}
+calc.b.fr 11.3754900482 (2710.1491320243586, 1214.5814975518251) (2698.844445, 1213.314286)
+calc.t.bl 15.4692667732 (1132.13881090973, 708.0386185555076) (1144.990476, 699.428571)
+clips.b.fr 14.5337668572 (925.9681017038746, 1923.5451341107741) (927.740759, 1937.970392)
+clips.t.fr 5.23388190926 (811.7816171299362, 1324.104264427405) (811.045201, 1318.922449)
+Total error 46.6124055879
+
+
+FOV 56 (with eigenvalue in error)
+1159:Error 0.000063 Volume 0.995179 == +1, lengths (1.0047718738614337, 1.002149690961742, 1.0023848250299787), eigen 0.997515, cam [-3.843066,-20.645356,24.213654]
+({'camera': [-3.8430661428585933, -20.64535621555892, 24.21365388496388], 'orientation': c_quaternion(euler=(-30.3705,-1.6786,54.5730),degrees=True)}, [-40.2555626912437, -47.096735096487535, -29.431111078908646, -25.600613408518573], 6.27540137933678e-05)
+self.images['left']['projection'] = {'fov': 56.0, 'camera': [-3.812166142858596, -20.59525621555891, 24.16265388496387], 'orientation': c_quaternion(euler=(-29.4030,-0.4387,52.2943),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 40.0}
+calc.b.fr 6.72514368221 (2705.5439739541916, 1213.9006897332558) (2698.844445, 1213.314286)
+calc.t.bl 6.89736545138 (1140.9670524344126, 705.0308663315398) (1144.990476, 699.428571)
+clips.b.fr 16.9632506103 (926.3328713460594, 1921.065667109508) (927.740759, 1937.970392)
+clips.t.fr 11.9008985748 (807.7074735685507, 1330.3457130904887) (811.045201, 1318.922449)
+Total error 42.4866583187
+
+FOV 56 (without eigenvalue in error)
+1200:Error 0.000011 Volume 0.997546 == +1, lengths (1.0016133831629075, 1.0012216960341784, 1.000742059584152), eigen 0.969290, cam [-4.115170,-20.416180,23.798622]
+({'camera': [-4.115169641395163, -20.416180146397895, 23.798622238269985], 'orientation': c_quaternion(euler=(-33.3673,-3.5330,53.4091),degrees=True)}, [-40.845052934252614, -45.70019773358245, -29.3251257388232, -24.982577813429913], 1.0699233645229686e-05)
+self.images['left']['projection'] = {'fov': 56.0, 'camera': [-4.070269641395155, -20.32908014639788, 23.79462223826998], 'orientation': c_quaternion(euler=(-29.8305,-0.7358,52.6465),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 40.0}
+calc.b.fr 11.4825759444 (2710.2551715191307, 1214.5968110970002) (2698.844445, 1213.314286)
+calc.t.bl 12.9784561785 (1133.3619513274857, 705.1920542104762) (1144.990476, 699.428571)
+clips.b.fr 11.5773471963 (925.7345612517693, 1926.5681931463612) (927.740759, 1937.970392)
+clips.t.fr 4.9008776303 (811.0090286944703, 1323.8231931385494) (811.045201, 1318.922449)
+Total error 40.9392569494
+
+
+FOV 57 (with eigenvalue in error)
+808:Error 0.000035 Volume 0.996184 == +1, lengths (1.0035910158651673, 1.0017642388596426, 1.0015589478333826), eigen 0.998541, cam [-3.713631,-19.956044,23.711283]
+({'camera': [-3.713630833448766, -19.956043944042488, 23.71128295319602], 'orientation': c_quaternion(euler=(-30.3593,-1.7244,54.2981),degrees=True)}, [-39.44407964676364, -46.15296411283099, -28.724412811151065, -24.793935508330186], 3.524519934726816e-05)
+self.images['left']['projection'] = {'fov': 57.0, 'camera': [-3.7117308334487693, -19.931943944042487, 23.624282953195998], 'orientation': c_quaternion(euler=(-29.6295,-0.6924,52.3333),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 40.0}
+calc.b.fr 5.568812267 (2704.3847602834294, 1213.8769374243514) (2698.844445, 1213.314286)
+calc.t.bl 6.66665077731 (1141.0703374886123, 704.8208568453696) (1144.990476, 699.428571)
+clips.b.fr 14.3010840429 (926.95920257373, 1923.690680015648) (927.740759, 1937.970392)
+clips.t.fr 9.34469231298 (808.3333725746407, 1327.8650023834425) (811.045201, 1318.922449)
+Total error 35.8812394002
+
+FOV 57 (without eigenvalue in error)
+1905:Error 0.000005 Volume 0.998486 == +1, lengths (1.0011753500796372, 1.0009218944411435, 1.0004227848172174), eigen 0.976742, cam [-3.927376,-19.772743,23.358355]
+({'camera': [-3.9273758760863475, -19.77274273317479, 23.358354930836327], 'orientation': c_quaternion(euler=(-32.6825,-3.1236,53.2798),degrees=True)}, [-39.86803053274168, -44.993892640289175, -28.6641351271121, -24.30046386552682], 4.708998420272592e-06)
+self.images['left']['projection'] = {'fov': 57.0, 'camera': [-3.9292758760863453, -19.70464273317478, 23.355354930836324], 'orientation': c_quaternion(euler=(-29.9901,-0.9699,52.5824),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 40.0}
+calc.b.fr 8.6285534234 (2707.364436108155, 1214.678722036425) (2698.844445, 1213.314286)
+calc.t.bl 11.4090325869 (1134.6893197677323, 704.3328757261756) (1144.990476, 699.428571)
+clips.b.fr 9.88424807809 (926.7406282526083, 1928.136872866068) (927.740759, 1937.970392)
+clips.t.fr 4.18200895625 (811.8856586598114, 1323.0191342249416) (811.045201, 1318.922449)
+Total error 34.1038430446
+
+FOV 58 (with eigenvalue in error)
+1948:Error 0.000017 Volume 0.996857 == +1, lengths (1.0022513536455708, 1.0006967878055006, 1.0011550320478637), eigen 0.999522, cam [-3.592529,-19.301611,23.223950]
+({'camera': [-3.5925292490333707, -19.301610697207092, 23.223950052883755], 'orientation': c_quaternion(euler=(-30.3442,-1.7539,53.9849),degrees=True)}, [-38.658048625092164, -45.22711027825239, -28.058206042691786, -24.02104601396928], 1.7060982075282217e-05)
+self.images['left']['projection'] = {'fov': 58.0, 'camera': [-3.599729249033371, -19.254410697207078, 23.160050052883747], 'orientation': c_quaternion(euler=(-29.8306,-0.9925,52.2567),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 40.0}
+calc.b.fr 4.12063335042 (2702.8758542059586, 1214.1671394591174) (2698.844445, 1213.314286)
+calc.t.bl 4.74597707896 (1141.482852536535, 702.625581489901) (1144.990476, 699.428571)
+clips.b.fr 11.5490371131 (927.5117365442428, 1926.4236259178826) (927.740759, 1937.970392)
+clips.t.fr 8.27493051324 (809.2720258721702, 1327.005166671979) (811.045201, 1318.922449)
+Total error 28.6905780557
+
+FOV 58 (without eigenvalue in error)
+494:Error 0.000002 Volume 0.999063 == +1, lengths (1.0004217630722192, 1.000168254366654, 1.001027892121821), eigen 0.983354, cam [-3.755646,-19.172712,22.948090]
+({'camera': [-3.7556456598329753, -19.172711693321073, 22.948090388004683], 'orientation': c_quaternion(euler=(-32.0751,-2.7673,53.1382),degrees=True)}, [-38.95275660429533, -44.31329942220487, -28.032162250836656, -23.650055624900276], 2.142207004404038e-06)
+self.images['left']['projection'] = {'fov': 58.0, 'camera': [-3.7306456598329736, -19.122611693321062, 22.947090388004682], 'orientation': c_quaternion(euler=(-30.0658,-1.1351,52.4809),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 40.0}
+calc.b.fr 6.92340848121 (2705.6810368317056, 1214.4072622688625) (2698.844445, 1213.314286)
+calc.t.bl 8.4635936521 (1137.3891049067927, 703.1503414135559) (1144.990476, 699.428571)
+clips.b.fr 8.3480310113 (927.1240065005046, 1929.645174998623) (927.740759, 1937.970392)
+clips.t.fr 3.99695400071 (810.8145822206535, 1322.9127442600552) (811.045201, 1318.922449)
+Total error 27.7319871453
+
+FOV 59 (with eigenvalue in error)
+1906:Error 0.000006 Volume 0.998173 == +1, lengths (1.0016047554263632, 1.0001976955196454, 1.000704358843221), eigen 1.000118, cam [-3.482327,-18.650909,22.721884]
+({'camera': [-3.482326702968548, -18.650908606468967, 22.721884396152394], 'orientation': c_quaternion(euler=(-30.4052,-1.8177,53.6083),degrees=True)}, [-37.89107060557242, -44.25487086547503, -27.410587042483733, -23.241005660664225], 6.475641560994873e-06)
+self.images['left']['projection'] = {'fov': 59.0, 'camera': [-3.5202267029685443, -18.643808606468966, 22.66788439615238], 'orientation': c_quaternion(euler=(-30.0705,-1.2607,52.2952),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 40.0}
+calc.b.fr 1.8256023512 (2700.4070882479095, 1214.2581980851476) (2698.844445, 1213.314286)
+calc.t.bl 4.70231643373 (1141.5672464201466, 702.6524318975127) (1144.990476, 699.428571)
+clips.b.fr 9.22552692634 (928.6434328670133, 1928.789132448152) (927.740759, 1937.970392)
+clips.t.fr 5.56161646594 (810.7831908950839, 1324.4778903343235) (811.045201, 1318.922449)
+Total error 21.3150621772
+
+FOV 59 (without eigenvalue in error)
+850:Error 0.000001 Volume 0.999422 == +1, lengths (1.0002662449676682, 1.0003278509350473, 0.9999530345887988), eigen 0.987274, cam [-3.610837,-18.539466,22.477204]
+({'camera': [-3.6108370613513863, -18.539466355978387, 22.47720359720192], 'orientation': c_quaternion(euler=(-31.7654,-2.5797,52.8451),degrees=True)}, [-38.10542013255729, -43.48946184326072, -27.413484403589948, -22.94126818090679], 5.154514381434025e-07)
+self.images['left']['projection'] = {'fov': 59.0, 'camera': [-3.6487370613513828, -18.464366355978377, 22.44120359720191], 'orientation': c_quaternion(euler=(-30.3219,-1.4426,52.4957),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 40.0}
+calc.b.fr 5.64791095002 (2704.3410276578616, 1214.6129303642106) (2698.844445, 1213.314286)
+calc.t.bl 8.33487753511 (1137.036799368963, 701.9203999616566) (1144.990476, 699.428571)
+clips.b.fr 4.98953601988 (927.8112784966395, 1932.981354347883) (927.740759, 1937.970392)
+clips.t.fr 1.91719699971 (812.1703937986822, 1320.4747329629017) (811.045201, 1318.922449)
+Total error 20.8895215047
+
+FOV 60: (with eigenvalue in error)
+1906:Error 0.000002 Volume 0.998978 == +1, lengths (1.0004440267438814, 1.0004154766458977, 1.0001438059354404), eigen 1.000400, cam [-3.377420,-18.023306,22.235380]
+({'camera': [-3.3774200436514867, -18.023306089577623, 22.235379937995873], 'orientation': c_quaternion(euler=(-30.4789,-1.8878,53.2278),degrees=True)}, [-37.15806510155439, -43.313452828502534, -26.78910363637637, -22.488249853591135], 1.5976151286166559e-06)
+self.images['left']['projection'] = {'fov': 60.0, 'camera': [-3.3395200436514902, -18.037206089577626, 22.170379937995857], 'orientation': c_quaternion(euler=(-30.1903,-1.4328,52.2848),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 40.0}
+calc.b.fr 3.37257522605 (2702.1966902707504, 1213.6840363213187) (2698.844445, 1213.314286)
+calc.t.bl 2.42178458432 (1143.3957072466771, 701.2511387480604) (1144.990476, 699.428571)
+clips.b.fr 5.61433102134 (928.0063644469168, 1932.3623471924275) (927.740759, 1937.970392)
+clips.t.fr 4.70706513517 (808.1587556988898, 1322.640633464277) (811.045201, 1318.922449)
+Total error 16.1157559669
+
+FOV 60 (without eigenvalue in error)
+1241:Error 0.000000 Volume 0.999980 == +1, lengths (1.0004052304655555, 0.9998069030379652, 1.0003534083472727), eigen 0.992195, cam [-3.467879,-17.958587,22.049439]
+({'camera': [-3.467879018901589, -17.958587176075188, 22.04943865760937], 'orientation': c_quaternion(euler=(-31.3643,-2.3318,52.5735),degrees=True)}, [-37.26723632156869, -42.73659465192916, -26.827845576443714, -22.2871883172808], 3.2679147106018483e-07)
+self.images['left']['projection'] = {'fov': 60.0, 'camera': [-3.447679018901592, -17.926687176075188, 22.059638657609373], 'orientation': c_quaternion(euler=(-30.3762,-1.5908,52.3890),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 40.0}
+calc.b.fr 4.15174159465 (2702.892616222531, 1214.235843389321) (2698.844445, 1213.314286)
+calc.t.bl 4.98243559343 (1140.1774610808347, 700.7168069374562) (1144.990476, 699.428571)
+clips.b.fr 3.46870183058 (928.1163740440674, 1934.5220872385069) (927.740759, 1937.970392)
+clips.t.fr 1.58128668366 (810.5899340524713, 1320.436780397812) (811.045201, 1318.922449)
+Total error 14.1841657023
+
+FOV 61 (with eigenvalue in error):
+1158:Error 0.000001 Volume 0.999815 == +1, lengths (1.0002147489799573, 1.0001966667409397, 0.9997876912534899), eigen 1.000674, cam [-3.283279,-17.411709,21.729697]
+({'camera': [-3.283279155103133, -17.411709071405, 21.729697456310426], 'orientation': c_quaternion(euler=(-30.5771,-1.9295,52.7120),degrees=True)}, [-36.42531718208429, -42.31637501795742, -26.2151323579798, -21.74220946254544], 6.188103634750908e-07)
+self.images['left']['projection'] = {'fov': 61.0, 'camera': [-3.2533791551031355, -17.399809071405, 21.729697456310426], 'orientation': c_quaternion(euler=(-30.4178,-1.7662,52.2187),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 40.0}
+calc.b.fr 1.84506856826 (2700.5287205631357, 1214.0676078760848) (2698.844445, 1213.314286)
+calc.t.bl 1.6314251824 (1143.5189018977774, 698.7242856974107) (1144.990476, 699.428571)
+clips.b.fr 2.46745161466 (928.668783842545, 1935.6841095672478) (927.740759, 1937.970392)
+clips.t.fr 2.87546998858 (809.5804227900968, 1321.396868619029) (811.045201, 1318.922449)
+Total error 8.8194153539
+
+FOV 61 (without eigenvalue in error):
+({'camera': [-3.300408297580593, -17.404191212703193, 21.701809861760584], 'orientation': c_quaternion(euler=(-30.7454,-2.0186,52.6015),degrees=True)}, [-36.45438980231268, -42.221658786163786, -26.223056868254407, -21.710607857250096], 1.9937541717591305e-07)
+self.images['left']['projection'] = {'fov': 61.0, 'camera': [-3.301408297580593, -17.353191212703184, 21.713709861760584], 'orientation': c_quaternion(euler=(-30.4919,-1.8528,52.2224),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 40.0}
+calc.b.fr 1.5932614131 (2699.94583737898, 1214.4655534572018) (2698.844445, 1213.314286)
+calc.t.bl 3.07630154466 (1142.2329135583764, 698.0649432743164) (1144.990476, 699.428571)
+clips.b.fr 2.10417341575 (928.9569238510562, 1936.253275574534) (927.740759, 1937.970392)
+clips.t.fr 2.19927173647 (811.219885780396, 1321.1147722878216) (811.045201, 1318.922449)
+Total error 8.97300810999
+
+FOV 62:
+493:Error 0.000001 Volume 1.000294 == +1, lengths (1.000122119595293, 1.0004949048440746, 1.000412438326702), eigen 0.999632, cam [-3.212826,-16.829395,21.202056]
+({'camera': [-3.2128256120977765, -16.829395061879545, 21.202055678717354], 'orientation': c_quaternion(euler=(-30.8028,-1.9910,51.9694),degrees=True)}, [-35.71880484850182, -41.21841696803028, -25.704992173943793, -20.99802261011884], 6.516124319185851e-07)
+self.images['left']['projection'] = {'fov': 62.0, 'camera': [-3.241725612097774, -16.803595061879548, 21.202055678717354], 'orientation': c_quaternion(euler=(-30.7688,-2.1010,52.3614),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 40.0}
+calc.b.fr 1.32916064737 (2697.9631503773276, 1214.309267313671) (2698.844445, 1213.314286)
+calc.t.bl 2.99289834911 (1142.0029326351043, 699.2496152206791) (1144.990476, 699.428571)
+clips.b.fr 2.8073088752 (930.1541128912625, 1939.4045140716255) (927.740759, 1937.970392)
+clips.t.fr 2.65485990563 (812.5708339582101, 1316.749726009063) (811.045201, 1318.922449)
+Total error 9.78422777731
+
+FOV 62 (without eigenvalue in error):
+1199:Error 0.000000 Volume 0.999911 == +1, lengths (1.0004866124078358, 1.0002501900837397, 1.0001000861107967), eigen 0.998572, cam [-3.226175,-16.818059,21.159484]
+({'camera': [-3.2261751996668275, -16.81805942346751, 21.159484489495455], 'orientation': c_quaternion(euler=(-30.9106,-2.0167,51.8022),degrees=True)}, [-35.71987041192106, -41.1108708818926, -25.73219037678035, -20.96904846725481], 3.1735358130944113e-07)
+self.images['left']['projection'] = {'fov': 62.0, 'camera': [-3.255075199666825, -16.813959423467512, 21.159484489495455], 'orientation': c_quaternion(euler=(-30.7985,-2.0811,52.4415),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 40.0}
+calc.b.fr 0.985684957032 (2698.3120913345488, 1214.1438487820726) (2698.844445, 1213.314286)
+calc.t.bl 3.51595379885 (1141.6128442120716, 700.4050619732433) (1144.990476, 699.428571)
+clips.b.fr 2.97839107443 (930.1975572036199, 1939.654124751645) (927.740759, 1937.970392)
+clips.t.fr 3.74251741151 (812.4735955893343, 1315.4632402071427) (811.045201, 1318.922449)
+Total error 11.2225472418
+
+
+FOV 63:
+1200:Error 0.000003 Volume 0.998512 == +1, lengths (0.9998350895680005, 1.000309572174737, 1.0001287819828082), eigen 1.000652, cam [-3.122802,-16.285737,20.722242]
+({'camera': [-3.1228017565319814, -16.285736712003562, 20.722241720371095], 'orientation': c_quaternion(euler=(-30.7588,-1.8793,51.3079),degrees=True)}, [-35.0, -40.290410729145066, -25.242945546996065, -20.340972882038304], 2.7851091631970217e-06)
+self.images['left']['projection'] = {'fov': 63.0, 'camera': [-3.1317017565319794, -16.30263671200357, 20.722241720371095], 'orientation': c_quaternion(euler=(-30.9671,-2.2695,52.4784),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 40.0}
+calc.b.fr 2.01549266582 (2696.878404351334, 1213.758014355843) (2698.844445, 1213.314286)
+calc.t.bl 2.19104963134 (1143.1391961560596, 700.6005187063397) (1144.990476, 699.428571)
+clips.b.fr 5.38202604813 (930.9393265230191, 1942.2988293835688) (927.740759, 1937.970392)
+clips.t.fr 6.21148438726 (812.0753606897277, 1312.7969849925305) (811.045201, 1318.922449)
+Total error 15.8000527325
+
+
+"""
 
 #a Imports
 import math
@@ -262,28 +450,41 @@ class c_image_projection(object):
             if not zs_okay:
                 continue
 
+            # Rotations have a single eigenvalue - it should be 1, but that is less critical than the volume and lengths of R
+            # Prune out any clearly non-rotations with number of eigenvalues though
+            e = R.eigenvalues()
+            if len(e)>1:
+                continue
+
+            # The rotation MUST be a right-handed set of vectors, else we are in some wonky space
+            # Also the volume of the unit cube should remain 1 for a pure rotation
             v = (R.get_column(0),R.get_column(1),R.get_column(2))
             volume_r  = vectors.dot_product(vectors.vector_prod3(v[0],v[1]),v[2])
+            if (volume_r<0):
+                continue
+
+            # If the volume is 1 then the unit cube could have been stretched in X and squashed in Y, for example
+            # Make sure the scalings along each vector approach 1.0
             lengths_r = (vectors.dot_product(v[0],v[0]), vectors.dot_product(v[1],v[1]), vectors.dot_product(v[2],v[2]))
             def NO(x, epsilon=1E-9):
                 if (x>1): return x
                 if (x>1E-9): return 1/x
                 return 1E9
-            error = NO(volume_r) * NO(lengths_r[0]) * NO(lengths_r[1]) * NO(lengths_r[2])
-            if (volume_r<0): volume_r=1E9
-            error = NO(volume_r/lengths_r[0]/lengths_r[1]/lengths_r[2])
             def sum_sq(xs):
                 v = 0
                 for x in xs:
                     v += x*x
                     pass
                 return v
+
+            # Error term is sum of squares of x-1 (or 1/x-1 if x<1) so each counts the same
+            # Note that the eigenvalue should also approach 1, but adding it in does not really change things much
             error = sum_sq((NO(volume_r)-1, NO(lengths_r[0])-1, NO(lengths_r[1])-1, NO(lengths_r[2])-1))
             if (error<1E9):
                 if (len(result_list)<max_results) or (error<result_list[-1][0]):
                     orientation = quaternion.c_quaternion().from_matrix(R.transpose())
                     r = (Zk, camera, orientation)
-                    print "%s:Error %6f Volume %6f == +1, lengths %s, cam [%5f,%5f,%5f]"%(str(Zk),error, volume_r, str(lengths_r), camera[0],camera[1],camera[2])
+                    print "%s:Error %6f Volume %6f == +1, lengths %s, eigen %6f, cam [%5f,%5f,%5f]"%(str(Zk),error, volume_r, str(lengths_r), e[0], camera[0],camera[1],camera[2])
                     index = 0
                     for i in range(len(result_list)):
                         if error<result_list[i][0]:
@@ -298,233 +499,6 @@ class c_image_projection(object):
                 pass
             pass
         return result_list
-    #f improve_projection_old
-    def improve_projection_old(self, object_guess_locations, image_locations, projection, guess_z, coarseness, initial_max_error=1E9, sq_dist_divide=20.0, verbose=False):
-        """
-        Take 4 object reference points with u,v and X, Y, Z
-        In object space make a matrix O that is column vectors XYZ1
-        Note that P.(XYZ1) = (uw, vw, z, w)
-        and note that w=k.z+l for some constant k and l for the projection
-        So if we choose values for the object z's, we can get a 
-        matrix U of the 4 columns in image space - where we choose four z's
-        in the range 1.0 to 40.0 for example (since the objects are not clipped)
-
-        Now, if P.O = U for some P, then P = U.O' (O' == O inverse)
-        Further, P = Persp.Orient.Camera (Pe.Or.Ca)
-        If we know the aspect ratio and FOV for the camera, and we have a known
-        mapping from z to w, then we know Pe, hence also Pe'
-        So Pe.Or.Ca = U.O', Or.Ca = Pe'.U.O'
-        Now, the rotation of a translation can be inverted - it becomes a translation of a rotation
-        So (Or.Ca)' = Ca'.Or'.
-        Since the translation can be determined by the fourth column of the matrix, we can find the camera
-        position by just reading this off.
-        The bottom row of the matrix should be zeros (except in the fourth column, which should be 1)
-        The top 3x3 should be the rotation - which should be an orthogonal matrix
-        To test how close to an orthogonal matrix the 3x3 is one can multiply it by its transpose,
-        and should get the identity
-        So if we find a candidate for Ca'.Or' we can tell how good it is as a candidate.
-
-        Now (Or.Ca)' = Ca'.Or' = (Pe'.U.O')' = O.U'.Pe
-
-        Hence for a candidate U guess (4 degrees of freedom) we can get a measure of goodness of fit
-        from examining the bottom row and the 3x3 'rotation' section of O.U'.Pe
-        
-        Now, if we assume a zNear of 1.0 and a zFar of 40.0, we have the bottom 2x2 of Pe as 
-        1.051282051  2.051282051
-        -1.000000000  0.000000000
-
-        This is applied to (Z,1) to get (z,w): hence z = 2.0513 + 1.0513Z, w=-Z (where Z is post-orientation, post camera translation)
-        In particular we can state that z=2.0513-1.0513w, of w=(2.0513-z)/1.0513
-        So this gives a mechanism for determining uvzw from a given u,v and a guess at z (distance from camera)
-
-        But what should the values of zNear and zFar be?
-
-        Pre-perspective, the transformed coordinates are in 'world units'. This is scaled by 1/w, so w must be in world units (which it clearly is)
-        zFar is effectively our 'we can ignore it as that is infinity' clipping - so we should let that tend to infinity
-        Then we have the bottom of 2x2 of Pe as 1.0, 2*zNear, -1.0, 0.0; with w=(2*zNear-z) / 1
-        The matrix is degenerate if zNear is 0
-
-        We want to find the zNear and zFar... let's try...
-
-        (note... object measurements here are in 0.8cm)
-        """
-        pts = object_guess_locations.keys()
-        pts.sort()
-
-        #camera = projection["camera"]
-        aspect = projection["aspect"]
-        fov    = projection["fov"] # xFOV
-        # Do not use orientation
-
-        obj_data = []
-        for i in range(3):
-            for k in pts:
-                obj_data.append( object_guess_locations[k][i] )
-                pass
-            pass
-        obj_data.extend([1.0,1.0,1.0,1.0])
-        O=matrix.c_matrixNxN(data=obj_data)
-        if verbose:
-            print "O"
-            print O
-            pass
-
-        persp = matrix.c_matrix4x4()
-        yfov = math.atan(math.tan(fov/2.0/180.0*3.1415926)/aspect)*2.0*180.0/3.14159256
-        persp.perspective(fov=yfov, aspect=aspect, zFar=2.0, zNear=1.0) # do not use zFar, zNear here
-        Pe = matrix.c_matrixNxN(data=persp.get_matrix(linear=True))
-
-        if verbose:
-            print "Pe"
-            print Pe
-            pass
-
-        best_projection = None
-        smallest_error = (initial_max_error,None)
-        for gi in range(7*7*7*7*5):
-            if verbose:
-                print "-"*80
-                print "Iteration",gi
-                print "-"*80
-                pass
-
-            gi2 = gi
-            ci = (gi2/(7*7*7*7)) % 15
-            zNear = 1.0
-            #zFar = 1.5*math.pow(1.0,ci+1)
-            zFar = 20.0*math.pow(1.3,1+5-ci)
-            Pe[2,2] = (zNear+zFar)/(zFar-zNear)
-            Pe[2,3] = 2*zNear*zFar/(zFar-zNear)
-            def dist(x, camera):
-                (x,y,z) = object_guess_locations[x]
-                x -= camera[0]
-                y -= camera[1]
-                z -= camera[2]
-                return math.sqrt(x*x+y*y+z*z)
-
-            U = matrix.c_matrixNxN(order=4)
-            for c in range(4):
-                pt = pts[c]
-                ci = (gi2 % 7)
-                gi2 = gi2 / 7
-                z = -guess_z[pt]*math.pow(coarseness,(ci-3))
-                #z = -guess_z[pt]*math.pow(1.013,((ci-3)*coarseness))
-                w = (Pe[2,3]-z)/Pe[2,2]
-                U[2,c] = z
-                U[3,c] = w
-                U[0,c] = w * ( (image_locations[pt][0] / float(self.size[0]))*2.0-1.0)
-                U[1,c] = w * (-(image_locations[pt][1] / float(self.size[1]))*2.0+1.0)
-                pass
-
-            U_i = U.inverse()
-            if U_i is None:
-                continue
-
-            Ca_i_Or_i = O.copy()
-            Ca_i_Or_i.postmult(U_i)
-            Ca_i_Or_i.postmult(Pe)
-
-            # Deduced camera location is Ca_i
-            C = Ca_i_Or_i.get_column(3)[0:3]
-
-            # Rotation is top-left 3x3 of Or_i
-            R = matrix.c_matrixNxN(order=3)
-            for r in range(3):
-                for c in range(3):
-                    R[r,c] = Ca_i_Or_i[r,c]
-                    pass
-                pass
-
-            # Note that bottom row of Ca_i_Or_i is going to be 0.0,0.0,0.0,-1.0
-            # It always is
-            if verbose:
-                br = Ca_i_Or_i.get_row(3)
-                br = vectors.vector_add(br,(0.0,0.0,0.0,-1.0))
-                print "br check",vectors.dot_product(br,br)
-                print "C"
-                print C
-                print "R"
-                print R
-                pass
-
-            if verbose:
-                print "Check of perp vectors"
-                pass
-
-            v = (R.get_column(0),R.get_column(1),R.get_column(2))
-            volume_r  = vectors.dot_product(vectors.vector_prod3(v[0],v[1]),v[2])
-            lengths_r = (vectors.dot_product(v[0],v[0]), vectors.dot_product(v[1],v[1]), vectors.dot_product(v[2],v[2]))
-            def NO(x, epsilon=1E-9):
-                if (x>1): return x
-                if (x>1E-9): return 1/x
-                return 1E9
-            error = NO(volume_r) * NO(lengths_r[0]) * NO(lengths_r[1]) * NO(lengths_r[2])
-            if (volume_r<0): volume_r=1E9
-            error = NO(volume_r/lengths_r[0]/lengths_r[1]/lengths_r[2])
-            def sum_sq(xs):
-                v = 0
-                for x in xs:
-                    v += x*x
-                    pass
-                return v
-            error = sum_sq((NO(volume_r)-1, NO(lengths_r[0])-1, NO(lengths_r[1])-1, NO(lengths_r[2])-1, NO(volume_r/lengths_r[0]/lengths_r[1]/lengths_r[2])-1))
-            sum_sq_dist = 0.0
-            if error<smallest_error[0]:#*1.01:
-                print "%d:Error %6f Volume %6f == +1, sq_dist %6f == 0.0, lens %s"%(gi,error, volume_r, sum_sq_dist, str(lengths_r))
-                #print angles_r
-                #print angles_c
-                #print lens_r
-                #print lens_c
-                #print volume_r
-                #print volume_c
-                #sum_sq_dist = 0
-                #for i in range(len(pts)):
-                #    k = pts[i]
-                #    sum_sq_dist += (U[2,i] - dist(k, C)) * (U[2,i] - dist(k, C))
-                #    #print k, U[2,i], dist(k, C), dist(k,camera)
-                #    pass
-                #print sum_sq_dist
-
-                R_t = R.copy().transpose()
-                #R_R_t = R.copy().postmult(R_t)
-                #print "R.R_t"
-                #print R_R_t.determinant(), R_R_t
-
-                q = quaternion.c_quaternion().from_matrix(R)
-                #print "R and q - should be the same..."
-                #print R
-                #print q.get_matrix3()
-                #print
-
-                smallest_error = (error, None)
-                #print "ERROR",gi, error, e0+e1, math.sqrt((e0-e1)*(e0-e1)), (e0, e1), C, q, zNear, zFar
-                orientation = quaternion.c_quaternion().from_matrix(R_t)
-                best_projection = {"camera":C, "orientation":orientation, "fov":fov, "aspect":aspect, "zNear":zNear, "zFar":zFar}
-                best_z = {}
-                for c in range(4):
-                    best_z[pts[c]] = -U[2,c]
-                    pass
-                pass
-
-            if verbose:
-                OrCa = Ca_i_Or_i.inverse()
-                print "OrCa"
-                print OrCa
-                mvp = OrCa.copy()
-                mvp.premult(Pe)
-                print mvp
-                pass
-
-            pass
-        if best_projection is None:
-            return None
-        if True:
-            self.set_projection( best_projection )
-            for k in pts:
-                print k, self.image_of_model(object_guess_locations[k])
-                pass
-            pass
-        return (best_projection, best_z, smallest_error[0])
     #f improve_projection
     def improve_projection(self, O, Pe, uv, guess_Z, coarseness, initial_max_error=1E9, verbose=False):
         base_guess_Z = guess_Z
@@ -577,8 +551,9 @@ class c_image_projection(object):
     #f guess_initial_projection_matrix
     def guess_initial_projection_matrix(self, point_mappings ):
         # iphone 6s has XFOV of about 55, YFOV is therefore about 47
+        # FOV is currently not critical though - 55-63 is a good range...
         projection = {"aspect":self.size[0]/float(self.size[1]),
-                      "fov":55.0,
+                      "fov":57.0,
                       "zFar":40.0
                       }
         zNear = 1.0
@@ -645,12 +620,12 @@ class c_image_projection(object):
             zs = []
             for c in range(4):
                 #zs.append( -1.0*(v[c]*1.7) ) # was 1.7 for 'img_1'
-                #zs.append( -1.0*(v[c]*2.5)-10 ) # was 1.7 for 'img_1'
-                zs.append( -1.0*(v[c]*1.7)-5 ) # was 1.7 for 'img_1'
+                zs.append( -1.0*(v[c]*2.5)-10 ) # was 1.7 for 'img_1'
+                #zs.append( -1.0*(v[c]*1.7)-5 ) # was 1.7 for 'img_1'
                 pass
             guess_Z[v] = zs
             pass
-        results = self.select_best_z_set(O, Pe, uv, guess_Z, max_results=5)
+        results = self.select_best_z_set(O, Pe, uv, guess_Z, max_results=2)
 
         best_zs_guesses = []
         for r in results:
@@ -726,44 +701,6 @@ class c_image_projection(object):
             pass
         print "Total error",sum_d
         return
-    #f guess_initial_orientation
-    def guess_initial_orientation(self, point_mappings, use_references=False, steps=20, verbose=False):
-        """
-        This may end up facing the wrong direction
-        """
-        angle = 360.0/steps
-        q = quaternion.c_quaternion()
-        base_projection = self.projection
-        base_projection["orientation"] = q
-        smallest_error = (1, 100000, None)
-        pt_names = point_mappings.get_mapping_names()
-        for i in range(steps):
-            for j in range(steps):
-                for k in range(steps/2): # don't need to look behind - we get the same 'error'
-                    q.from_euler(roll=i*angle,pitch=j*angle,yaw=k*angle,degrees=True)
-                    self.set_projection(projection=base_projection)
-                    (pts,e,corr) = self.calc_point_errors(point_mappings, pt_names,
-                                                          use_references=use_references,
-                                                          verbose=verbose)
-                    if (pts>=smallest_error[0]):
-                        if (e<smallest_error[1]):
-                            smallest_error = (pts, e, (i*angle,j*angle,k*angle))
-                            pass
-                        pass
-                    pass
-                pass
-            pass
-        (pts,e,ijk) = smallest_error
-        if ijk is not None:
-            print "Best initial orientation has error ",e,"from",pts,"pts",ijk
-            q.from_euler(rpy=ijk, degrees=True)
-            self.set_projection(projection=base_projection)
-            if True:
-                self.calc_point_errors(point_mappings, pt_names,
-                                       use_references=use_references,
-                                       verbose=True)
-            pass
-        return base_projection
     #f guess_better_projection
     def guess_better_projection(self, point_mappings, base_projection, use_references=True, deltas_list=[{}], delta_scale=1.0, scale_error_weight=0.1, verbose=False):
         smallest_error = ({},10000,base_projection,1.0,1.0)
