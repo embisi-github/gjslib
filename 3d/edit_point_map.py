@@ -3,6 +3,7 @@
 
 #a Imports
 from gjslib.graphics import opengl, opengl_obj, opengl_app, opengl_layer, opengl_widget, opengl_utils, opengl_menu
+from gjslib.math import vectors
 from image_projection import c_image_projection
 
 from OpenGL.GLUT import *
@@ -326,7 +327,8 @@ class c_edit_point_map_info(opengl_widget.c_opengl_container_widget):
             xyz = "<unknown>"
         else:
             xyz = "(%4f,%4f,%4f)"%(xyz[0],xyz[1],xyz[2])
-        info += "Current pt '%s'\nXYZ: %s"%(cur_pt,xyz)
+        info += "Current pt '%s'\nXYZ: %s\n"%(cur_pt,xyz)
+        info += "Scale %6f\n"%self.epm.last_scale
         self.info_widget.replace_text(info, baseline_xy=(0.0,64.0), scale=(1.0,1.0))
 
         import string
@@ -371,6 +373,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         self.undo_buffer = c_undo_buffer()
         self.image_projections = {}
         self.point_mapping_filename = point_mapping_filename
+        self.last_scale = 0.01
         pass
     #f save_point_mapping
     def save_point_mapping(self, point_map_filename):
@@ -431,9 +434,15 @@ class c_edit_point_map(opengl_app.c_opengl_app):
             pass
         self.menus.add_menu("points")
         self.menus.add_hierarchical_select_menu("points",self.point_mapping_names, item_select_value=lambda x:("point",x))
+        self.menus.add_menu("optimize")
+        self.menus.add_item("Step size 1",("projection",1.0))
+        self.menus.add_item("Step size 0.1",("projection",0.1))
+        self.menus.add_item("Step size 0.01",("projection",0.01))
+        self.menus.add_item("Step size 0.001",("projection",0.001))
         self.menus.add_menu("main_menu")
         self.menus.add_submenu("Images","images")
         self.menus.add_submenu("Points","points")
+        self.menus.add_submenu("Optimize","optimize")
         self.menus.add_item("Toggle image use",("use_for_points",0))
         self.menus.add_item("Save",("save",0))
         self.menus.create_opengl_menus()
@@ -590,7 +599,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
                 pass
             pass
         elif op[0] == "change_projection":
-            (image_name, operation) = op[1]
+            (image_name, operation, scale) = op[1]
             if undo:
                 self.point_mappings.set_projection(image=image_name, projection=op[2])
                 print "Undo set projection",image_name,op[2]
@@ -606,7 +615,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
                     self.point_mappings.images[image_name]["projection"].run_optimization(point_mappings=self.point_mappings, coarse=False)
                     pass
                 else:
-                    self.point_mappings.optimize_projections(image=image_name, fov_iterations=1, orientation_iterations=20, camera_iterations=20, delta_scale=0.01)
+                    self.point_mappings.optimize_projections(image=image_name, fov_iterations=1, orientation_iterations=20, camera_iterations=20, delta_scale=scale)
                     pass
                 print "Set projection (through optimization)",image_name,self.point_mappings.get_projection(image=image_name)
                 pass
@@ -665,8 +674,12 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         self.do_undoable_operation( ("delete_image_location",(pt_name,image_name)) )
         pass
     #f change_projection
-    def change_projection(self, image_name=None, operation="small"):
-        self.do_undoable_operation( ("change_projection",(image_name,operation)) )
+    def change_projection(self, image_name=None, operation="small", scale=None):
+        if scale is None:
+            scale = self.last_scale
+            pass
+        self.last_scale = scale
+        self.do_undoable_operation( ("change_projection",(image_name,operation,scale)) )
         pass
     #f select_image
     def select_image(self, image_name, image=None):
@@ -694,7 +707,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
                 self.change_point(point_name=value[1])
                 return True
             if value[0]=="projection":
-                self.change_projection(image_name=self.displayed_images[self.focus_image], operation="small")
+                self.change_projection(image_name=self.displayed_images[self.focus_image], operation="small", scale=value[1])
                 return True
             if value[0]=="use_for_points":
                 self.point_mappings.use_for_points(image=self.displayed_images[self.focus_image], toggle=True)
@@ -728,8 +741,52 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         point_controls = {".":(-1,),
                           ";":(+1,),
                           }
+        image_name = self.displayed_images[self.focus_image]
+        pt_name = self.point_mapping_names[self.point_mapping_index]
+
         if ord(k)==27:
             self.point_set_end()
+            return True
+        if k in ["F"]:
+            image_data = self.point_mappings.get_image_data(image_name)
+            proj = image_data["projection"]
+            mae = proj.calculate_map_and_errors(self.point_mappings)
+            total_error = 0
+            for d in mae:
+                print d
+                total_error += d[1]["error"]
+                pass
+            print "Total error",total_error
+
+            best_pts = [None, None, None, None]
+            for d in mae:
+                xy = (d[1]["uv"][0], d[1]["uv"][1])
+                dbl = vectors.vector_separation((-1.0,-1.0),xy)
+                dtl = vectors.vector_separation((-1.0, 1.0),xy)
+                dbr = vectors.vector_separation(( 1.0,-1.0),xy)
+                dtr = vectors.vector_separation(( 1.0, 1.0),xy)
+                for (p, v) in ( (0,dbl), (1,dtl), (2,dbr), (3,dtr) ):
+                    if best_pts[p] is None or v<best_pts[p][0]:
+                        best_pts[p] = (v, d)
+                    pass
+                pass
+
+            mae = []
+            for (d,p) in best_pts:
+                mae.append(p)
+                print "Mae",d,p
+                pass
+
+            proj.blah(mae,spread=1.03, iterations=50)
+
+            mae = proj.calculate_map_and_errors(self.point_mappings)
+            total_error = 0
+            for d in mae:
+                print d
+                total_error += d[1]["error"]
+                pass
+            print "Total error",total_error
+
             return True
         if k in ["f"]:
             self.point_mappings.find_line_sets()
@@ -749,14 +806,13 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         if k in ["o", "O"]:
             op = "small"
             if k == "O": op="much"
-            self.change_projection(image_name=self.displayed_images[self.focus_image], operation=op)
+            self.change_projection(image_name=image_name, operation=op)
             return True
         if k in ["i"]:
-            self.change_projection(image_name=self.displayed_images[self.focus_image], operation="initial")
+            self.change_projection(image_name=image_name, operation="initial")
             return True
         if (ord(k)==127) and (m&GLUT_ACTIVE_CTRL):
-            self.point_delete(image_name=self.displayed_images[self.focus_image],
-                              pt_name=self.point_mapping_names[self.point_mapping_index])
+            self.point_delete(image_name=image_name, pt_name=pt_name)
             return True
         if k in ["u", "U"]:
             self.undo_redo(redo=(k=="U"))
@@ -773,7 +829,6 @@ class c_edit_point_map(opengl_app.c_opengl_app):
             self.change_point(adjustment=point_controls[k])
             return True
         if k in ["n", "p"]:
-            image_name = self.displayed_images[self.focus_image]
             i = self.image_names.index(image_name) + 1
             if k=="p": i-=2
             i = i%len(self.image_names)

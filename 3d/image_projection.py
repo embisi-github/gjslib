@@ -340,12 +340,12 @@ class c_image_projection(object):
 
         pass
     #f image_of_model
-    def image_of_model(self,xyz):
+    def image_of_model(self,xyz, perspective=True):
         if self.mvp is None:
             return None
-        xy = self.mvp.apply(xyz,perspective=True)
-        img_xy = ((1.0+xy[0])/2.0*self.size[0], (1.0-xy[1])/2.0*self.size[1])
-        return (xy,img_xy)
+        xyzw = self.mvp.apply(xyz, perspective=perspective)
+        img_xy = ((1.0+xyzw[0])/2.0*self.size[0], (1.0-xyzw[1])/2.0*self.size[1])
+        return (xyzw,img_xy)
     #f model_line_for_image
     def model_line_for_image(self,xy):
         if self.ip is None:
@@ -476,15 +476,17 @@ class c_image_projection(object):
                     v += x*x
                     pass
                 return v
+            v = (R.get_row(0),R.get_row(1),R.get_row(2))
+            lengths_c = (vectors.dot_product(v[0],v[0]), vectors.dot_product(v[1],v[1]), vectors.dot_product(v[2],v[2]))
 
             # Error term is sum of squares of x-1 (or 1/x-1 if x<1) so each counts the same
             # Note that the eigenvalue should also approach 1, but adding it in does not really change things much
-            error = sum_sq((NO(volume_r)-1, NO(lengths_r[0])-1, NO(lengths_r[1])-1, NO(lengths_r[2])-1))
+            error = sum_sq((NO(volume_r)-1, NO(lengths_r[0])-1, NO(lengths_r[1])-1, NO(lengths_r[2])-1, NO(lengths_c[0])-1, NO(lengths_c[1])-1, NO(lengths_c[2])-1))
             if (error<1E9):
                 if (len(result_list)<max_results) or (error<result_list[-1][0]):
                     orientation = quaternion.c_quaternion().from_matrix(R.transpose())
                     r = (Zk, camera, orientation)
-                    print "%s:Error %6f Volume %6f == +1, lengths %s, eigen %6f, cam [%5f,%5f,%5f]"%(str(Zk),error, volume_r, str(lengths_r), e[0], camera[0],camera[1],camera[2])
+                    print "%s:Error %6f Volume %6f == +1, lengths %s, eigen %6f, cam [%5f,%5f,%5f]"%(str(Zk),error, volume_r, str(lengths_c), e[0], camera[0],camera[1],camera[2])
                     index = 0
                     for i in range(len(result_list)):
                         if error<result_list[i][0]:
@@ -501,6 +503,12 @@ class c_image_projection(object):
         return result_list
     #f improve_projection
     def improve_projection(self, O, Pe, uv, guess_Z, coarseness, initial_max_error=1E9, verbose=False):
+        """
+        O = object matrix (4x4, columns are object x,y,z,1)
+        Pe = perspective matrix (1/f, 1/f.aspect, zfar/znear, -1...)
+        uv = [(u,v)] * 4
+        guess_Z = base four MVP.xyz Z values to spread around
+        """
         base_guess_Z = guess_Z
 
         guess_Z = {}
@@ -531,6 +539,12 @@ class c_image_projection(object):
 
     #f get_best_projection_for_guess_Z
     def get_best_projection_for_guess_Z(self, O, Pe, uv, guess_Z, spread=1.15, iterations=5):
+        """
+        O = object matrix (4x4, columns are object x,y,z,1)
+        Pe = perspective matrix (1/f, 1/f.aspect, zfar/znear, -1...)
+        uv = [(u,v)] * 4
+        guess_Z = base four MVP.xyz Z values to spread around
+        """
         max_error = 1E9
         for c in range(iterations):
             # Each run uses coarseness^-3 ... 1.0 ... coarseness^3
@@ -547,7 +561,6 @@ class c_image_projection(object):
             guess_Z = improved_z
             pass
         return (improved_projection, improved_z, max_error)
-
     #f guess_initial_projection_matrix
     def guess_initial_projection_matrix(self, point_mappings ):
         # iphone 6s has XFOV of about 55, YFOV is therefore about 47
@@ -664,7 +677,7 @@ class c_image_projection(object):
         best_zs_results.sort(cmp=cmp_results)
         print best_zs_results
         for (proj,gZ,error) in best_zs_results:
-            r = self.get_best_projection_for_guess_Z(O, Pe, uv, gZ, spread=math.pow(1.05,1/(1.5*(5-1))), iterations=15)
+            r = self.get_best_projection_for_guess_Z(O, Pe, uv, gZ, spread=math.pow(1.05,1/(1.5*(5-1))), iterations=35)
             if r is None:
                 continue
             print r
@@ -709,6 +722,77 @@ class c_image_projection(object):
             pass
         print "Total error",sum_d
         return
+    #f pe_matrix_of_projection
+    def pe_matrix_of_projection(self, projection=None):
+        if projection is None:
+            projection = self.projection
+            pass
+
+        fov    = projection["fov"]
+        aspect = projection["aspect"]
+        zFar   = projection["zFar"]
+        zNear  = 1.0
+        Pe = matrix.c_matrixNxN(data=[0.0]*16)
+        f = 1.0/math.tan(fov*3.14159265/180.0/2)
+        Pe[0,0] = f
+        Pe[1,1] = f*aspect
+        Pe[2,2] = -(zNear+zFar)/(zFar-zNear)
+        Pe[2,3] = -2*zNear*zFar/(zFar-zNear)
+        Pe[3,2] = -1.0
+        return Pe
+    #f blah
+    def blah(self, pt_data, spread=1.15, iterations=5):
+        """
+        pt_data is list (pt_name, data_dict)
+        data_dict has keys 'uv', 'xyz'
+        """
+        Pe = self.pe_matrix_of_projection()
+        O  = matrix.c_matrixNxN(order=4)
+        uv = []
+        guess_Z = []
+        for c in range(4):
+            d = pt_data[c][1]
+            O[0,c] = d["xyz"][0]
+            O[1,c] = d["xyz"][1]
+            O[2,c] = d["xyz"][2]
+            O[3,c] = 1.0
+            uv.append(d["uv"])
+            guess_Z.append(d["xyzw"][2])
+            pass
+        r = self.get_best_projection_for_guess_Z(O=O, Pe=Pe, uv=uv, guess_Z=guess_Z, spread=spread, iterations=iterations)
+        if r is None:
+            print "FAILED"
+            return
+        (improved_projection, improved_z, max_error) = r
+        print improved_projection, improved_z, max_error
+        improved_projection = {"camera":improved_projection["camera"],
+                               "orientation":improved_projection["orientation"],
+                               "fov":self.projection["fov"],
+                               "aspect":self.projection["aspect"],
+                               "zFar":self.projection["zFar"],
+                               }
+        print "Setting projection to",improved_projection
+        self.set_projection(improved_projection)
+        return
+    #f calculate_map_and_errors
+    def calculate_map_and_errors(self, point_mappings):
+        result = []
+        pt_names = point_mappings.get_mapping_names()
+        pt_names.sort()
+        for pt in pt_names:
+            xyz = point_mappings.get_xyz(pt)
+            if xyz is None:
+                continue
+            (xyzw, img_xy) = self.image_of_model(xyz, perspective=False)
+            uv = (xyzw[0]/xyzw[3], xyzw[1]/xyzw[3])
+            mapping_uv = point_mappings.get_xy(pt,self.name)
+            dist = None
+            if mapping_uv is not None:
+                dist = vectors.vector_separation(mapping_uv, uv)
+                pass
+            result.append((pt, {"uv":uv, "xyz":xyz, "xyzw":xyzw, "map_uv":mapping_uv, "error":dist}))
+            pass
+        return result
     #f guess_better_projection
     def guess_better_projection(self, point_mappings, base_projection, use_references=True, deltas_list=[{}], delta_scale=1.0, scale_error_weight=0.1, verbose=False):
         smallest_error = ({},10000,base_projection,1.0,1.0)
