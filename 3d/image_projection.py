@@ -61,9 +61,8 @@ class c_image_projection(object):
                             self.projection["camera"][2])
         rpy = self.projection["orientation"].to_euler(degrees=True)
         repr += ", %f,%f,%f "%(rpy[0], rpy[1], rpy[2])
-        repr += ", %f, %f, %f "%(self.projection["fov"],
-                                 self.projection["aspect"],
-                                 self.projection["zFar"])
+        repr += ", %f, %f,"%(self.projection["fov"],
+                             self.projection["aspect"])
         return repr
     #f load_projection_strings
     def load_projection_strings(self, data):
@@ -74,12 +73,10 @@ class c_image_projection(object):
         rpy    = (float(data[3]), float(data[4]), float(data[5]))
         fov    = float(data[6])
         aspect = float(data[7])
-        zFar   = float(data[8])
         projection = {"camera":camera,
                       "orientation":quaternion.c_quaternion.of_euler(rpy=rpy, degrees=True),
                       "fov":fov,
-                      "aspect":aspect,
-                      "zFar":zFar}
+                      "aspect":aspect}
         self.set_projection(projection)
         pass
     #f get_projection
@@ -110,7 +107,6 @@ class c_image_projection(object):
         # zFar and zNear do not seem to effect mapping to image (correctly!)
         # However, zNear must not be 0 or the projection matrix will be singular
         zFar = 40.0
-        if "zFar" in projection:zFar=projection["zFar"]
         self.mvp.perspective(fov=yfov, aspect=aspect, zFar=zFar, zNear=1.0)
         persp = self.mvp.copy()
         z_of_w_1 = self.mvp.apply((0.0,0.0,-1.0,0.0))
@@ -123,7 +119,6 @@ class c_image_projection(object):
         self.projection = { "camera":      camera[:],
                             "orientation": orientation,
                             "fov": fov,
-                            "zFar": zFar,
                             "aspect": aspect,
                             "z_of_w_1":z_of_w_1[2]
                             }
@@ -133,7 +128,6 @@ class c_image_projection(object):
             resultant_projection["orientation"] = orientation.copy()
             resultant_projection["fov"]         = fov
             resultant_projection["aspect"]      = aspect
-            resultant_projection["zFar"]        = zFar
             pass
 
         if verbose:
@@ -329,13 +323,6 @@ class c_image_projection(object):
         for gi in range(7*7*7*7):
 
             gi2 = gi
-            if False:
-                ci = (gi2/(7*7*7*7)) % 15
-                zNear = 1.0
-                zFar = 20.0*math.pow(1.3,1+5-ci)
-                Pe[2,2] = (zNear+zFar)/(zFar-zNear)
-                Pe[2,3] = 2*zNear*zFar/(zFar-zNear)
-                pass
 
             gZ = []
             for c in range(4):
@@ -480,7 +467,6 @@ class c_image_projection(object):
         # FOV is currently not critical though - 55-63 is a good range...
         projection = {"aspect":self.size[0]/float(self.size[1]),
                       "fov":57.0,
-                      "zFar":40.0
                       }
 
         object_guess_locations = {}
@@ -585,7 +571,6 @@ class c_image_projection(object):
                                    "orientation":improved_projection["orientation"],
                                    "fov":projection["fov"],
                                    "aspect":projection["aspect"],
-                                   "zFar":projection["zFar"],
                                    }
             break
 
@@ -615,7 +600,7 @@ class c_image_projection(object):
 
         fov    = projection["fov"]
         aspect = projection["aspect"]
-        zFar   = projection["zFar"]
+        zFar   = 40.0
         zNear  = 1.0
         Pe = matrix.c_matrixNxN(data=[0.0]*16)
         f = 1.0/math.tan(fov*3.14159265/180.0/2)
@@ -654,7 +639,6 @@ class c_image_projection(object):
                                "orientation":improved_projection["orientation"],
                                "fov":self.projection["fov"],
                                "aspect":self.projection["aspect"],
-                               "zFar":self.projection["zFar"],
                                }
         print "Setting projection to",improved_projection
         self.set_projection(improved_projection)

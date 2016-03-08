@@ -77,7 +77,7 @@ class c_point_mapping(object):
         data_load_callbacks["Images"] = (self.load_data_add_image,4)
         data_load_callbacks["Points"] = (self.load_data_add_point,2)
         data_load_callbacks["References"] = (self.load_data_add_reference,4)
-        data_load_callbacks["Projections"] = (self.load_data_set_projection,10)
+        data_load_callbacks["Projections"] = (self.load_data_set_projection,9)
         data_load_callbacks["Mapping"] = (self.load_data_add_mapping,4)
         f = open(data_filename,"r")
         if not f:
