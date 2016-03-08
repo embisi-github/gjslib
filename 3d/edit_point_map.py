@@ -435,10 +435,12 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         self.menus.add_menu("points")
         self.menus.add_hierarchical_select_menu("points",self.point_mapping_names, item_select_value=lambda x:("point",x))
         self.menus.add_menu("optimize")
-        self.menus.add_item("Step size 1",("projection",1.0))
-        self.menus.add_item("Step size 0.1",("projection",0.1))
-        self.menus.add_item("Step size 0.01",("projection",0.01))
-        self.menus.add_item("Step size 0.001",("projection",0.001))
+        self.menus.add_item("Step size 1",("projection","small",1.0))
+        self.menus.add_item("Step size 0.1",("projection","small",0.1))
+        self.menus.add_item("Step size 0.01",("projection","small",0.01))
+        self.menus.add_item("Step size 0.001",("projection","small",0.001))
+        self.menus.add_item("Corners",("projection","corners",0))
+        self.menus.add_item("References",("projection","references",0))
         self.menus.add_menu("main_menu")
         self.menus.add_submenu("Images","images")
         self.menus.add_submenu("Points","points")
@@ -608,11 +610,18 @@ class c_edit_point_map(opengl_app.c_opengl_app):
                 undo_data = self.point_mappings.get_projection(image=image_name)
                 self.point_mappings.find_line_sets()
                 self.point_mappings.approximate_positions()
+                proj = self.point_mappings.images[image_name]["projection"]
                 if operation in ["initial"]:
-                    self.point_mappings.images[image_name]["projection"].guess_initial_projection_matrix(self.point_mappings)
+                    proj.guess_initial_projection_matrix(self.point_mappings)
                     pass
                 elif operation in ["much"]:
-                    self.point_mappings.images[image_name]["projection"].run_optimization(point_mappings=self.point_mappings, coarse=False)
+                    proj.run_optimization(point_mappings=self.point_mappings, coarse=False)
+                    pass
+                elif operation in ["corners"]:
+                    proj.optimize_projection_from_select_points(self.point_mappings, use_corners=True)
+                    pass
+                elif operation in ["references"]:
+                    proj.optimize_projection_from_select_points(self.point_mappings, use_corners=False)
                     pass
                 else:
                     self.point_mappings.optimize_projections(image=image_name, fov_iterations=1, orientation_iterations=20, camera_iterations=20, delta_scale=scale)
@@ -707,7 +716,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
                 self.change_point(point_name=value[1])
                 return True
             if value[0]=="projection":
-                self.change_projection(image_name=self.displayed_images[self.focus_image], operation="small", scale=value[1])
+                self.change_projection(image_name=self.displayed_images[self.focus_image], operation=value[1], scale=value[2])
                 return True
             if value[0]=="use_for_points":
                 self.point_mappings.use_for_points(image=self.displayed_images[self.focus_image], toggle=True)
@@ -748,45 +757,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
             self.point_set_end()
             return True
         if k in ["F"]:
-            image_data = self.point_mappings.get_image_data(image_name)
-            proj = image_data["projection"]
-            mae = proj.calculate_map_and_errors(self.point_mappings)
-            total_error = 0
-            for d in mae:
-                print d
-                total_error += d[1]["error"]
-                pass
-            print "Total error",total_error
-
-            best_pts = [None, None, None, None]
-            for d in mae:
-                xy = (d[1]["uv"][0], d[1]["uv"][1])
-                dbl = vectors.vector_separation((-1.0,-1.0),xy)
-                dtl = vectors.vector_separation((-1.0, 1.0),xy)
-                dbr = vectors.vector_separation(( 1.0,-1.0),xy)
-                dtr = vectors.vector_separation(( 1.0, 1.0),xy)
-                for (p, v) in ( (0,dbl), (1,dtl), (2,dbr), (3,dtr) ):
-                    if best_pts[p] is None or v<best_pts[p][0]:
-                        best_pts[p] = (v, d)
-                    pass
-                pass
-
-            mae = []
-            for (d,p) in best_pts:
-                mae.append(p)
-                print "Mae",d,p
-                pass
-
-            proj.blah(mae,spread=1.03, iterations=50)
-
-            mae = proj.calculate_map_and_errors(self.point_mappings)
-            total_error = 0
-            for d in mae:
-                print d
-                total_error += d[1]["error"]
-                pass
-            print "Total error",total_error
-
+            self.change_projection(image_name=image_name, operation="corners", scale=0)
             return True
         if k in ["f"]:
             self.point_mappings.find_line_sets()
