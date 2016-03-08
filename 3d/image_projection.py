@@ -569,10 +569,6 @@ class c_image_projection(object):
                       "fov":57.0,
                       "zFar":40.0
                       }
-        zNear = 1.0
-        zFar  = projection["zFar"]
-        aspect = projection["aspect"]
-        fov = projection["fov"]
 
         object_guess_locations = {}
         for pt in point_mappings.object_guess_locations:
@@ -617,13 +613,7 @@ class c_image_projection(object):
             objs.append(obj)
             pass
 
-        Pe = matrix.c_matrixNxN(data=[0.0]*16)
-        f = 1.0/math.tan(fov*3.14159265/180.0/2)
-        Pe[0,0] = f
-        Pe[1,1] = f*aspect
-        Pe[2,2] = -(zNear+zFar)/(zFar-zNear)
-        Pe[2,3] = -2*zNear*zFar/(zFar-zNear)
-        Pe[3,2] = -1.0
+        Pe = self.pe_matrix_of_projection(projection)
 
         guess_Z = {}
         # The range we need has got to cover the camera position
@@ -634,6 +624,7 @@ class c_image_projection(object):
         # Change from 11 n to 20 n
         # That means range is now -10 to -60, which is not enough for the pencil image right
         # So going to scale it up
+        # Using n=7 for speed for selecting best camera line
         n = 20
         for i in range(n*n*n*n):
             # vi in range 0 to n-1
@@ -646,14 +637,89 @@ class c_image_projection(object):
                 pass
             guess_Z[v] = zs
             pass
-        results = self.select_best_z_set(O, Pe, uv, guess_Z, max_results=10)
+        results = self.select_best_z_set(O, Pe, uv, guess_Z, max_results=100)
 
-        best_zs_guesses = []
+        camera_deltas = []
+        camera_deltas_per_ijkl = {}
         for r in results:
-            (error, (ijkl, camera, orientation)) = r
-            print "error, ijkl, camera, zs",error, ijkl, camera, guess_Z[ijkl]
-            best_zs_guesses.append(guess_Z[ijkl])
+            (_, (ijkl, camera, _)) = r
+            camera_deltas_per_ijkl[ijkl] = r
+            for r2 in results:
+                (_, (ijkl2, camera2, _)) = r2
+                if ijkl != ijkl2:
+                    dc = vectors.vector_add(camera, camera2, scale=-1.0)
+                    l = vectors.vector_length(dc)
+                    if l>0.01:
+                        camera_deltas.append( (vectors.vector_scale(dc,1/l),[(ijkl,ijkl2)] ) )
+                        pass
+                    pass
+                pass
             pass
+
+        cos_angle = 0.99 # This means the cameras are in line by arccos(0.99), or 8 degrees
+        cos_angle = 0.95 # This means the cameras are in line by arccos(0.95), or 18 degrees
+        cos_angle = 0.90  # This means the cameras are in line by arccos(0.9), or 25 degrees
+        i = 0
+        while i<len(camera_deltas):
+            dc_i = camera_deltas[i]
+            j = i+1
+            while j<len(camera_deltas):
+                dc_j = camera_deltas[j]
+                d = vectors.dot_product(dc_i[0], dc_j[0])
+                if d<0: d=-d
+                if (d>cos_angle):
+                    j = j+1
+                    continue
+                dc_i[1].extend(dc_j[1])
+                camera_deltas.pop(j)
+                pass
+            i = i+1
+            pass
+
+        best_camera_deltas = {}
+        for dc in camera_deltas:
+            (vector,pairs) = dc
+            smallest_error = (None,None)
+            for ijkl_pair in pairs:
+                for ijkl in ijkl_pair:
+                    (error, _) = camera_deltas_per_ijkl[ijkl]
+                    if smallest_error is None or error<smallest_error:
+                        smallest_error = (error, ijkl)
+                        pass
+                    pass
+                pass
+            print pairs
+            print vector, smallest_error
+            (error, ijkl)
+            best_camera_deltas[ijkl] = (error, vector)
+            pass
+
+        if False:
+            best_zs_guesses = []
+            for r in results:
+                (error, (ijkl, camera, orientation)) = r
+                print "error, ijkl, camera, zs",error, ijkl, camera, guess_Z[ijkl]
+                best_zs_guesses.append(guess_Z[ijkl])
+                pass
+            pass
+        else:
+            best_camera_deltas_list = []
+            for ijkl in best_camera_deltas:
+                (e,v) = best_camera_deltas[ijkl]
+                best_camera_deltas_list.append((e,ijkl,v))
+                pass
+            best_zs_guesses = []
+            def cmp_camera_deltas(x,y):
+                if x[0]<y[0]: return -1
+                return 1
+            best_camera_deltas_list.sort(cmp=cmp_camera_deltas)
+            for (e,ijkl,v) in best_camera_deltas_list:
+                print e,ijkl,v
+                best_zs_guesses.append(guess_Z[ijkl])
+                pass
+            pass
+
+        print best_zs_guesses
 
         best_zs_results = []
         for gZ in best_zs_guesses:
@@ -667,17 +733,19 @@ class c_image_projection(object):
                 (improved_projection, improved_z, max_error) = r
                 print improved_projection, improved_z, max_error
                 best_zs_results.append(r)
+                if len(best_zs_results)>5:
+                    break
                 pass
             pass
 
         def cmp_results(a,b):
-            if a[2]<b[2]: return True
-            return False
+            if a[2]<b[2]: return -1
+            return 1
 
         best_zs_results.sort(cmp=cmp_results)
         print best_zs_results
         for (proj,gZ,error) in best_zs_results:
-            r = self.get_best_projection_for_guess_Z(O, Pe, uv, gZ, spread=math.pow(1.05,1/(1.5*(5-1))), iterations=35)
+            r = self.get_best_projection_for_guess_Z(O, Pe, uv, gZ, spread=math.pow(1.05,1/(1.5*(5-1))), iterations=10) #35)
             if r is None:
                 continue
             print r
