@@ -313,12 +313,6 @@ LDBL at about 4.5m left of center
 
 spkies at 620.0/936*4.5
 """
-object_guess_locations = {}
-object_guess_locations["clk.center"] = (  0.0, -0.15,  8.4)
-object_guess_locations["lspike.t"]   = ( -3.0,  0.0, 10.9)
-object_guess_locations["rspike.t"]   = (  3.0,  0.0, 10.9)
-object_guess_locations["ld.bl"]      = ( -4.5,  0.0,  0.0)
-
 faces = {}
 faces["frontleft"]  = ("img_1",
                        ( ["tl",
@@ -354,61 +348,18 @@ faces["lspike.fr"]  = ("img_1", (["lspike.f", "lspike.t", "lspike.r"],), () )
 faces["rspike.fl"]  = ("img_1", (["rspike.l", "rspike.t", "rspike.f"],), () )
 faces["rspike.fr"]  = ("img_1", (["rspike.f", "rspike.t", "rspike.r"],), () )
 
-image_mapping_data = {}
-image_mapping_data["main"] = {}
-image_mapping_data["main"]["filename"] = "sidsussexbell.jpg"
-image_mapping_data["main"]["size"] = (4272,2848)
-image_mapping_data["main"]["projection"] = {"camera":(-6.0,-12.0,2.0), "target":(5.0,0.0,4.0), "up":(0.0,0.0,1.0), "xscale":1.052, "yscale":1.9}
-#Include ld.bl
-image_mapping_data["main"]["projection"] = {'xscale': 1.064435325651855, 'camera': [-6.850000000000032, -11.774999999999984, 3.9949999999999966], 'yscale': 1.5421029326893347, 'target': [6.100000000000005, 0.0, 3.2000000000000015], 'up': [0.012094257070636666, 0.0458884825755716, 0.9988733533901186]}
-#Exclude ld.bl
-#image_mapping_data["main"]["projection"] = {'xscale': 1.067753882203797, 'camera': [-6.900000000000032, -11.774999999999984, 3.9699999999999966], 'yscale': 1.5412762914302771, 'target': [6.125000000000005, 0.0, 3.2000000000000015], 'up': [0.012587949905595398, 0.04776167039706178, 0.998779438293589]}
-
-image_mapping_data["img_1"] = {}
-image_mapping_data["img_1"]["filename"] = "sidsussexbell_1.jpg"
-image_mapping_data["img_1"]["size"] = (640,480)
-image_mapping_data["img_1"]["projection"] = {"camera":(+7.0,-6.0,6.7), "target":(-1.0,0.0,5.5), "up":(0.0,0.0,1.0), "xscale":2.2, "yscale":2.1}
-image_mapping_data["img_1"]["projection"] = {'xscale': 1.78, 'camera': [5.7249999999999766, -8.050000000000045, 6.349999999999991], 'yscale': 2.495, 'target': [-1.0999999999999996, -0.025, 5.650000000000002], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["img_1"]["projection"] = {'xscale': 1.77, 'camera': [5.7249999999999766, -8.025000000000045, 6.374999999999991], 'yscale': 2.5, 'target': [-1.0999999999999996, -0.025, 5.650000000000002], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["img_1"]["projection"] = {'xscale': 1.77, 'camera': [5.7249999999999766, -8.000000000000044, 6.424999999999992], 'yscale': 2.51, 'target': [-1.0999999999999996, -0.025, 5.650000000000002], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["img_1"]["projection"] = {'xscale': 1.77, 'camera': [5.7249999999999766, -8.025000000000045, 6.449999999999992], 'yscale': 2.51, 'target': [-1.0999999999999996, -0.025, 5.650000000000002], 'up': (0.0, 0.0, 1.0)}
-#image_mapping_data["img_1"]["projection"] = {'xscale': 1.0, 'camera': [5.699999999999976, -7.600000000000039, 4.999999999999972], 'yscale': 1.33, 'target': [-0.6499999999999996, -0.025, 5.625000000000002], 'up': [-0.1280297274786813, -0.025210559713782943, 0.9914498557973834]}
-#image_mapping_data["img_1"]["projection"] = {'xscale': 1.0, 'camera': [4.324999999999957, -4.024999999999988, 7.70000000000001], 'yscale': 1.33, 'target': [-0.5749999999999995, -0.025, 5.424999999999999], 'up': (0.0,0.0,1.0)}
-#image_mapping_data["img_1"]["projection"] = {'xscale': 1.0, 'camera': [4.349999999999957, -3.974999999999988, 7.72500000000001], 'yscale': 1.33, 'target': [-0.5999999999999995, 0, 5.424999999999999], 'up': [0.0, 0.025989506462090445, 0.9996622157278212]}
-image_mapping_data["img_1"]["projection"] = {'xscale': 1.5, 'camera': [5.7249999999999766, -8.025000000000045, 6.449999999999992], 'yscale': 2.51, 'target': [-1.0999999999999996, -0.025, 5.650000000000002], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["img_1"]["projection"] = {'xscale': 1.4, 'camera': [4.274999999999956, -8.300000000000049, 6.699999999999996], 'yscale': 2.51, 'target': [-1.1249999999999996, -0.025, 5.7500000000000036], 'up': [0.007904268768544647, 0.010539104615119298, 0.9999132211392879]}
-image_mapping_data["img_1"]["projection"] = {'xscale': 1.313, 'camera': [3.7249999999999535, -8.275000000000048, 7.100000000000001], 'yscale': 2.538, 'target': [-1.1749999999999994, -0.025, 5.800000000000004], 'up': [0.015537794932649479, 0.018198676592683993, 0.999713651551736]}
-# Include ld.bl
-image_mapping_data["img_1"]["projection"] = {'xscale': 1.313, 'camera': [3.274999999999955, -8.200000000000047, 7.550000000000008], 'yscale': 2.538, 'target': [-1.1999999999999993, -0.025, 5.850000000000005], 'up': [0.025724837840984928, 0.020849315095758218, 0.9994516190282013]}
-image_mapping_data["img_1"]["projection"] = {'xscale': 0.6307628326789375, 'camera': [-2.9250000000000314, -1.7999999999999958, 10.675000000000052], 'yscale': 3.1895123566316363, 'target': [-1.824999999999997, -0.025, 7.175000000000024], 'up': [-0.17289738620078887, 0.0966518133922961, 0.980186166405605]}
-# Exclude ld.bl
-#image_mapping_data["img_1"]["projection"] = {'xscale': 0.585, 'camera': [-0.07500000000003758, -3.5999999999999894, 11.100000000000058], 'yscale': 2.235, 'target': [-1.6499999999999977, -0.025, 6.250000000000011], 'up': [0.1901964638010508, 0.033214255290522667, 0.9811840390075003]}
-
-image_mapping_data["img_1"]["projection"] = {"camera":(+7.0,-6.0,6.7), "target":(-1.0,0.0,5.5), "up":(0.0,0.0,1.0), "xscale":1.5, "yscale":2.1}
-
-image_mapping_data["img_2"] = {}
-image_mapping_data["img_2"]["filename"] = "sidsussexbell_2.jpg"
-image_mapping_data["img_2"]["size"] = (1024,772)
-image_mapping_data["img_2"]["projection"] = {"camera":(0.0,-6.0,2.0), "target":( 0.0,0.0,7.2), "up":(0.01,0.0,1.0), "xscale":2.45, "yscale":3.8}
-image_mapping_data["img_2"]["projection"] = {'xscale': 2.445, 'camera': (-0.2, -6.2, 2.225), 'yscale': 3.77, 'target': (0.025, 0.025, 7.2), 'up': (0.01, 0.0, 1.0)}
-
-
-image_mapping_data["img_3"] = {}
-image_mapping_data["img_3"]["filename"] = "sidsussexbell_3.jpg"
-image_mapping_data["img_3"]["size"] = (320,370)
-image_mapping_data["img_3"]["projection"] = {'xscale': 3.0, 'camera': [0.05, -9.999999999999986, -0.6500000000000005], 'yscale': 2.93, 'target': [0.25, 0.2, 4.999999999999997], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["img_3"]["projection"] = {'xscale': 2.95, 'camera': [0.025, -10.024999999999986, -0.6250000000000004], 'yscale': 2.93, 'target': [0.225, 0.2, 4.999999999999997], 'up': (0.0, 0.0, 1.0)}
-image_mapping_data["img_3"]["projection"] = {'xscale': 2.95, 'camera': [0.07500000000000001, -9.824999999999983, -0.6500000000000005], 'yscale': 2.91, 'target': [0.25, 0.2, 4.999999999999997], 'up': (0.0, 0.0, 1.0)}
-
-
-image_mapping_data['main']['projection'] = {'fov': 84.575, 'camera': [-3.7760999999990874, -15.51269999999642, 2.773999999999937], 'orientation': c_quaternion({'r': 0.6305, 'i': 0.7222, 'j':-0.2243, 'k':-0.1751}), 'aspect': 1.5}
-image_mapping_data['img_1']['projection'] = {'fov': 68.33999999999999, 'camera': [5.100500000001377, -8.321200000001149, 9.918599999999943], 'orientation': c_quaternion({'r': 0.7589, 'i': 0.5645, 'j': 0.2363, 'k': 0.2225}), 'aspect': 1.3}
-
-del(image_mapping_data["img_2"])
-del(image_mapping_data["img_3"])
+faces["floor"]  = ("left", (["flsq1.0", "flsq3.3", "flsq4.2", "flsq4.1", "flsq2.0",
+                             "drflr.4", "drflr.3", "drflr.2", "drflr.1", "drflr.0",
+                             ],),
+                   ("flsq1.0","flsq1.1","flsq1.2","flsq1.3",
+                    "flsq2.0","flsq2.1","flsq2.2","flsq2.3",                    
+                    "flsq3.0","flsq3.1","flsq3.2","flsq3.3",                    
+                    "flsq4.0","flsq4.1","flsq4.2","flsq4.3",                    
+                    "flsq5.0","flsq5.1","flsq5.2","flsq5.3",                    
+                    ))
 
 #a c_opengl_image_projection
-class c_opengl_image_projection(c_image_projection):
+class c_opengl_image_projection(object):
     #f __init__
     def __init__(self, projection=None, **kwargs):
         self.texture = None
@@ -430,24 +381,32 @@ class c_opengl_image_projection(c_image_projection):
             return
         if self.projection.projection is None:
             return
-        glPushMatrix()
-        if self.texture is not None:
+        if False and self.texture is not None:
+            glPushMatrix()
             glBindTexture(GL_TEXTURE_2D, self.texture)
             self.object.draw_opengl_surface()
             glPopMatrix()
             return
+
+        glDisable(GL_TEXTURE_2D)
+        glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,1.0,1.0,1.0])
+        glColor3f(1.0, 1.0, 1.0)
+
         glPushMatrix()
+
         camera = self.projection.projection["camera"]
         glTranslate(camera[0],camera[1],camera[2])
         glutSolidCube(0.1)
-        glPopMatrix()
-        glColor3f(1.0, 1.0, 1.0)
         glLineWidth(1.0)
-        #glBegin(GL_LINES);
-        #glVertex3f(self.camera[0],self.camera[1],self.camera[2])
-        #glVertex3f(self.target[0],self.target[1],self.target[2])
-        #glEnd()
+        glBegin(GL_LINES);
+        m = self.projection.projection["orientation"].get_matrixn()
+        v = vectors.vector_scale(m.get_row(2),40.0)
+        glVertex3f(-v[0],-v[1],-v[2])
+        glVertex3f(v[0],v[1],v[2])
+        glEnd()
+
         glPopMatrix()
+        glEnable(GL_TEXTURE_2D)
         pass
     pass
 
@@ -483,26 +442,23 @@ class c_mapping(opengl_app.c_opengl_camera_app):
                   {"up":(0.0,0.0,+0.01)},
                   {}]
     #f __init__
-    def __init__(self, **kwargs):
+    def __init__(self, point_map_filename, **kwargs):
         opengl_app.c_opengl_camera_app.__init__(self, **kwargs)
         self.first_pass = True
         self.mvp =  matrix.c_matrix4x4()
         self.point_mappings = c_point_mapping()
         self.image_projections = {}
-        #self.load_point_mapping("sidsussexbell.map")
-        #self.load_point_mapping("corridor.map")
-        self.load_point_mapping("pencils.map")
+        self.load_point_mapping(point_map_filename)
+        self.image_names = self.point_mappings.get_images()
+        self.image_names.sort()
         self.load_images()
-        #self.calc_total_errors()
         pass
     #f opengl_post_init
     def opengl_post_init(self):
         global image_mapping_data
 
-        self.camera["position"] = [0.0,10.0,-2.0]
-        self.camera["facing"] = c_quaternion.identity()
-        self.camera["facing"] = c_quaternion.pitch(-1*3.1415/2).multiply(self.camera["facing"])
-        self.camera["facing"] = c_quaternion.roll(0*3.1415).multiply(self.camera["facing"])
+        self.set_camera( camera=[0.0,10.0,-2.0],
+                         orientation=c_quaternion.identity() )
 
         self.point_mappings.find_line_sets()
         self.point_mappings.approximate_positions()
@@ -517,8 +473,7 @@ class c_mapping(opengl_app.c_opengl_camera_app):
         pass
     #f load_images
     def load_images(self):
-        image_names = self.point_mappings.get_images()
-        for k in image_names:
+        for k in self.image_names:
             image_data = self.point_mappings.get_image_data(k)
             self.image_projections[k] = c_opengl_image_projection(name = k,
                                                                   image_filename = image_data["filename"],
@@ -527,14 +482,14 @@ class c_mapping(opengl_app.c_opengl_camera_app):
             pass
         pass
     #f generate_faces
-    def generate_faces(self):
+    def generate_faces(self, texture_image_name="left"): # was main for sidsussex
         global faces
+        proj = self.image_projections[texture_image_name]
+        proj.load_texture()
         self.meshes = []
-        #SIDSUSSEX proj = self.image_projections["main"].projection
-        proj = self.image_projections["left"].projection
         pts = {}
         def uv_from_image_xyz(xyz, proj=proj):
-            (uvzw,img_xy) = proj.image_of_model(xyz)
+            (uvzw,img_xy) = proj.projection.image_of_model(xyz)
             uv = (0.5+uvzw[0]*0.5, 0.5-uvzw[1]*0.5)
             return uv
         for pt in self.point_mappings.get_mapping_names():
@@ -585,16 +540,13 @@ class c_mapping(opengl_app.c_opengl_camera_app):
             print "Plane",n,errors["total_sq"]/errors["num_pts"],errors["pts"]
             ogm.optimize()
             def xyz_from_image_uv(uv, proj=proj, plane=plane):
-                (p,d) = proj.model_line_for_image((-1.0+2.0*uv[0],1.0-2.0*uv[1]))
+                (p,d) = proj.projection.model_line_for_image((-1.0+2.0*uv[0],1.0-2.0*uv[1]))
                 xyz = plane.line_intersect(p,d)
                 if xyz is None: return (0.0,0.0,0.0)
                 return xyz
             ogm.create_opengl_surface(projection_callback=xyz_from_image_uv)
             self.meshes.append(ogm)
             pass
-        self.image_projections["left"].load_texture()
-        #SIDSUSSEX self.image_projections["main"].load_texture()
-        #die
         pass
     #f display_image_faces
     def display_image_faces(self):
@@ -708,7 +660,7 @@ class c_mapping(opengl_app.c_opengl_camera_app):
         pass
     #f display
     def display(self):
-        opengl_app.c_opengl_camera_app.display(self)
+        opengl_app.c_opengl_camera_app.display(self, show_crosshairs=True)
 
         ambient_lightZeroColor = [1.0,1.0,1.0,1.0]
         glLightfv(GL_LIGHT1, GL_AMBIENT, ambient_lightZeroColor)
@@ -721,6 +673,17 @@ class c_mapping(opengl_app.c_opengl_camera_app):
    
         glutSwapBuffers()
         pass
+    #f keypress
+    def keypress(self, key,m,x,y):
+        if key in ["1", "2", "3", "4"]:
+            n = ["1","2","3","4"].index(key)
+            image_data = self.point_mappings.get_image_data(self.image_names[n])
+            proj = image_data["projection"]
+            self.set_camera(camera=vectors.vector_scale(proj.projection["camera"],-1.0),
+                            orientation=proj.projection["orientation"].copy().invert_rotation(),
+                            fov=proj.projection["fov"])
+            return True
+        return opengl_app.c_opengl_camera_app.keypress(self, key,m,x,y)
     #f find_in_triangle
     def find_in_triangle(self, xy, p0, p1, p2):
         """
@@ -797,19 +760,11 @@ class c_mapping(opengl_app.c_opengl_camera_app):
 
 #a Main
 def main():
-    og = c_mapping(window_size = (1000,1000))
+    point_map_filename = "sidsussexbell.map"
+    point_map_filename = "pencils.map"
+    point_map_filename = "corridor.map"
+    og = c_mapping(point_map_filename=point_map_filename, window_size = (1000,1000))
     og.init_opengl()
-    #menus = og.build_menu_init()
-    #og.build_menu_add_menu(menus,"submenu")
-    #og.build_menu_add_menu_item(menus,"a",("a",1))
-    #og.build_menu_add_menu_item(menus,"b",("b",2))
-    #og.build_menu_add_menu(menus,"main_menu")
-    #og.build_menu_add_menu_submenu(menus,"Sub","submenu")
-    #og.build_menu_add_menu_item(menus,"c","Item c")
-    #og.create_menus(menus)
-    #og.attach_menu("main_menu")
-    #m.camera = og.camera
-    #m.reset()
     og.main_loop()
 
 if __name__ == '__main__':

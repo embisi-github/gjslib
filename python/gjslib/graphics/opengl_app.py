@@ -183,6 +183,17 @@ class c_opengl_camera_app(c_opengl_app):
         self.zNear=1.0
         self.zFar=40.0
         pass
+    #f set_camera
+    def set_camera(self, camera=None, orientation=None, fov=None):
+        if camera is not None:
+            self.camera["position"] = list(camera)
+            pass
+        if orientation is not None:
+            self.camera["facing"] = orientation
+            pass
+        if fov is not None:
+            self.camera["fov"] = fov
+            pass
     #f change_angle
     def change_angle(self, angle, dirn, angle_delta=0.01 ):
         if (self.camera["rpy"][angle]*dirn)<0:
@@ -241,7 +252,7 @@ class c_opengl_camera_app(c_opengl_app):
     def opengl_post_init(self):
         pass
     #f display
-    def display(self):
+    def display(self, show_crosshairs=False):
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
         gluPerspective(self.camera["fov"],self.aspect,self.zNear,self.zFar)
@@ -269,6 +280,23 @@ class c_opengl_camera_app(c_opengl_app):
             pass
 
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
+
+        glPushMatrix()
+        glLoadIdentity()
+        glMatrixMode(GL_PROJECTION)
+        glPushMatrix()
+        glLoadIdentity()
+        glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,1.0,1.0,1.0])
+        glBegin(GL_LINES);
+        glVertex3f(-1,0,0)
+        glVertex3f(1,0,0)
+        glVertex3f(0,-1,0)
+        glVertex3f(0,1,0)
+        glEnd()
+        glPopMatrix()
+        glMatrixMode(GL_MODELVIEW)
+        glPopMatrix()
+
         pass
 
     #f All done

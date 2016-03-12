@@ -251,6 +251,13 @@ class c_quaternion( object ):
         self.quat["k"] += other.quat["k"] *scale
         self.matrix = None
         return self
+    #f invert_rotation
+    def invert_rotation( self ):
+        self.quat["i"] = -self.quat["i"]
+        self.quat["j"] = -self.quat["j"]
+        self.quat["k"] = -self.quat["k"]
+        self.matrix = None
+        return self
     #f scale
     def scale( self, scale ):
         self.quat["r"] *= scale
