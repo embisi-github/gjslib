@@ -40,7 +40,13 @@ class c_point_mapping(object):
         # y=0.10 has error 0.00008804
         # y=0.11 has error 0.00008661
         # y=0.13 has error 0.00009180
-
+        # window is 0.656 of a tile
+        # top of window is 1.33 tiles above ground
+        self.object_guess_locations["flsq1.0"]   = ( 0.0, 0.0, 0.0)
+        self.object_guess_locations["flsq3.3"]   = ( 0.0, -3.0, 0.0)
+        self.object_guess_locations["flsq4.2"]   = ( 3.0, -3.0, 0.0)
+        #self.object_guess_locations["flsq2.0"]   = ( 2.0, 0.0, 0.0)
+        self.object_guess_locations["drsq1.1"]   = ( 0.15, 1.5, 1.33)
         pass
     #f reset
     def reset(self):
@@ -166,10 +172,15 @@ class c_point_mapping(object):
 
         print >>f, "--Projections:"
         for name in image_names:
+            if "projection" not in self.images[name]:
+                continue
             proj = self.images[name]["projection"]
-            if proj is not None:
-                print >>f, "%s,%s"%(name,proj.save_projection_string())
-                pass
+            if proj is None:
+                continue
+            text = proj.save_projection_string()
+            if text is None:
+                continue
+            print >>f, "%s,%s"%(name,text)
             pass
         print >>f, "\n"
 

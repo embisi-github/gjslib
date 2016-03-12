@@ -61,6 +61,16 @@ class c_image_projection(object):
         """
         Save string - should be a set of 'n' comma separated items
         """
+        if self.projection is None:
+            return None
+        if "camera" not in self.projection:
+            return None
+        if "orientation" not in self.projection:
+            return None
+        if "aspect" not in self.projection:
+            return None
+        if "fov" not in self.projection:
+            return None
         repr = "%f,%f,%f "%(self.projection["camera"][0],
                             self.projection["camera"][1],
                             self.projection["camera"][2])
@@ -721,6 +731,19 @@ class c_image_projection(object):
         #print Zs
         R = self.calculate_R(projection, pt_names, object_guess_locations, image_locations, Zs)
         return (R, Zs)
+    #f report_point_errors
+    def report_point_errors(self, points, image_locations):
+        pts = points.keys()
+        pts.sort()
+        sum_d = 0
+        for k in pts:
+            (xyzw,uv) = self.image_of_model(points[k])
+            d = vectors.vector_separation(uv,image_locations[k])
+            sum_d += d
+            print k, d, uv, image_locations[k]
+            pass
+        print "Total error",sum_d
+        pass
     #f blah
     def blah(self, point_mappings, verbose=True):
         print "Camera before blah"
@@ -745,31 +768,39 @@ class c_image_projection(object):
         base_camera = self.projection["camera"]
         for i in range(50):
             print "-"*80
-            print "Iteration",i
-            smallest_error = (1E9,None)
-            for v in dirns:
-                for scale in [0.0, 0.01, 0.02, 0.03, 0.04, 0.05]:
-                    camera = vectors.vector_add(base_camera,v,scale=scale*math.pow(0.9,i))
-                    projection["camera"] = camera
-                    R,Zs = self.find_R_Zs_from_camera(projection, pt_names, object_guess_locations, image_locations)
-                    error = self.error_of_rotation(R, verbose=False)
-                    if error is not None and error[0]<smallest_error[0]:
-                        #(error, volume_r, lengths_r, lengths_c, eigenvalues[0]) = error
-                        smallest_error = (error[0], R, Zs, v, scale, camera)
-                        print error[0], camera, v, scale
+            print "Iteration",i,math.pow(0.8,i)
+            for j in range(100):
+                smallest_error = (1E9,None)
+                first_v = True
+                for v in dirns:
+                    for scale in [0, 1, 2]:
+                        if not first_v and (scale==0): continue
+                        first_v = False
+                        camera = vectors.vector_add(base_camera,v,scale=scale*math.pow(0.8,i))
+                        projection["camera"] = camera
+                        R,Zs = self.find_R_Zs_from_camera(projection, pt_names, object_guess_locations, image_locations)
+                        error = self.error_of_rotation(R, verbose=False)
+                        if error is not None and error[0]<smallest_error[0]:
+                            #(error, volume_r, lengths_r, lengths_c, eigenvalues[0]) = error
+                            smallest_error = (error[0], R, Zs, v, scale, camera)
+                            print error[0], camera, v, scale
+                            pass
                         pass
                     pass
+                (error,R,Zs,v,scale,camera) = smallest_error
+                if scale==0:
+                    break
+                base_camera = camera
                 pass
-            (error,R,Zs,v,scale,camera) = smallest_error
-            orientation = quaternion.c_quaternion().from_matrix(R)
-            base_camera = camera
             pass
+        orientation = quaternion.c_quaternion().from_matrix(R)
         projection["camera"] = base_camera
         projection["orientation"] = orientation
         self.set_projection(projection)
         print "Cameras after blah"
         print base_camera
         print self.projection["camera"]
+        self.report_point_errors(object_guess_locations, image_locations)
         pass
     #f get_object_and_image_locations
     def get_object_and_image_locations(self, point_mappings):
@@ -839,7 +870,8 @@ class c_image_projection(object):
         Pe = self.pe_matrix_of_projection(projection)
 
         #b Generate initial guesses for Z and run them
-        guess_Z = self.generate_uniform_Z_set_ijkl(n=20, base=2.0, step=2.5)
+        #guess_Z = self.generate_uniform_Z_set_ijkl(n=20, base=2.0, step=2.5)
+        guess_Z = self.generate_uniform_Z_set_ijkl(n=7, base=0.0, step=5.0)
         z_set_results = self.select_best_Z_set(O, Pe, uv, guess_Z, max_results=125)
 
         #b Find best camera choices from results and hence best Z guesses to optimize
@@ -901,18 +933,10 @@ class c_image_projection(object):
         projection = improved_projection
         print "-"*80
         print "Optimized:\nself.images['%s']['projection'] = %s"%(self.name,str(projection))
-        pts = object_guess_locations.keys()
-        pts.sort()
-        sum_d = 0
-        for k in pts:
-            (xyzw,uv) = self.image_of_model(object_guess_locations[k])
-            d = vectors.vector_separation(uv,image_locations[k])
-            sum_d += d
-            print k, d, uv, image_locations[k]
-            pass
-        print "Total error",sum_d
-
         self.set_projection(projection)
+
+        self.report_point_errors(object_guess_locations, image_locations)
+
         #b Done
         return
     #f pe_matrix_of_projection

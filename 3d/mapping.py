@@ -489,7 +489,9 @@ class c_mapping(opengl_app.c_opengl_camera_app):
         self.mvp =  matrix.c_matrix4x4()
         self.point_mappings = c_point_mapping()
         self.image_projections = {}
-        self.load_point_mapping("sidsussexbell.map")
+        #self.load_point_mapping("sidsussexbell.map")
+        #self.load_point_mapping("corridor.map")
+        self.load_point_mapping("pencils.map")
         self.load_images()
         #self.calc_total_errors()
         pass
@@ -528,7 +530,8 @@ class c_mapping(opengl_app.c_opengl_camera_app):
     def generate_faces(self):
         global faces
         self.meshes = []
-        proj = self.image_projections["main"].projection
+        #SIDSUSSEX proj = self.image_projections["main"].projection
+        proj = self.image_projections["left"].projection
         pts = {}
         def uv_from_image_xyz(xyz, proj=proj):
             (uvzw,img_xy) = proj.image_of_model(xyz)
@@ -589,7 +592,8 @@ class c_mapping(opengl_app.c_opengl_camera_app):
             ogm.create_opengl_surface(projection_callback=xyz_from_image_uv)
             self.meshes.append(ogm)
             pass
-        self.image_projections["main"].load_texture()
+        self.image_projections["left"].load_texture()
+        #SIDSUSSEX self.image_projections["main"].load_texture()
         #die
         pass
     #f display_image_faces
@@ -598,7 +602,8 @@ class c_mapping(opengl_app.c_opengl_camera_app):
         glPushMatrix()
         glEnable(GL_TEXTURE_2D)
         glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,1.0,1.0,1.0])
-        proj = self.image_projections["img_1"]
+        #SIDSUSSEX proj = self.image_projections["img_1"]
+        proj = self.image_projections["left"]
         if proj.texture is not None:
             glBindTexture(GL_TEXTURE_2D, proj.texture)
             pass

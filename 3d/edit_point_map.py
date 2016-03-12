@@ -628,7 +628,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
                     proj.optimize_projection_from_select_points(self.point_mappings, use_corners=False)
                     pass
                 else: # "small"
-                    self.point_mappings.optimize_projections(image=image_name, fov_iterations=1, orientation_iterations=200, camera_iterations=200, delta_scale=scale)
+                    self.point_mappings.optimize_projections(image=image_name, fov_iterations=1, orientation_iterations=200, camera_iterations=1, do_fov=False, do_camera=False, delta_scale=scale)
                     pass
                 print "Set projection (through optimization)",image_name,self.point_mappings.get_projection(image=image_name)
                 pass
@@ -865,8 +865,9 @@ class c_edit_point_map(opengl_app.c_opengl_app):
 
 #a Main
 def main():
+    point_mapping_filename="corridor.map"
     point_mapping_filename="pencils.map"
-    point_mapping_filename="sidsussexbell.map"
+    #point_mapping_filename="sidsussexbell.map"
     m = c_edit_point_map( point_mapping_filename=point_mapping_filename,
                           window_size = (1800,1100))
     m.init_opengl()
