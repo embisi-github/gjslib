@@ -13,7 +13,7 @@ class c_point_mapping(object):
         self.object_guess_locations["lspike.t"]   = ( -3.3,  0.0, 10.9)
         self.object_guess_locations["rspike.t"]   = (  3.3,  0.0, 10.9)
         self.object_guess_locations["cp"]         = (  0.0,  -2.0, 4.2)
-        self.object_guess_locations["cp"]         = (  0.0,  -1.5, 3.8)
+        #self.object_guess_locations["cp"]         = (  0.0,  -1.5, 3.8)
 
         self.object_guess_locations["calc.t.bl"]   = ( 10.2, 18.993, 2.01)
         self.object_guess_locations["calc.b.fr"]   = ( 24.0,  0.00, 0.01)
@@ -21,7 +21,25 @@ class c_point_mapping(object):
         self.object_guess_locations["clips.t.fr"]  = ( 0.02,   0.08, 7.60)
 
         self.object_guess_locations["clips.b.fr"]  = ( 0.0,   0.05, 0.1)
-        self.object_guess_locations["clips.t.fr"]  = ( 0.02,   0.08, 7.80)
+        self.object_guess_locations["clips.t.fr"]  = ( 0.02,   0.08, 8.00)
+        # 8.10 has error 0.0011090
+        # 8.01 has error 0.0001089
+        # 8.00 has error 0.0001028
+        # 7.95 has error 0.0001499
+        # 7.90 has error 0.0002159
+        # 7.80 has error 0.0003883
+        # 7.70 has error 0.0006423
+        # 7.60 has error 0.0009146
+        self.object_guess_locations["clips.t.fr"]  = ( -0.01,   0.08, 8.00)
+        # x=0.02 has error 0.0001028
+        # x=0.00 has error 0.00009813
+        # x=-0.01 has error 0.00009819
+        self.object_guess_locations["clips.t.fr"]  = ( 0.00,   0.11, 8.00)
+        # y=0.08 has error 0.00009813
+        # y=0.09 has error 0.00009220
+        # y=0.10 has error 0.00008804
+        # y=0.11 has error 0.00008661
+        # y=0.13 has error 0.00009180
 
         pass
     #f reset

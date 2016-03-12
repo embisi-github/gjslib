@@ -211,9 +211,8 @@ class c_quaternion( object ):
         if (d>-epsilon) and (d<epsilon):
             raise Exception("Singular matrix supplied")
         m = matrix.copy()
-        scale = 1.0
-        if d<0: scale=-1.0
-        m.scale(1.0/math.pow(d*scale,1/3.0))
+        if d<0: d=-d
+        m.scale(1.0/math.pow(d,1/3.0))
 
         yaw   = math.atan2(m[1,2],m[2,2])
         roll  = math.atan2(m[0,1],m[0,0])
@@ -221,7 +220,22 @@ class c_quaternion( object ):
             pitch=-math.asin(1)
         else:
             pitch = -math.asin(m[0,2])
-        return self.from_euler(roll=roll, pitch=pitch, yaw=yaw, degrees=False)
+        q0 = c_quaternion.of_euler(roll=roll, pitch=pitch, yaw=yaw, degrees=False)
+
+        yaw   = math.atan2(m[2,1],m[2,2])
+        roll  = math.atan2(m[1,0],m[0,0])
+        if m[2,0]<-1 or m[2,0]>1:
+            pitch=-math.asin(1)
+        else:
+            pitch = -math.asin(m[2,0])
+        q1 = c_quaternion.of_euler(roll=roll, pitch=pitch, yaw=yaw, degrees=False)
+        self.quat["r"] = (q0.quat["r"] + q1.quat["r"])/2.0
+        self.quat["i"] = (q0.quat["i"] - q1.quat["i"])/2.0
+        self.quat["j"] = (q0.quat["j"] - q1.quat["j"])/2.0
+        self.quat["k"] = (q0.quat["k"] - q1.quat["k"])/2.0
+        self.normalize()
+        self.matrix = None
+        return self
     #f modulus
     def modulus( self ):
         r = self.quat["r"]
@@ -229,6 +243,14 @@ class c_quaternion( object ):
         j = self.quat["j"]
         k = self.quat["k"]
         return math.sqrt(r*r+i*i+j*j+k*k)
+    #f add
+    def add( self, other, scale=1.0 ):
+        self.quat["r"] += other.quat["r"] *scale
+        self.quat["i"] += other.quat["i"] *scale
+        self.quat["j"] += other.quat["j"] *scale
+        self.quat["k"] += other.quat["k"] *scale
+        self.matrix = None
+        return self
     #f scale
     def scale( self, scale ):
         self.quat["r"] *= scale

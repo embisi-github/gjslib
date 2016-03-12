@@ -439,6 +439,10 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         self.menus.add_item("Step size 0.1",("projection","small",0.1))
         self.menus.add_item("Step size 0.01",("projection","small",0.01))
         self.menus.add_item("Step size 0.001",("projection","small",0.001))
+        self.menus.add_item("Step size 1E-3",("projection","small",1E-3))
+        self.menus.add_item("Step size 1E-4",("projection","small",1E-4))
+        self.menus.add_item("Step size 1E-5",("projection","small",1E-5))
+        self.menus.add_item("Step size 1E-6",("projection","small",1E-6))
         self.menus.add_item("Corners",("projection","corners",0))
         self.menus.add_item("References",("projection","references",0))
         self.menus.add_menu("main_menu")
@@ -623,8 +627,8 @@ class c_edit_point_map(opengl_app.c_opengl_app):
                 elif operation in ["references"]:
                     proj.optimize_projection_from_select_points(self.point_mappings, use_corners=False)
                     pass
-                else:
-                    self.point_mappings.optimize_projections(image=image_name, fov_iterations=1, orientation_iterations=20, camera_iterations=20, delta_scale=scale)
+                else: # "small"
+                    self.point_mappings.optimize_projections(image=image_name, fov_iterations=1, orientation_iterations=200, camera_iterations=200, delta_scale=scale)
                     pass
                 print "Set projection (through optimization)",image_name,self.point_mappings.get_projection(image=image_name)
                 pass
@@ -706,6 +710,11 @@ class c_edit_point_map(opengl_app.c_opengl_app):
             pass
         self.epm_info.update()
         pass
+    #f test
+    def test(self, image_name, pt_name):
+        proj = self.point_mappings.images[image_name]["projection"]
+        proj.blah(self.point_mappings)
+        pass
     #f menu_select
     def menu_select(self, menu, value):
         if type(value)==tuple:
@@ -755,6 +764,9 @@ class c_edit_point_map(opengl_app.c_opengl_app):
 
         if ord(k)==27:
             self.point_set_end()
+            return True
+        if k in ["t"]:
+            self.test(image_name=image_name, pt_name=pt_name)
             return True
         if k in ["F"]:
             self.change_projection(image_name=image_name, operation="corners", scale=0)
@@ -854,7 +866,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
 #a Main
 def main():
     point_mapping_filename="pencils.map"
-    #point_mapping_filename="sidsussexbell.map"
+    point_mapping_filename="sidsussexbell.map"
     m = c_edit_point_map( point_mapping_filename=point_mapping_filename,
                           window_size = (1800,1100))
     m.init_opengl()
