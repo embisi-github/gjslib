@@ -472,68 +472,6 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         self.epm_info.update()
 
         pass
-    #f display_image_points
-    def display_image_points(self):
-        global faces
-        for n in faces:
-            f = faces[n]
-            pts = []
-            for pt in f:
-                if pt in self.point_mappings.get_mapping_names():
-                    pts.append(self.point_mappings.get_approx_position(pt))
-                    pass
-                pass
-            if len(pts)>=3:
-                i = 0
-                j = len(pts)-1
-                glBegin(GL_TRIANGLE_STRIP)
-                while (j>=i):
-                    glVertex3f(pts[i][0],pts[i][1],pts[i][2])
-                    i += 1
-                    if (i<=j):
-                        glVertex3f(pts[j][0],pts[j][1],pts[j][2])
-                        pass
-                    j -= 1
-                    pass
-                glEnd()
-                pass
-            pass
-        for n in self.point_mappings.get_mapping_names():
-            (xyz) = self.point_mappings.get_approx_position(n)
-            glPushMatrix()
-            glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,0.3,0.3,1.0])
-            glTranslate(xyz[0],xyz[1],xyz[2])
-            glScale(0.03,0.03,0.03)
-            glutSolidSphere(1,6,6)
-            glPopMatrix()
-            pass
-        #for pt in ["clkcenter", "lspike", "rspike"]:
-        for pt in ["rspike"]:
-        #for pt in ["clkcenter", "lspike", "rspike", "belltl", "belltr"]:
-            (r,g,b) = {"clkcenter":(1.0,0.3,1.0),
-                   "rspike":(1.0,0.3,1.0),
-                   "lspike":(1.0,0.3,1.0),
-                   "belltl":(0.3,1.0,1.0),
-                   "belltr":(0.3,1.0,1.0),}[pt]
-            for k in self.image_projections:
-                p = self.image_projections[k]
-                xy = self.point_mappings.get_xy(pt, k)
-                if xy is not None:
-                    (p0,d0) = p.model_line_for_image(xy)
-                    glMaterialfv(GL_FRONT,GL_AMBIENT,[r,g,b,1.0])
-                    glLineWidth(2.0)
-                    glBegin(GL_LINES);
-                    glVertex3f(p0[0]+d0[0]*40.0,
-                               p0[1]+d0[1]*40.0,
-                               p0[2]+d0[2]*40.0)
-                    glVertex3f(p0[0]-d0[0]*40.0,
-                               p0[1]-d0[1]*40.0,
-                               p0[2]-d0[2]*40.0)
-                    glEnd()
-                    pass
-                pass
-            pass
-        pass
     #f display
     def display(self):
         self.tick += 1
