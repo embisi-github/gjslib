@@ -358,6 +358,15 @@ class c_matrixNxN(object):
     #f __repr__
     def __repr__(self):
         return str(self.matrix)
+    #f identity
+    def identity(self):
+        n = self.order
+        for r in range(n):
+            for c in range(n):
+                self[r,c] = ((r==c) and 1.0) or 0.0
+                pass
+            pass
+        return self
     #f get_matrix
     def get_matrix(self, row_major=True):
         if row_major:
@@ -379,12 +388,15 @@ class c_matrixNxN(object):
     #f scale
     def scale(self, scale=1.0):
         n = self.order
+        if type(scale)==int:
+            scale = float(scale)
+        if type(scale)==float:
+            scale = [scale]*n
         for r in range(n):
             for c in range(n):
-                self[r,c] *= scale
+                self[r,c] *= scale[c]
                 pass
             pass
-        pass
         return self
     #f apply
     def apply(self, v):
@@ -632,6 +644,16 @@ class c_matrixNxN(object):
             return m_i.apply(v)
             pass
         pass
+    #f translate
+    def translate(self,xyz=(0,0,0),scale=1.0):
+        n = self.order
+        if n==4:
+            self.postmult(c_matrixNxN(data=[1,0,0,xyz[0]*scale,
+                                            0,1,0,xyz[1]*scale,
+                                            0,0,1,xyz[2]*scale,
+                                            0,0,0,1]))
+            return self
+        raise Exception("Translate requires order 4 matrix")
     #f All done
     pass
 #a Main

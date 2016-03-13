@@ -46,17 +46,6 @@ class c_opengl_layer(opengl_utils.c_depth_contents):
         pass
     #f display_init
     def display_init(self):
-        glLightfv(GL_LIGHT1, GL_AMBIENT, [1.0,1.0,1.0,1.0])
-        glEnable(GL_LIGHT1)
-        glEnable(GL_TEXTURE_2D)
-        glMaterialfv(GL_FRONT,GL_DIFFUSE,[1.0,1.0,1.0,1.0])
-        glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,1.0,1.0,1.0])
-
-        glMatrixMode(GL_PROJECTION)
-        glLoadIdentity()
-
-        glMatrixMode(GL_MODELVIEW)
-        glLoadIdentity()
         pass
     #f display
     def display(self):

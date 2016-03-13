@@ -75,6 +75,8 @@ class c_edit_point_map_image(object):
     """
     #f __init__
     def __init__(self, filename=None, image_name=None, epm=None, pm=None, projection=None):
+        import OpenGL.arrays.vbo as vbo
+        import numpy
         self.filename = filename
         self.image_name = image_name
         self.texture = None
@@ -89,6 +91,7 @@ class c_edit_point_map_image(object):
         self.display_options["points"] = True
         self.display_options["projected_points"] = True
         self.display_options["focus"] = True
+        self.display_options["grid"] = True
         self.display_options["focus_w"] = 0.01
         self.display_options["focus_h"] = 0.01
         pass
@@ -159,17 +162,17 @@ class c_edit_point_map_image(object):
             pass
         if self.object is None:
             self.object = opengl_obj.c_opengl_obj()
-            self.object.add_rectangle( (-1.0,1.0,0.0), (2.0,0.0,0.0), (0.0,-2.0,0.0) )
+            self.object.add_rectangle( (-1.0,1.0,0), (2.0,0.0,0), (0.0,-2.0,0) )
             self.object.create_opengl_surface()
             pass
         if self.focus_object is None:
             self.focus_object = opengl_obj.c_opengl_obj()
             fw = self.display_options["focus_w"]
             fh = self.display_options["focus_h"]
-            self.focus_object.add_rectangle( (-1.0,-1.0,0.0), (2.0,0.0,0.0), (0.0,fh,0.0) )
-            self.focus_object.add_rectangle( (-1.0,-1.0,0.0), (fw,0.0,0.0),  (0.0,2.0,0.0) )
-            self.focus_object.add_rectangle(  (1.0,1.0,0.0),  (-2.0,0.0,0.0), (0.0,-fh,0.0) )
-            self.focus_object.add_rectangle(  (1.0,1.0,0.0),  (-fw,0.0,0.0), (0.0,-2.0,0.0) )
+            self.focus_object.add_rectangle( (-1.0,-1.0,-0.11), (2.0,0.0,-0.11), (0.0,fh,-0.11) )
+            self.focus_object.add_rectangle( (-1.0,-1.0,-0.11), (fw,0.0,-0.11),  (0.0,2.0,-0.11) )
+            self.focus_object.add_rectangle(  (1.0,1.0,-0.11),  (-2.0,0.0,-0.11), (0.0,-fh,-0.11) )
+            self.focus_object.add_rectangle(  (1.0,1.0,-0.11),  (-fw,0.0,-0.11), (0.0,-2.0,-0.11) )
             self.focus_object.create_opengl_surface()
             pass
         pass
@@ -193,44 +196,47 @@ class c_edit_point_map_image(object):
          (uvzw,img_xy) = ui
          return (uvzw[0],uvzw[1])
     #f display_grid
-    def display_grid(self):
-        glLineWidth(1.0)
-        glBegin(GL_LINES)
+    def display_grid(self, n=5, d=5, width=1.0):
+        import OpenGL.arrays.vbo as vbo
+        import numpy
+        glLineWidth(1.0) # Cannot use >1.0 in later OpenGL
         for axis in range(3):
+            (a1,a2) = [(1,2), (0,1), (0,2)][axis]
+            c = [0.0,0.0,0.0]
+            c[axis]=1.0
+            line_data = []
             for i in range(2*n+1):
-                xyz0 = (0.,0.,float(i-n),0.,0.)[axis:axis+3]
-                xyz1 = (0.,0.,float(i-n),0.,0.)[axis:axis+3]
+                xyz0 = [0., float(d),float(i-n),0., float(d)][axis:axis+3]
+                xyz1 = [0.,-float(d),float(i-n),0.,-float(d)][axis:axis+3]
                 uv0 = self.uv_from_image_xyz(xyz0)
                 uv1 = self.uv_from_image_xyz(xyz1)
-                glVertex3f(uv0[0],uv0[1],-0.1)
-                glVertex3f(uv1[0],uv1[1],-0.1)
+                if uv0 is not None and uv1 is not None:
+                    line_data.extend([uv0[0],uv0[1],-0.1, uv1[0],uv1[1],-0.1])
+                    pass
+                if i==0: continue
+                (xyz0[a1],xyz0[a2]) = (xyz0[a2],xyz0[a1])
+                (xyz1[a1],xyz1[a2]) = (xyz1[a2],xyz1[a1])
+                uv0 = self.uv_from_image_xyz(xyz0)
+                uv1 = self.uv_from_image_xyz(xyz1)
+                if uv0 is not None and uv1 is not None:
+                    line_data.extend([uv0[0],uv0[1],-0.1, uv1[0],uv1[1],-0.1])
+                    pass
                 pass
+            self.epm.shader_set_attributes(C=c)
+            self.epm.draw_lines(line_data)
             pass
-        glEnd()
         pass
     #f display_points
     def display_points(self):
         c = self.epm.glow_colors[self.epm.glow_tick]
-        glMaterialfv(GL_FRONT,GL_DIFFUSE,c)
-        glMaterialfv(GL_FRONT,GL_AMBIENT,c)
-        glDisable(GL_TEXTURE_2D)
         for m in self.epm.point_mapping_names:
             pt = self.point_mappings.get_xy(m, self.image_name)
             if pt is not None:
-                glPushMatrix()
-                glTranslate(pt[0],pt[1],-0.1)
-                sc = 0.005/self.scale[0]
+                sc = 0.015/self.scale[0]
                 if self.epm.point_mapping_names[self.epm.point_mapping_index]==m:
                     sc = sc * (1+2*(self.epm.tick%100)/100.0)
                     pass
-                glRotate(self.epm.tick,0.0,0.0,1.0)
-                glPushMatrix()
-                glScale(sc,4*sc,1.0)
-                glutSolidCube(1.0)
-                glPopMatrix()
-                glScale(4*sc,sc,1.0)
-                glutSolidCube(1.0)
-                glPopMatrix()
+                self.epm.draw_simple_object("cross", c, (pt[0],pt[1],-0.1), sc, self.epm.tick)
                 pass
             pass
         pass
@@ -239,9 +245,7 @@ class c_edit_point_map_image(object):
         if self.projection is None:
             return
         c = self.epm.glow_colors[self.epm.glow_tick]
-        glMaterialfv(GL_FRONT,GL_DIFFUSE,c)
-        glMaterialfv(GL_FRONT,GL_AMBIENT,c)
-        glDisable(GL_TEXTURE_2D)
+        line_data = []
         for pt in self.epm.point_mapping_names:
             xyz = self.epm.point_mappings.get_xyz(pt)
             if xyz is not None:
@@ -249,27 +253,15 @@ class c_edit_point_map_image(object):
                 if uv is not None:
                     pt_uv = self.epm.point_mappings.get_xy(pt, self.image_name)
                     if pt_uv is not None:
-                        glLineWidth(2.0)
-                        glBegin(GL_LINES);
-                        glVertex3f(uv[0],uv[1],-0.1)
-                        glVertex3f(pt_uv[0],pt_uv[1],-0.1)
-                        glEnd()
+                        line_data.extend([uv[0],uv[1],-0.1, pt_uv[0],pt_uv[1],-0.1])
                         pass
-
-                    glPushMatrix()
-                    glTranslate(uv[0],uv[1],-0.1)
-                    sc = 0.005/self.scale[0]
-                    glRotate(-6*self.epm.tick,0.0,0.0,1.0)
-                    glPushMatrix()
-                    glScale(sc,4*sc,1.0)
-                    glutSolidCube(1.0)
-                    glPopMatrix()
-                    glScale(4*sc,sc,1.0)
-                    glutSolidCube(1.0)
-                    glPopMatrix()
+                    sc = 0.01/self.scale[0]
+                    self.epm.draw_simple_object("cross", c, (uv[0],uv[1],-0.1), sc, -6*self.epm.tick)
                     pass
                 pass
             pass
+        self.epm.shader_set_attributes(C=(0.8,0.8,1.0))
+        self.epm.draw_lines(line_data)
         pass
     #f display
     def display(self):
@@ -280,19 +272,22 @@ class c_edit_point_map_image(object):
 
         if self.display_options["focus"]:
             if self.focus_object is not None:
-                glMaterialfv(GL_FRONT,GL_DIFFUSE,[1.0,1.0,1.0,1.0])
-                glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,1.0,1.0,1.0])
-                glDisable(GL_TEXTURE_2D)
-                self.focus_object.draw_opengl_surface()
+                self.epm.shader_use("color_standard")
+                self.epm.matrix_use()
+                self.epm.shader_set_attributes( C=(1.0,1.0,1.0) )
+                self.focus_object.draw_opengl_surface(og=self.epm)
                 pass
             pass
 
-        glPushMatrix()
-        glScale(self.scale[0],self.scale[1],1.0)
-        glTranslate(self.center[0],self.center[1],0.0)
+        self.epm.matrix_push()
+        self.epm.matrix_scale((self.scale[0],self.scale[1],1.0,1.0))
+        self.epm.matrix_translate((self.center[0],self.center[1],0.0))
+        self.epm.shader_use("color_standard")
+        self.epm.matrix_use()
 
         if self.display_options["grid"]:
-            self.display_grid()
+            self.display_grid(n=0, d=3, width=3.0)
+            self.display_grid(n=5, d=5, width=1.0)
             pass
 
         if self.display_options["points"]:
@@ -303,18 +298,14 @@ class c_edit_point_map_image(object):
             self.display_projected_points()
             pass
 
-        if self.texture is not None:
+        if self.texture is not None and self.object is not None:
+            self.epm.shader_use("texture_standard")
+            self.epm.matrix_use()
             glBindTexture(GL_TEXTURE_2D, self.texture)
+            self.object.draw_opengl_surface(self.epm)
             pass
 
-        if self.object is not None:
-            glMaterialfv(GL_FRONT,GL_DIFFUSE,[1.0,1.0,1.0,1.0])
-            glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,1.0,1.0,1.0])
-            glEnable(GL_TEXTURE_2D)
-            self.object.draw_opengl_surface()
-            pass
-
-        glPopMatrix()
+        self.epm.matrix_pop()
         pass
     #f All done
     pass
@@ -437,7 +428,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         self.load_font(font_dir+"cabin-bold")
         self.point_mappings = c_point_mapping()
         self.load_point_mapping(self.point_mapping_filename)
-        self.epm_info = c_edit_point_map_info(epm=self, pm=self.point_mappings)
+        self.epm_info = c_edit_point_map_info(epm=self, pm=self.point_mappings, og=self)
         self.load_images()
 
         self.point_mappings.find_line_sets()
@@ -580,7 +571,9 @@ class c_edit_point_map(opengl_app.c_opengl_app):
                     proj.guess_initial_projection_matrix(self.point_mappings)
                     pass
                 elif operation in ["much"]:
-                    proj.run_optimization(point_mappings=self.point_mappings, coarse=False)
+                    for scale in [10,0.1,0.01,0.001,1E-4,1E-5,1E-6,1E-7,1E-8,1E-9]:
+                        self.point_mappings.optimize_projections(image=image_name, fov_iterations=1, orientation_iterations=200, camera_iterations=1, do_fov=False, do_camera=False, delta_scale=scale)
+                        pass
                     pass
                 elif operation in ["corners"]:
                     proj.optimize_projection_from_select_points(self.point_mappings, use_corners=True)

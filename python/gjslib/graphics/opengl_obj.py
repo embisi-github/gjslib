@@ -62,19 +62,11 @@ class c_opengl_obj(c_obj):
 
         pass
     #f draw_opengl_surface
-    def draw_opengl_surface(self, draw=True):
-        from ctypes import sizeof, c_float, c_void_p, c_uint
-        glEnableClientState(GL_VERTEX_ARRAY)
-        glEnableClientState(GL_NORMAL_ARRAY)
-        glEnableClientState(GL_TEXTURE_COORD_ARRAY)
-
+    def draw_opengl_surface(self, og, draw=True):
         self.opengl_surface["vectors"].bind()
         self.opengl_surface["indices"].bind()
 
-        glVertexPointer( 3, GL_FLOAT,   8*sizeof(c_float), c_void_p(0) )
-        glNormalPointer( GL_FLOAT,      8*sizeof(c_float), c_void_p(3*sizeof(c_float)) )
-        glTexCoordPointer( 2, GL_FLOAT, 8*sizeof(c_float), c_void_p(6*sizeof(c_float)) )
-
+        og.shader_set_attributes( t=8, v=0, n=3, uv=6 )
         if draw:
             glDrawElements( GL_TRIANGLES,
                             len(self.opengl_surface["indices"]),

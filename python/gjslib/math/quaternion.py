@@ -37,6 +37,10 @@ class c_quaternion( object ):
     @classmethod
     def of_euler( cls, roll=0, pitch=0, yaw=0, rpy=None, degrees=False ):
         return cls().from_euler( rpy=rpy, roll=roll, pitch=pitch, yaw=yaw, degrees=degrees )
+    #f classmethod of_rotation
+    @classmethod
+    def of_rotation( cls, angle, axis, degrees=False ):
+        return cls().from_rotation( angle=angle, axis=axis, degrees=degrees )
     #f __init__
     def __init__( self, quat=None, euler=None, degrees=False, repr_fmt=None ):
         self.quat = {"r":1, "i":0, "j":0, "k":0}
@@ -89,11 +93,18 @@ class c_quaternion( object ):
                                  r3=(0.0, 0.0, 0.0, 1.0) )
         return m4
     #f get_matrixn
-    def get_matrixn( self ):
+    def get_matrixn( self, order=3 ):
         m = self.get_matrix()
-        return c_matrixNxN(data=(m[0][0], m[0][1], m[0][2],
-                                 m[1][0], m[1][1], m[1][2],
-                                 m[2][0], m[2][1], m[2][2],))
+        if order==3:
+            return c_matrixNxN(data=(m[0][0], m[0][1], m[0][2],
+                                     m[1][0], m[1][1], m[1][2],
+                                     m[2][0], m[2][1], m[2][2],))
+        if order==4:
+            return c_matrixNxN(data=(m[0][0], m[0][1], m[0][2], 0.0,
+                                     m[1][0], m[1][1], m[1][2], 0.0,
+                                     m[2][0], m[2][1], m[2][2], 0.0,
+                                     0.0,0.0,0.0,1.0))
+        raise Exception("Get matrix of unsupported order")
     #f create_matrix
     def create_matrix( self ):
         # From http://www.gamasutra.com/view/feature/131686/rotating_objects_using_quaternions.php?page=2
@@ -234,6 +245,21 @@ class c_quaternion( object ):
         self.quat["j"] = (q0.quat["j"] - q1.quat["j"])/2.0
         self.quat["k"] = (q0.quat["k"] - q1.quat["k"])/2.0
         self.normalize()
+        self.matrix = None
+        return self
+    #f from_rotation
+    def from_rotation(self, angle, axis, degrees=False):
+        """
+        """
+        if degrees:
+            angle  = math.radians(angle)
+            pass
+        s = math.sin(angle/2)
+        c = math.cos(angle/2)
+        self.quat["r"] = c
+        self.quat["i"] = s*axis[0]
+        self.quat["j"] = s*axis[1]
+        self.quat["k"] = s*axis[2]
         self.matrix = None
         return self
     #f modulus

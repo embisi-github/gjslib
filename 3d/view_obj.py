@@ -34,45 +34,31 @@ class c_view_obj(opengl_app.c_opengl_camera_app):
         lightZeroPosition = [4.+3*math.sin(self.yyy),4.,4.-3*math.cos(self.yyy),1.]
         lightZeroColor = [0.7,1.0,0.7,1.0] #white
         ambient_lightZeroColor = [1.0,1.0,1.0,1.0] #green tinged
-        glLightfv(GL_LIGHT0, GL_POSITION, lightZeroPosition)
-        glLightfv(GL_LIGHT0, GL_DIFFUSE, lightZeroColor)
-        glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 0.1)
-        glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 0.05)
-        glEnable(GL_LIGHT0)
-        glLightfv(GL_LIGHT1, GL_AMBIENT, ambient_lightZeroColor)
-        glEnable(GL_LIGHT1)
 
-        glPushMatrix()
-        color = [1.0,0.,0.,1.]
-        glMaterialfv(GL_FRONT,GL_DIFFUSE,[1.0,1.0,1.0,1.0])
-        glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,1.0,1.0,1.0])
-        glTranslate(lightZeroPosition[0],lightZeroPosition[1],lightZeroPosition[2])
-        glScale(0.3,0.3,0.3)
-        glutSolidSphere(2,40,40)
-        glPopMatrix()
+        #glPushMatrix()
+        #color = [1.0,0.,0.,1.]
+        #glTranslate(lightZeroPosition[0],lightZeroPosition[1],lightZeroPosition[2])
+        #glScale(0.3,0.3,0.3)
+        #glutSolidSphere(2,40,40)
+        #glPopMatrix()
 
         color = [0.5,0,0.,0.,1.]
-        glMaterialfv(GL_FRONT,GL_AMBIENT,[0.1,0.1,0.1,1.0])
-        glMaterialfv(GL_FRONT,GL_DIFFUSE,color)
 
-        glPushMatrix()
-        glRotate(95,1,0,0)
+        self.matrix_push()
+        self.matrix_rotate(95,(1,0,0))
         self.xxx += 0.2#0.1
         brightness = 0.4
-        glRotate(self.xxx,0,0,1)
+        self.matrix_rotate(self.xxx,(0,0,1))
 
-        glEnable(GL_TEXTURE_2D)
         glBindTexture(GL_TEXTURE_2D, self.texture)
-        glMaterialfv(GL_FRONT,GL_DIFFUSE,[brightness*1.0,brightness*1.,brightness*1.0,1.])
-        glMaterialfv(GL_FRONT,GL_AMBIENT,[0.6,0.6,0.6,1.0])
-        glPushMatrix()
-        glTranslate(0,0,1)
-        glScale(4,4,4)
-        self.obj.draw_opengl_surface()
-        glDisable(GL_TEXTURE_2D)
-        glPopMatrix()
-
-        glPopMatrix()
+        self.matrix_push()
+        self.matrix_translate((0,0,1))
+        self.matrix_scale(4)
+        self.shader_use("texture_standard")
+        self.matrix_use()
+        self.obj.draw_opengl_surface(self)
+        self.matrix_pop()
+        self.matrix_pop()
 
         glutSwapBuffers()
         return
@@ -82,7 +68,7 @@ class c_view_obj(opengl_app.c_opengl_camera_app):
 #a Top level
 #f test_object
 def test_object():
-    obj = opengl_obj.c_obj()
+    obj = opengl_obj.c_opengl_obj()
 
     #texture_filename = "earth_ico.png"
     #texture_filename = "../../1_earth_16k_div10.png"

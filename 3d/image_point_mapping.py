@@ -43,10 +43,19 @@ class c_point_mapping(object):
         # window is 0.656 of a tile
         # top of window is 1.33 tiles above ground
         self.object_guess_locations["flsq1.0"]   = ( 0.0, 0.0, 0.0)
-        self.object_guess_locations["flsq3.3"]   = ( 0.0, -3.0, 0.0)
+        #self.object_guess_locations["flsq3.3"]   = ( 0.0, -3.0, 0.0)
         self.object_guess_locations["flsq4.2"]   = ( 3.0, -3.0, 0.0)
+        self.object_guess_locations["flsq5.3"]   = ( 0.0, -5.0, 0.0)
         #self.object_guess_locations["flsq2.0"]   = ( 2.0, 0.0, 0.0)
-        self.object_guess_locations["drsq1.1"]   = ( 0.15, 1.5, 1.33)
+        #self.object_guess_locations["drsq1.1"]   = ( 0.15, 1.5, 1.33)
+        #self.object_guess_locations["drsq1.1"]   = ( 0.15, 1.5, 1.30)
+        #self.object_guess_locations["drsq1.1"]   = ( 0.15, 1.5, 1.31)
+        #self.object_guess_locations["drsq1.1"]   = ( 0.13, 1.5, 1.31)
+        #self.object_guess_locations["drsq1.1"]   = ( 0.13, 1.51, 1.31)
+        self.object_guess_locations["drsq3.0"]   = ( 0.13, 1.51, 3.50)
+        self.object_guess_locations["drsq3.0"]   = ( 0.13, 1.51, 3.45)
+        self.object_guess_locations["drsq3.0"]   = ( 0.13, 1.50, 3.515)
+        self.object_guess_locations["drsq3.0"]   = ( 0.13, 1.50, 3.48)
         pass
     #f reset
     def reset(self):
@@ -130,29 +139,6 @@ class c_point_mapping(object):
         f.close()
 
         return
-        # horizontal FOV for 35mm camera: 12.5mm:110 15mm:100 18mm:90 20mm:85 23mm:75 28mm:65 31mm:60 35mm:55 40mm:50 50mm:40 54mm:35 65mm:30 80mm:35 100mm:20
-        # yaw is left-right (-ve,+ve)
-        # pitch is -ve up
-        # roll is clockwise +ve
-        # Can now do initial plus optimization (at delta_scale 0.1)
-        # This you do with the reference objects
-        self.images['img_1']['projection'] = {'fov': 68.33999999999999, 'camera': [5.303600000000904, -8.318100000001156, 9.881700000000029], 'orientation': c_quaternion({'r': 0.7545, 'i': 0.5657, 'j': 0.2373, 'k': 0.2330}), 'aspect': 1.3}
-        self.images['main']['projection'] = {'fov': 84.575, 'camera': [-4.695799999997939, -14.592999999998563, 2.773999999999937], 'orientation': c_quaternion({'r': 0.6208, 'i': 0.7191, 'j':-0.2353, 'k':-0.2052}), 'aspect': 1.5}
-
-        # Refine img_1 with delta_scale 0.01 on reference objects
-        self.images['img_1']['projection'] = {'fov': 68.33999999999999, 'camera': [5.200500000001144, -8.421200000000916, 9.918599999999943], 'orientation': c_quaternion({'r': 0.7575, 'i': 0.5655, 'j': 0.2342, 'k': 0.2269}), 'aspect': 1.3}
-        self.images['main']['projection'] = {'fov': 84.575, 'camera': [-4.29609999999887, -14.992699999997631, 2.773999999999937], 'orientation': c_quaternion({'r': 0.6243, 'i': 0.7206, 'j':-0.2353, 'k':-0.1888}), 'aspect': 1.5}
-        # Now change FOV delta - made it bigger, fov does not change (obviously) - so move it down to 0.01
-        self.images['main']['projection'] = {'fov': 84.575, 'camera': [-3.9960999999995517, -15.292699999996932, 2.773999999999937], 'orientation': c_quaternion({'r': 0.6278, 'i': 0.7215, 'j':-0.2301, 'k':-0.1802}), 'aspect': 1.5}
-
-        # Now one-then-other optimization
-        self.images['main']['projection'] = {'fov': 84.575, 'camera': [-3.7760999999990874, -15.51269999999642, 2.773999999999937], 'orientation': c_quaternion({'r': 0.6305, 'i': 0.7222, 'j':-0.2243, 'k':-0.1751}), 'aspect': 1.5}
-        self.images['img_1']['projection'] = {'fov': 68.33999999999999, 'camera': [5.100500000001377, -8.321200000001149, 9.918599999999943], 'orientation': c_quaternion({'r': 0.7589, 'i': 0.5645, 'j': 0.2363, 'k': 0.2225}), 'aspect': 1.3}
-
-        #After moving some points - main is still moving in the same old direction
-        self.images['img_1']['projection'] = {'fov': 68.33999999999999, 'camera': [4.993600000001626, -8.472800000000795, 9.90229999999998], 'orientation': c_quaternion({'r': 0.7607, 'i': 0.5670, 'j': 0.2328, 'k': 0.2133}), 'aspect': 1.3}        
-        self.images['main']['projection'] = {'fov': 84.575, 'camera': [-3.5760999999986653, -15.712699999995953, 2.773999999999937], 'orientation': c_quaternion({'r': 0.6330, 'i': 0.7226, 'j':-0.2194, 'k':-0.1705}), 'aspect': 1.5}
-        pass
     #f save_data
     def save_data(self, data_filename):
         f = open(data_filename,"w")

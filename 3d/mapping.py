@@ -568,40 +568,37 @@ class c_mapping(opengl_app.c_opengl_camera_app):
     #f display_image_faces
     def display_image_faces(self):
         global faces
-        glPushMatrix()
-        glEnable(GL_TEXTURE_2D)
-        glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,1.0,1.0,1.0])
+        self.matrix_push()
+
         #SIDSUSSEX proj = self.image_projections["img_1"]
         proj = self.image_projections["left"]
         if proj.texture is not None:
             glBindTexture(GL_TEXTURE_2D, proj.texture)
             pass
-        for m in self.meshes:
-            m.draw_opengl_surface()
-            pass
-        glDisable(GL_TEXTURE_2D)
 
-        glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,1.0,1.0,1.0])
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        self.shader_use("color_standard")
+        self.shader_set_attributes(C=(1.0,1.0,1.0))
+        self.matrix_use()
         for m in self.meshes:
-            m.draw_opengl_surface()
+            m.draw_opengl_surface(self)
             pass
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
-        glPopMatrix()
-        self.first_pass = False
+        self.shader_use("texture_standard")
+        self.matrix_use()
+        for m in self.meshes:
+            m.draw_opengl_surface(self)
+            pass
+
+        self.matrix_pop()
         pass
     #f display_image_points
     def display_image_points(self):
         for n in self.point_mappings.get_mapping_names():
             xyz = self.point_mappings.get_approx_position(n)
             if xyz is not None:
-                glPushMatrix()
-                glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,0.3,0.3,1.0])
-                glTranslate(xyz[0],xyz[1],xyz[2])
-                glScale(0.03,0.03,0.03)
-                glutSolidSphere(1,6,6)
-                glPopMatrix()
+                self.draw_simple_object("diamond", (1.0,0.3,0.3), xyz, 0.03) 
                 pass
             pass
         #for pt in ["clkcenter", "lspike", "rspike"]:
@@ -633,42 +630,49 @@ class c_mapping(opengl_app.c_opengl_camera_app):
         pass
     #f display_grid
     def display_grid(self,n):
-        glLineWidth(1.0)
-        glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,0.3,0.3,1.0])
-        glBegin(GL_LINES)
+        self.shader_use("color_standard")
+        self.matrix_use()
+        line_data = []
         for i in range(2*10+1):
-            glVertex3f(-10.0,(i-10)*1.0,0.0)
-            glVertex3f( 10.0,(i-10)*1.0,0.0)
-            glVertex3f( (i-10)*1.0,-10.0,0.0)
-            glVertex3f( (i-10)*1.0,10.0,0.0)
+            line_data.extend( (-10.0,(i-10)*1.0,0.0,
+                                10.0,(i-10)*1.0,0.0,
+                                (i-10)*1.0,-10.0,0.0,
+                                (i-10)*1.0,10.0,0.0,
+                                ) )
             pass
-        glEnd()
-        glMaterialfv(GL_FRONT,GL_AMBIENT,[0.3,1.0,0.3,1.0])
-        glBegin(GL_LINES)
+        self.shader_set_attributes(C=(1.0,0.3,0.3))
+        self.draw_lines(line_data)
+
+        line_data = []
         for i in range(2*10+1):
-            glVertex3f( -10.0,0.0,(i-10)*1.0)
-            glVertex3f(  10.0,0.0,(i-10)*1.0)
-            glVertex3f( (i-10)*1.0,0.0,-10.0)
-            glVertex3f( (i-10)*1.0,0.0, 10.0)
-        glEnd()
-        glMaterialfv(GL_FRONT,GL_AMBIENT,[0.3,0.3,1.0,1.0])
-        glBegin(GL_LINES)
+            line_data.extend( (-10.0,0.0,(i-10)*1.0,
+                                10.0,0.0,(i-10)*1.0,
+                                (i-10)*1.0,0.0,-10.0,
+                                (i-10)*1.0,0.0, 10.0,
+                                ) )
+            pass
+        self.shader_set_attributes(C=(0.3,1.0,0.3))
+        self.draw_lines(line_data)
+
+        line_data = []
         for i in range(2*10+1):
-            glVertex3f( 0.0, -10.0,(i-10)*1.0)
-            glVertex3f( 0.0,  10.0,(i-10)*1.0)
-            glVertex3f( 0.0, (i-10)*1.0,-10.0)
-            glVertex3f( 0.0, (i-10)*1.0, 10.0)
-        glEnd()
-        glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,1.0,1.0,1.0])
-        glLineWidth(3.0)
-        glBegin(GL_LINES)
-        glVertex3f( -12.0, 0.0, 0.0 )
-        glVertex3f(  12.0, 0.0, 0.0 )
-        glVertex3f( 0.0, -12.0, 0.0 )
-        glVertex3f( 0.0,  12.0, 0.0 )
-        glVertex3f( 0.0, 0.0, -12.0 )
-        glVertex3f( 0.0, 0.0,  12.0 )
-        glEnd()
+            line_data.extend( (0.0, -10.0,(i-10)*1.0,
+                               0.0,  10.0,(i-10)*1.0,
+                               0.0, (i-10)*1.0,-10.0,
+                               0.0, (i-10)*1.0, 10.0,
+                               ))
+            pass
+        self.shader_set_attributes(C=(0.3,0.3,1.0))
+        self.draw_lines(line_data)
+
+        self.shader_set_attributes(C=(0.8,0.8,0.8))
+        self.draw_lines(( -12.0, 0.0, 0.0,
+                           12.0, 0.0, 0.0,
+                           0.0, -12.0, 0.0,
+                           0.0,  12.0, 0.0,
+                           0.0, 0.0, -12.0,
+                           0.0, 0.0,  12.0,
+                           ))
         pass
     #f display_images
     def display_images(self):
@@ -685,14 +689,10 @@ class c_mapping(opengl_app.c_opengl_camera_app):
     def display(self):
         opengl_app.c_opengl_camera_app.display(self, show_crosshairs=True)
 
-        ambient_lightZeroColor = [1.0,1.0,1.0,1.0]
-        glLightfv(GL_LIGHT1, GL_AMBIENT, ambient_lightZeroColor)
-        glEnable(GL_LIGHT1)
-
         self.display_grid(3)
         self.display_image_faces()
         self.display_image_points()
-        self.display_images()
+        #self.display_images()
    
         glutSwapBuffers()
         pass
@@ -704,7 +704,7 @@ class c_mapping(opengl_app.c_opengl_camera_app):
             proj = image_data["projection"]
             self.set_camera(camera=vectors.vector_scale(proj.projection["camera"],-1.0),
                             orientation=proj.projection["orientation"].copy().invert_rotation(),
-                            fov=proj.projection["fov"])
+                            yfov=proj.projection["yfov"],)
             return True
         return opengl_app.c_opengl_camera_app.keypress(self, key,m,x,y)
     #f find_in_triangle

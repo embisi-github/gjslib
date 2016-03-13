@@ -44,9 +44,6 @@ class c_image_projection(object):
                           {"yaw":-delta_angle, "pitch":+delta_angle},
                           {"yaw":-delta_angle, "pitch":-delta_angle},
                      {}]
-    fov_deltas = [{"fov":-fov_step},
-                  {"fov":+fov_step},
-                  {}]
     #f __init__
     def __init__(self,name,image_filename,size=(1.0,1.0)):
         self.name = name
@@ -67,17 +64,17 @@ class c_image_projection(object):
             return None
         if "orientation" not in self.projection:
             return None
-        if "aspect" not in self.projection:
+        if "xfov" not in self.projection:
             return None
-        if "fov" not in self.projection:
+        if "yfov" not in self.projection:
             return None
         repr = "%f,%f,%f "%(self.projection["camera"][0],
                             self.projection["camera"][1],
                             self.projection["camera"][2])
         rpy = self.projection["orientation"].to_euler(degrees=True)
         repr += ", %f,%f,%f "%(rpy[0], rpy[1], rpy[2])
-        repr += ", %f, %f,"%(self.projection["fov"],
-                             self.projection["aspect"])
+        repr += ", %f, %f,"%(self.projection["xfov"],
+                             self.projection["yfov"])
         return repr
     #f load_projection_strings
     def load_projection_strings(self, data):
@@ -86,12 +83,13 @@ class c_image_projection(object):
         """
         camera = (float(data[0]), float(data[1]), float(data[2]))
         rpy    = (float(data[3]), float(data[4]), float(data[5]))
-        fov    = float(data[6])
-        aspect = float(data[7])
+        xfov    = float(data[6])
+        yfov    = float(data[7])
         projection = {"camera":camera,
                       "orientation":quaternion.c_quaternion.of_euler(rpy=rpy, degrees=True),
-                      "fov":fov,
-                      "aspect":aspect}
+                      "xfov":xfov,
+                      "yfov":yfov,
+                      }
         self.set_projection(projection)
         pass
     #f get_projection
@@ -100,10 +98,10 @@ class c_image_projection(object):
     #f set_projection
     def set_projection(self, projection=None, deltas=None, delta_scale=1.0, resultant_projection=None, verbose=False ):
         if projection is None:
-            projection = {"camera":(0.0,0.0,-20.0), "orientation":quaternion.c_quaternion(), "fov":90, "aspect":1.0}
+            projection = {"camera":(0.0,0.0,-20.0), "orientation":quaternion.c_quaternion(), "xfov":65, "yfov":65}
             pass
-        fov         = projection["fov"]          # Scalar
-        aspect      = projection["aspect"]       # Scalar (x / y)
+        xfov        = projection["xfov"]         # Scalar
+        yfov        = projection["yfov"]         # Scalar
         camera      = projection["camera"]       # 3D vector
         orientation = projection["orientation"]  # unit quaternion
         orientation = orientation.copy()
@@ -112,16 +110,15 @@ class c_image_projection(object):
             if "roll"        in deltas: orientation = quaternion.c_quaternion.roll (deltas["roll"] *delta_scale).multiply(orientation)
             if "pitch"       in deltas: orientation = quaternion.c_quaternion.pitch(deltas["pitch"]*delta_scale).multiply(orientation)
             if "yaw"         in deltas: orientation = quaternion.c_quaternion.yaw  (deltas["yaw"]  *delta_scale).multiply(orientation)
-            if "aspect"      in deltas: aspect = aspect* (1+delta_scale*deltas["aspect"])
-            if "fov"         in deltas: fov    = fov   * (1+delta_scale*deltas["fov"])
             pass
         self.mvp = matrix.c_matrix4x4()
         #self.mvp.perspective(fov=fov, aspect=aspect, zFar=1.0, zNear=0.0)
         # Use 360 as we use 'half FOV' i.e. fov/2
-        yfov = math.atan(math.tan(fov/360.0*3.1415926)/aspect)*360.0/3.14159256
+        #yfov = math.atan(math.tan(fov/360.0*3.1415926)/aspect)*360.0/3.14159256
         # zFar and zNear do not seem to effect mapping to image (correctly!)
         # However, zNear must not be 0 or the projection matrix will be singular
         zFar = 40.0
+        aspect = math.tan(xfov/360.0*3.14159256) / math.tan(yfov/360.0*3.14159256)
         self.mvp.perspective(fov=yfov, aspect=aspect, zFar=zFar, zNear=1.0)
         persp = self.mvp.copy()
         z_of_w_1 = self.mvp.apply((0.0,0.0,-1.0,0.0))
@@ -133,16 +130,16 @@ class c_image_projection(object):
 
         self.projection = { "camera":      camera[:],
                             "orientation": orientation,
-                            "fov": fov,
-                            "aspect": aspect,
+                            "xfov": xfov,
+                            "yfov": yfov,
                             "z_of_w_1":z_of_w_1[2]
                             }
 
         if resultant_projection is not None:
             resultant_projection["camera"]      = camera[:]
             resultant_projection["orientation"] = orientation.copy()
-            resultant_projection["fov"]         = fov
-            resultant_projection["aspect"]      = aspect
+            resultant_projection["xfov"]        = xfov
+            resultant_projection["yfov"]        = yfov
             pass
 
         if verbose:
@@ -401,12 +398,11 @@ class c_image_projection(object):
         """
         #b Create O and U matrices
         camera = projection["camera"]
-        aspect = projection["aspect"]
-        fovx = projection["fov"]
-        fovy = math.atan(math.tan(fovx/360.0*3.1415926)/aspect)*360.0/3.14159256
+        fovx = projection["xfov"]
+        fovy = projection["yfov"]
 
         xscale = math.tan(fovx/360.0*3.14159256)
-        yscale = xscale / aspect
+        yscale = math.tan(fovy/360.0*3.14159256)
 
         O = matrix.c_matrixNxN(order=3)
         U = matrix.c_matrixNxN(order=3)
@@ -435,12 +431,11 @@ class c_image_projection(object):
         """
         #b Create O and U.Z matrices
         camera = projection["camera"]
-        aspect = projection["aspect"]
-        fovx = projection["fov"]
-        fovy = math.atan(math.tan(fovx/360.0*3.1415926)/aspect)*360.0/3.14159256
+        fovx = projection["xfov"]
+        fovy = projection["yfov"]
 
         xscale = math.tan(fovx/360.0*3.14159256)
-        yscale = xscale / aspect
+        yscale = math.tan(fovy/360.0*3.14159256)
 
         O = matrix.c_matrixNxN(order=3)
         U = matrix.c_matrixNxN(order=3)
@@ -748,8 +743,8 @@ class c_image_projection(object):
     def blah(self, point_mappings, verbose=True):
         print "Camera before blah"
         print self.projection["camera"]
-        projection = {"fov":self.projection["fov"],
-                      "aspect":self.projection["aspect"],
+        projection = {"xfov":self.projection["xfov"],
+                      "yfov":self.projection["yfov"],
                       }
         (object_guess_locations, image_locations) = self.get_object_and_image_locations(point_mappings)
         pt_names = object_guess_locations.keys()
@@ -838,8 +833,8 @@ class c_image_projection(object):
         # FOV is currently not critical though - 55-63 is a good range...
         # Wired says iphone6 has xFOV of 63.54
         # That makes yFOV of 49.83
-        projection = {"aspect":self.size[0]/float(self.size[1]),
-                      "fov":63.54,
+        projection = {"xfov":63.54,
+                      "yfov":49.83,
                       }
         (object_guess_locations, image_locations) = self.get_object_and_image_locations(point_mappings)
 
@@ -926,8 +921,8 @@ class c_image_projection(object):
             (improved_projection, improved_z, max_error) = r
             improved_projection = {"camera":improved_projection["camera"],
                                    "orientation":improved_projection["orientation"],
-                                   "fov":projection["fov"],
-                                   "aspect":projection["aspect"],
+                                   "xfov":projection["xfov"],
+                                   "yfov":projection["yfov"],
                                    }
             break
 
@@ -947,14 +942,15 @@ class c_image_projection(object):
             projection = self.projection
             pass
 
-        fov    = projection["fov"]
-        aspect = projection["aspect"]
+        xfov   = projection["xfov"]
+        yfov   = projection["yfov"]
         zFar   = 40.0
         zNear  = 1.0
         Pe = matrix.c_matrixNxN(data=[0.0]*16)
-        f = 1.0/math.tan(fov*3.14159265/180.0/2)
-        Pe[0,0] = f
-        Pe[1,1] = f*aspect
+        fx = 1.0/math.tan(xfov*3.14159265/180.0/2)
+        fy = 1.0/math.tan(yfov*3.14159265/180.0/2)
+        Pe[0,0] = fx
+        Pe[1,1] = fy
         Pe[2,2] = -(zNear+zFar)/(zFar-zNear)
         Pe[2,3] = -2*zNear*zFar/(zFar-zNear)
         Pe[3,2] = -1.0
@@ -1023,8 +1019,8 @@ class c_image_projection(object):
         print improved_projection, improved_z, max_error
         improved_projection = {"camera":improved_projection["camera"],
                                "orientation":improved_projection["orientation"],
-                               "fov":self.projection["fov"],
-                               "aspect":self.projection["aspect"],
+                               "xfov":self.projection["xfov"],
+                               "yfov":self.projection["yfov"],
                                }
         print "Setting projection to",improved_projection
         self.set_projection(improved_projection)
@@ -1067,8 +1063,8 @@ class c_image_projection(object):
             return
         improved_projection = {"camera":improved_projection["camera"],
                                "orientation":improved_projection["orientation"],
-                               "fov":self.projection["fov"],
-                               "aspect":self.projection["aspect"],
+                               "xfov":self.projection["xfov"],
+                               "yfov":self.projection["yfov"],
                                }
         print "Setting projection to",improved_projection
         self.set_projection(improved_projection)
@@ -1166,11 +1162,11 @@ class c_image_projection(object):
         self.set_projection(opt_projection)
         opt_projection = self.optimize_projection(point_mappings = point_mappings,
                                                   fov_iterations=200, orientation_iterations=100, camera_iterations=10, delta_scale=0.03 )
-        #opt_projection = {'fov': 55, 'camera': [18.946400287962323, -22.74361538580119, 26.758691580937942], 'orientation': quaternion.c_quaternion(euler=(10.6165, 2.6457,50.3051),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.800000000000004}
+
         self.set_projection(opt_projection)
         opt_projection = self.optimize_projection(point_mappings = point_mappings,
                                                   fov_iterations=200, orientation_iterations=100, camera_iterations=10, delta_scale=0.03 )
-        #opt_projection = {'fov': 55, 'camera': [18.718700287962854, -22.75111538580117, 26.84179158093775], 'orientation': quaternion.c_quaternion(euler=(10.4051, 2.3963,50.1888),degrees=True), 'aspect': 1.3333333333333333, 'zFar': 33.800000000000004}
+
         self.set_projection(opt_projection)
         opt_projection = self.optimize_projection(point_mappings = point_mappings,
                                                   fov_iterations=2000, orientation_iterations=1, camera_iterations=1, delta_scale=0.001, do_fov=True, do_camera=False )

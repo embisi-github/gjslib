@@ -13,7 +13,8 @@ class c_opengl_widget(object):
     A basic opengl widget is something that is displayed
     """
     #f __init__
-    def __init__(self):
+    def __init__(self, og):
+        self.og = og
         pass
     #f display
     def display(self):
@@ -22,12 +23,13 @@ class c_opengl_widget(object):
     pass
 
 #c c_opengl_simple_text_widget
-class c_opengl_simple_text_widget(object):
+class c_opengl_simple_text_widget(c_opengl_widget):
     """
     A simple text widget has text in a single font
     """
     #f __init__
-    def __init__(self, og, fontname="font", text=None):
+    def __init__(self, og, fontname="font", text=None, **kwargs):
+        c_opengl_widget.__init__(self, og=og, **kwargs)
         (self.bitmap_font, self.texture) = og.get_font(fontname)
         self.og_obj = opengl_obj.c_text_page()
         self.replace_text(text)
@@ -42,8 +44,11 @@ class c_opengl_simple_text_widget(object):
         pass
     #f display
     def display(self):
+        self.og.shader_use("font_standard")
+        self.og.shader_set_attributes(C=(0.9,0.8,0.8))
+        self.og.matrix_use()
         glBindTexture(GL_TEXTURE_2D, self.texture)
-        self.og_obj.draw_opengl_surface()
+        self.og_obj.draw_opengl_surface(og=self.og)
         pass
     #f All done
     pass
@@ -73,10 +78,10 @@ class c_opengl_container_widget(c_opengl_widget, opengl_utils.c_depth_contents):
     #f display
     def display(self):
         for c in self:
-            glPushMatrix()
-            glMultMatrixf(c["transformation"])
+            self.og.matrix_push()
+            self.og.matrix_mult(c["transformation"])
             c["widget"].display()
-            glPopMatrix()
+            self.og.matrix_pop()
             pass
         pass
     #f All done

@@ -22,8 +22,6 @@ def texture_from_png(png_filename):
 
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT)
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT)
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP)
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP)
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, png.size[0], png.size[1], 0, GL_RGB, GL_UNSIGNED_BYTE, png_data)
@@ -46,7 +44,7 @@ def transformation(translation=None, scale=None, rotation=None, map_xywh=None, i
 
     Note that the operations are applied to the object in bottom-up order
     """
-    m = matrix.c_matrix4x4()
+    m = matrix.c_matrixNxN(order=4).identity()
     if map_xywh is not None:
         if len(map_xywh)==2:
             (inv_map_xywh, map_xywh) = map_xywh
@@ -58,7 +56,7 @@ def transformation(translation=None, scale=None, rotation=None, map_xywh=None, i
         # So translate by +1,+1; then scale by w/2, h/2; then translate by x,y
         # Operations are reversed (as last is applied first to our object)
         m.translate(xyz=(x,y,0.0))
-        m.scale(scale=(w/2.0,h/2.0,1.0))
+        m.scale(scale=(w/2.0,h/2.0,1.0,1.0))
         m.translate(xyz=(1.0,1.0,0.0))
         pass
     if inv_map_xywh is not None:
@@ -67,7 +65,7 @@ def transformation(translation=None, scale=None, rotation=None, map_xywh=None, i
         # So translate by -x,-y; then scale by 2/w, 2/h; then translate by -1,-1
         # Operations are reversed (as last is applied first to our object)
         m.translate(xyz=(-1.0,-1.0,0.0))
-        m.scale(scale=(2.0/w,2.0/h,1.0))
+        m.scale(scale=(2.0/w,2.0/h,1.0,1.0))
         m.translate(xyz=(-x,-y,0.0))
         pass
     q = quaternion.c_quaternion.identity()
@@ -78,17 +76,16 @@ def transformation(translation=None, scale=None, rotation=None, map_xywh=None, i
             if k in rotation: q = f(rotation["k"]).multiply(q)
             pass
         pass
-    m.mult4x4(q.get_matrix4())
+    m.postmult(q.get_matrixn(order=4))
     if scale is not None:
-        scale_matrix = matrix.c_matrix4x4()
-        scale_matrix.scale(scale)
-        m.mult4x4(scale_matrix)
+        scale_matrix = matrix.c_matrixNxN().identity().scale(scale)
+        m.postmult(scale_matrix)
         pass
     if translation is not None:
         if len(translation)==2: translation=(translation[0], translation[1], 0.0)
         m.translate(xyz=translation)
         pass
-    return m.get_matrix(row_major=False)
+    return m
     
 #a Base useful classes
 #c c_depth_contents_iter
@@ -134,7 +131,7 @@ class c_depth_contents(object):
     The iteration over the contents is done by all items at each depth, in either depth-order or reverse-depth-order
     """
     #f __init__
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.__dc__contents = {}
         pass
     pass

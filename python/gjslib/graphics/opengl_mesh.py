@@ -141,10 +141,10 @@ class c_opengl_textured_mesh(object):
         self.object.create_opengl_surface()
         pass
     #f draw_opengl_surface
-    def draw_opengl_surface(self):
+    def draw_opengl_surface(self, og):
         if self.object is None:
             return
-        self.object.draw_opengl_surface()
+        self.object.draw_opengl_surface(og)
         pass
     #f All done
     pass
