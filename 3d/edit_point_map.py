@@ -184,6 +184,30 @@ class c_edit_point_map_image(object):
         xy = (xy[0]/self.scale[0], xy[1]/self.scale[1])
         xy = (xy[0]-self.center[0], xy[1]-self.center[1])
         return xy
+    #f uv_from_image_xyz
+    def uv_from_image_xyz(self, xyz):
+         proj=self.projection
+         ui = proj.image_of_model(xyz)
+         if ui is None:
+             return None
+         (uvzw,img_xy) = ui
+         return (uvzw[0],uvzw[1])
+    #f display_grid
+    def display_grid(self):
+        glLineWidth(1.0)
+        glBegin(GL_LINES)
+        for axis in range(3):
+            for i in range(2*n+1):
+                xyz0 = (0.,0.,float(i-n),0.,0.)[axis:axis+3]
+                xyz1 = (0.,0.,float(i-n),0.,0.)[axis:axis+3]
+                uv0 = self.uv_from_image_xyz(xyz0)
+                uv1 = self.uv_from_image_xyz(xyz1)
+                glVertex3f(uv0[0],uv0[1],-0.1)
+                glVertex3f(uv1[0],uv1[1],-0.1)
+                pass
+            pass
+        glEnd()
+        pass
     #f display_points
     def display_points(self):
         c = self.epm.glow_colors[self.epm.glow_tick]
@@ -218,16 +242,10 @@ class c_edit_point_map_image(object):
         glMaterialfv(GL_FRONT,GL_DIFFUSE,c)
         glMaterialfv(GL_FRONT,GL_AMBIENT,c)
         glDisable(GL_TEXTURE_2D)
-        def uv_from_image_xyz(xyz, proj=self.projection):
-            ui = proj.image_of_model(xyz)
-            if ui is None:
-                return None
-            (uvzw,img_xy) = ui
-            return (uvzw[0],uvzw[1])
         for pt in self.epm.point_mapping_names:
             xyz = self.epm.point_mappings.get_xyz(pt)
             if xyz is not None:
-                uv = uv_from_image_xyz(xyz)
+                uv = self.uv_from_image_xyz(xyz)
                 if uv is not None:
                     pt_uv = self.epm.point_mappings.get_xy(pt, self.image_name)
                     if pt_uv is not None:
@@ -272,6 +290,10 @@ class c_edit_point_map_image(object):
         glPushMatrix()
         glScale(self.scale[0],self.scale[1],1.0)
         glTranslate(self.center[0],self.center[1],0.0)
+
+        if self.display_options["grid"]:
+            self.display_grid()
+            pass
 
         if self.display_options["points"]:
             self.display_points()
