@@ -69,7 +69,7 @@ class c_opengl_textured_mesh(object):
         self.mesh.add_point(pt)
         pass
     #f optimize
-    def optimize(self):
+    def optimize(self, split_max_areas=3):
         min_length = 1E-6
         min_area = 1E-8
         self.mesh.map_contours_to_mesh()
@@ -89,6 +89,25 @@ class c_opengl_textured_mesh(object):
         self.mesh.ensure_contours_on_mesh()
         self.mesh.assign_winding_order_to_contours()
         self.mesh.assign_winding_order_to_mesh()
+        if split_max_areas<=0:
+            return
+        large_areas = self.mesh.find_large_area_triangle_centroids(max_area=0)
+        #print large_areas
+        l = []
+        for (a,x,y) in large_areas:
+            l.append(a)
+            pass
+        l.sort()
+        max_area = l[len(l)/2]/2.0 # find median area of l, and divide by 2
+        for (a,x,y) in large_areas:
+            if (a>max_area):
+                self.mesh.add_point(c_point((x,y)))
+                #print "Adding point",(x,y)
+                pass
+            pass
+        self.mesh.reset_triangles()
+        self.mesh.reset_lines()
+        return self.optimize(split_max_areas=split_max_areas-1)
         pass
     #f create_opengl_surface
     def create_opengl_surface(self,projection_callback=None):

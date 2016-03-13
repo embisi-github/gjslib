@@ -211,6 +211,15 @@ class c_mesh_line( object ):
         pt0.add_to_line( self, pt1, 0 )
         pt1.add_to_line( self, pt0, 1 )
         pass
+    #f remove
+    def remove(self):
+        """
+        Remove from points associated with the line
+        """
+        for pt in self.pts:
+            pt.remove_from_line(self)
+            pass
+        pass
     #f calculate_direction
     def calculate_direction( self ):
         (pt0, pt1) = self.pts
@@ -532,6 +541,18 @@ class c_mesh_triangle( object ):
         pts[1].find_line_segment_to( pts[2] ).add_to_triangle( self )
         pts[2].find_line_segment_to( pts[0] ).add_to_triangle( self )
         pass
+    #f remove
+    def remove(self):
+        """
+        Remove a triangle from its associated points and lines
+        """
+        self.pts[0].find_line_segment_to( self.pts[1] ).remove_from_triangle( self )
+        self.pts[1].find_line_segment_to( self.pts[2] ).remove_from_triangle( self )
+        self.pts[2].find_line_segment_to( self.pts[0] ).remove_from_triangle( self )
+        self.pts[0].remove_from_triangle( self )
+        self.pts[1].remove_from_triangle( self )
+        self.pts[2].remove_from_triangle( self )
+        pass
     #f check_consistent
     def check_consistent( self ):
         """
@@ -708,6 +729,22 @@ class c_mesh( object ):
         self.triangles = []
         self.point_set = []
         self.contours = []
+        pass
+    #f reset_lines
+    def reset_lines( self ):
+        """Reset lines"""
+        for l in self.line_segments:
+            l.remove()
+            pass
+        self.line_segments = []
+        pass
+    #f reset_triangles
+    def reset_triangles( self ):
+        """Reset triangles"""
+        for t in self.triangles:
+            t.remove()
+            pass
+        self.triangles = []
         pass
     #f check_consistent
     def check_consistent( self ):
@@ -1009,8 +1046,14 @@ class c_mesh( object ):
         """
         Starting with a normalized mesh, we can generate filled triangles
 
-        A normalized mesh has a sorted set of points and a list of line segments starting at any point without any consecutive parallel line segments
-        Since we can guarantee that no consecutive line segments are parallel, two consecutive line segments must form a non-zero area triangle
+        A normalized mesh has a sorted set of points and a (possibly
+        empty) list of line segments starting at any point without any
+        consecutive parallel line segments Since we can guarantee that
+        no consecutive line segments are parallel, two consecutive
+        line segments must form a non-zero area triangle The line
+        segments can be non-empty so that contours are guaranteed to
+        have lines in the final mesh. If there are no contours the mesh
+        can start off being just points.
 
         Sort all points after the 'first point (x0,y0) (left-most, top-most)' by angle to y=y0 (-90,+90).
         The sweep all points creating triangles from (x0,y0) to (xn,yn), (xn+1,yn+1) in the swept order
@@ -1281,6 +1324,29 @@ class c_mesh( object ):
             print self.__repr__(verbose=True)
             self.check_consistent()
         return triangles_removed
+    #f find_large_area_triangle_centroids
+    def find_large_area_triangle_centroids( self, max_area, verbose=False ):
+        """
+        Find all triangles above a max area and return a list of their centroids
+        """
+        centroids = []
+        for t in self.triangles:
+            area = t.get_area()
+            if area<max_area:
+                i+=1
+                continue
+            if verbose:
+                print "*"*80
+                print "Area %f of %s, want to break"%(t.get_area(),str(t))
+                pass
+            (A,B,C) = t.get_points()
+
+            (Ax,Ay) = A.coords()
+            (Bx,By) = B.coords()
+            (Cx,Cy) = C.coords()
+            (Dx, Dy) = ((Ax+Bx+Cx)/3, (Ay+By+Cy)/3)
+            centroids.append( (area,Dx,Dy) )
+        return centroids
     #f shorten_quad_diagonals
     def shorten_quad_diagonals( self, verbose=False ):
         """

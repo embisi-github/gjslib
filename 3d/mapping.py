@@ -365,6 +365,15 @@ faces["floor"]  = ("left", (["drflr.4", "drflr.3", "drflr.2", "drflr.1", "drflr.
                     #"flsq5.0","flsq5.1",
                     "flsq5.2","flsq5.3",                    
                     ))
+faces["floor"]  = ("left", tuple(tuple()),
+                   ("drflr.4", "drflr.3", "drflr.2", "drflr.1", "drflr.0",
+                    "flsq1.0","flsq1.1","flsq1.2","flsq1.3",
+                    "flsq2.0","flsq2.1","flsq2.2","flsq2.3",                    
+                    "flsq3.0","flsq3.1","flsq3.2","flsq3.3",                    
+                    "flsq4.0","flsq4.1","flsq4.2","flsq4.3",                    
+                    "flsq5.0","flsq5.1","flsq5.2","flsq5.3",                    
+                    "flsq6.0","flsq6.1","flsq6.2","flsq6.3",                    
+                    ))
 
 #a c_opengl_image_projection
 class c_opengl_image_projection(object):
