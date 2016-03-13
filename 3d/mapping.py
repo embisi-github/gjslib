@@ -100,7 +100,8 @@ class c_plane(object):
     normal_indices[6] = ( (0,2,4), (1,3,5) )
     #f __init__
     def __init__(self):
-        self.xyz_list = []
+        self.pt_xyzs = {}
+        self.pt_xyzs_names = None
         self.normal = None
         self.k = None
         pass
@@ -113,11 +114,12 @@ class c_plane(object):
         return False
     #f add_xyz
     def add_xyz(self, xyz, name=None):
-        self.xyz_list.append((xyz,name))
+        self.pt_xyzs[name] = xyz
         pass
     #f estimate_normals
     def estimate_normals(self, epsilon=1E-6):
-        l = len(self.xyz_list)
+        self.pt_xyzs_names = self.pt_xyzs.keys()
+        l = len(self.pt_xyzs_names)
         if l<3:
             return None
         n = []
@@ -136,9 +138,12 @@ class c_plane(object):
             pass
         normals = []
         for (i,j,k) in n:
-            vi = self.xyz_list[i][0]
-            vj = self.xyz_list[j][0]
-            vk = self.xyz_list[k][0]
+            pi = self.pt_xyzs_names[i]
+            pj = self.pt_xyzs_names[j]
+            pk = self.pt_xyzs_names[k]
+            vi = self.pt_xyzs[pi]
+            vj = self.pt_xyzs[pj]
+            vk = self.pt_xyzs[pk]
             vij = (vj[0]-vi[0], vj[1]-vi[1], vj[2]-vi[2])
             vik = (vk[0]-vi[0], vk[1]-vi[1], vk[2]-vi[2])
             vij = vectors.vector_normalize(vij)
@@ -190,8 +195,8 @@ class c_plane(object):
             return None
         k = 0.0
         n = 0
-        for xyz in self.xyz_list:
-            xyz = xyz[0]
+        for pt in self.pt_xyzs:
+            xyz = self.pt_xyzs[pt]
             kdn = (xyz[0]*normal[0] + 
                    xyz[1]*normal[1] + 
                    xyz[2]*normal[2])
@@ -210,9 +215,10 @@ class c_plane(object):
                    n[1]*normal[1] +
                    n[2]*normal[2])
             if nn<1.0-error_margin:
-                pts = (self.xyz_list[ijk[0]][1],
-                       self.xyz_list[ijk[1]][1],
-                       self.xyz_list[ijk[2]][1])
+                pts = (self.pt_xyzs_names[ijk[0]],
+                       self.pt_xyzs_names[ijk[1]],
+                       self.pt_xyzs_names[ijk[2]],
+                       )
                        
                 print "Large error in normal",nn,pts
                 pass
@@ -264,8 +270,8 @@ class c_plane(object):
             return
         if self.k is None:
             return
-        for i in range(len(self.xyz_list)):
-            self.xyz_list[i][0] = self.coplanarize_xyz(self.xyz_list[i][0],errors)
+        for pt in self.pt_xyzs:
+            self.pt_xyzs[pt] = self.coplanarize_xyz(self.pt_xyzs[pt],errors)
             pass
         pass
     #f line_intersect
