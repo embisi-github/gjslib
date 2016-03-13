@@ -57,9 +57,11 @@ class c_opengl_app(object):
     #f main_loop
     def main_loop(self):
         glutKeyboardFunc(self.keypress_callback)
+        glutKeyboardUpFunc(self.keyrelease_callback)
         glutMouseFunc(self.mouse_callback)
         glutDisplayFunc(self.display_callback)
         glutIdleFunc(self.idle_callback)
+        glutIgnoreKeyRepeat(True)
         glutMainLoop()
         return
     #f display_callback
@@ -80,6 +82,17 @@ class c_opengl_app(object):
         y = h-y # Invert y as OpenGL want it from BL
         m = glutGetModifiers()
         if self.keypress(key,m,x,y):
+            return
+        if ord(key)==17: # ctrl-Q
+            sys.exit()
+        pass
+    #f keyrelease_callback
+    def keyrelease_callback(self, key,x,y):
+        w = glutGet(GLUT_WINDOW_WIDTH)
+        h = glutGet(GLUT_WINDOW_HEIGHT)
+        y = h-y # Invert y as OpenGL want it from BL
+        m = glutGetModifiers()
+        if self.keyrelease(key,m,x,y):
             return
         if ord(key)==17: # ctrl-Q
             sys.exit()
@@ -121,6 +134,12 @@ class c_opengl_app(object):
         pass
     #f keypress
     def keypress(self, k, m, x, y):
+        """
+        Should be provided by the subclass
+        """
+        pass
+    #f keyrelease
+    def keyrelease(self, k, m, x, y):
         """
         Should be provided by the subclass
         """
@@ -169,6 +188,16 @@ class c_opengl_app(object):
 
 #c c_opengl_camera_app
 class c_opengl_camera_app(c_opengl_app):
+    camera_control_keys = { "x":(("roll",1,0),),
+                            "z":(("roll",2,0),),
+                            "s":(("pitch",1,0),),
+                            "a":(("pitch",2,0),),
+                            ".":(("yaw",1,0),),
+                            ";":(("yaw",2,0),),
+                            "/":(("speed",1,0),),
+                            "'":(("speed",2,0),),
+                            " ":(("roll",0,-1),("yaw",0,-1),("pitch",0,-1),("speed",4,3),),
+                            }
     #f __init__
     def __init__(self, **kwargs):
         c_opengl_app.__init__(self, **kwargs)
@@ -182,6 +211,14 @@ class c_opengl_camera_app(c_opengl_app):
         self.aspect = 1.0
         self.zNear=1.0
         self.zFar=40.0
+        self.camera_controls = set()
+        self.camera_quats = {("roll",1):quaternion.c_quaternion.roll(+0.02),
+                             ("roll",2):quaternion.c_quaternion.roll(-0.02),
+                             ("yaw",1):quaternion.c_quaternion.yaw(+0.02),
+                             ("yaw",2):quaternion.c_quaternion.yaw(-0.02),
+                             ("pitch",1):quaternion.c_quaternion.pitch(+0.02),
+                             ("pitch",2):quaternion.c_quaternion.pitch(-0.02),
+                             }
         pass
     #f set_camera
     def set_camera(self, camera=None, orientation=None, fov=None):
@@ -217,8 +254,58 @@ class c_opengl_camera_app(c_opengl_app):
         if self.camera["fov"]<10:  self.camera["fov"]=10
         if self.camera["fov"]>140: self.camera["fov"]=140
         pass
-    #f keypress
-    def keypress(self, key,m,x,y):
+    #f idle
+    def idle(self):
+        acceleration = 0.02
+        self.camera["speed"] = self.camera["speed"]*0.9
+        actions = {}
+        for c in self.camera_controls:
+            for action in self.camera_control_keys[c]:
+                (a,s,c) = action
+                if a in actions:
+                    s = s | actions[a][0]
+                    c = c | actions[a][1]
+                    pass
+                actions[a] = (s,c)
+                pass
+            pass
+        for a in actions:
+            (s,c) = actions[a]
+            controls = s &~ c
+            if controls!=0:
+                if (a,controls) in self.camera_quats:
+                    self.camera["facing"] = self.camera_quats[(a,controls)].copy().multiply(self.camera["facing"])
+                elif a=="speed":
+                    self.camera["speed"] += acceleration*(2*controls-3)
+                    if controls&4: self.camera["speed"]=0
+                pass
+            pass
+        if self.camera["speed"]!=0:
+            m = self.camera["facing"].get_matrix()
+            self.camera["position"][0] += self.camera["speed"]*m[0][2]
+            self.camera["position"][1] += self.camera["speed"]*m[1][2]
+            self.camera["position"][2] += self.camera["speed"]*m[2][2]
+            pass
+        pass
+    #f key_updown
+    def key_updown(self, key,m,x,y,key_down):
+        if key in self.camera_control_keys:
+            if key_down:
+                self.camera_controls.add(key)
+                pass
+            else:
+                self.camera_controls.discard(key)
+                pass
+            return True
+        pass
+    #f keyrelease
+    def keyrelease(self, key,m,x,y):
+        if self.key_updown(key,m,x,y,False):
+            return
+        pass
+    #f blah
+    def blah():
+        
         acceleration = 0.02
         if key=='i': self.change_angle(0,+3.1415/4,angle_delta=1)
         if key=='o': self.change_angle(1,+3.1415/4,angle_delta=1)
@@ -242,6 +329,11 @@ class c_opengl_camera_app(c_opengl_app):
 
         if key=='[': self.change_fov(-1)
         if key==']': self.change_fov(+1)
+
+    #f keypress
+    def keypress(self, key,m,x,y):
+        if self.key_updown(key,m,x,y,True):
+            return
         if key==' ': self.camera["speed"] = 0
         if key=='e': self.camera["rpy"] = [0,0,0]
         if key=='r': self.camera["position"] = [0,0,-10]
