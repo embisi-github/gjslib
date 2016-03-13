@@ -153,7 +153,7 @@ class c_plane(object):
                  vij[0]*vik[1] - vij[1]*vik[0])
             ln = math.sqrt(n[0]*n[0] + n[1]*n[1] + n[2]*n[2])
             if (ln<0.7):
-                print "Dont like normal",(i,j,k)
+                print "Dont like normal",(i,j,k),(pi,pj,pk)
                 continue
             if (ln<epsilon):
                 n = (0.0,0.0,0.0)
