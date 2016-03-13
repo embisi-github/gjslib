@@ -11,6 +11,7 @@ from OpenGL.GLU import *
 from OpenGL.GL import *
 
 from image_point_mapping import c_point_mapping
+import argparse
 
 #a c_undo_buffer
 class c_undo_buffer(object):
@@ -865,10 +866,21 @@ class c_edit_point_map(opengl_app.c_opengl_app):
 
 #a Main
 def main():
-    point_mapping_filename="corridor.map"
-    point_mapping_filename="pencils.map"
-    #point_mapping_filename="sidsussexbell.map"
-    m = c_edit_point_map( point_mapping_filename=point_mapping_filename,
+    help_text = "Help"
+    parser = argparse.ArgumentParser(
+        description='Point map editor for 3D-from-photos.',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=help_text)#textwrap.dedent(help_text))
+
+    parser.add_argument('-wh', '--window-size', dest='ws',
+                        help='Window size')
+    parser.add_argument('-m', '--map', dest='map', default=None,
+                        help='Map filename')
+    args = parser.parse_args()
+
+    if args.map is None:
+        args.map = "corridor.map"
+    m = c_edit_point_map( point_mapping_filename=args.map,
                           window_size = (1800,1100))
     m.init_opengl()
     m.main_loop()

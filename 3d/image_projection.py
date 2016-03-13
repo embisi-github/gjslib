@@ -836,8 +836,10 @@ class c_image_projection(object):
         #b Find object_guess_locations and image_locations to use
         # iphone 6s has XFOV of about 55, YFOV is therefore about 47
         # FOV is currently not critical though - 55-63 is a good range...
+        # Wired says iphone6 has xFOV of 63.54
+        # That makes yFOV of 49.83
         projection = {"aspect":self.size[0]/float(self.size[1]),
-                      "fov":57.0,
+                      "fov":63.54,
                       }
         (object_guess_locations, image_locations) = self.get_object_and_image_locations(point_mappings)
 

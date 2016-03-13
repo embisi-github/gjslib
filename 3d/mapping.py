@@ -348,14 +348,16 @@ faces["lspike.fr"]  = ("img_1", (["lspike.f", "lspike.t", "lspike.r"],), () )
 faces["rspike.fl"]  = ("img_1", (["rspike.l", "rspike.t", "rspike.f"],), () )
 faces["rspike.fr"]  = ("img_1", (["rspike.f", "rspike.t", "rspike.r"],), () )
 
-faces["floor"]  = ("left", (["flsq1.0", "flsq3.3", "flsq4.2", "flsq4.1", "flsq2.0",
-                             "drflr.4", "drflr.3", "drflr.2", "drflr.1", "drflr.0",
+faces["floor"]  = ("left", (["drflr.4", "drflr.3", "drflr.2", "drflr.1", "drflr.0",
+                             #"flsq1.0", "flsq3.3", "flsq4.2", "flsq4.1", "flsq2.0",
+                             "flsq5.0", "flsq5.1", "flsq6.0", "flsq6.1",
                              ],),
                    ("flsq1.0","flsq1.1","flsq1.2","flsq1.3",
                     "flsq2.0","flsq2.1","flsq2.2","flsq2.3",                    
                     "flsq3.0","flsq3.1","flsq3.2","flsq3.3",                    
                     "flsq4.0","flsq4.1","flsq4.2","flsq4.3",                    
-                    "flsq5.0","flsq5.1","flsq5.2","flsq5.3",                    
+                    #"flsq5.0","flsq5.1",
+                    "flsq5.2","flsq5.3",                    
                     ))
 
 #a c_opengl_image_projection
@@ -559,12 +561,18 @@ class c_mapping(opengl_app.c_opengl_camera_app):
         if proj.texture is not None:
             glBindTexture(GL_TEXTURE_2D, proj.texture)
             pass
-        #glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
         for m in self.meshes:
             m.draw_opengl_surface()
             pass
         glDisable(GL_TEXTURE_2D)
-        #glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+
+        glMaterialfv(GL_FRONT,GL_AMBIENT,[1.0,1.0,1.0,1.0])
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        for m in self.meshes:
+            m.draw_opengl_surface()
+            pass
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+
         glPopMatrix()
         self.first_pass = False
         pass
