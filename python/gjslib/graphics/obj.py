@@ -35,6 +35,20 @@ class c_obj(object):
         self.normals = []
         self.faces = []
         pass
+    #f find_bbox
+    def find_bbox(self):
+        (x0, y0, z0, x1, y1, z1) = (None,None,None,None,None,None)
+        def min(a,b): return (a is None and b) or (((a<b) and a) or b)
+        def max(a,b): return (a is None and b) or (((a>b) and a) or b)
+        for v in self.vertices:
+            x0 = min(x0,v[0])
+            x1 = max(x1,v[0])
+            y0 = min(y0,v[1])
+            y1 = max(y1,v[1])
+            z0 = min(z0,v[2])
+            z1 = max(z1,v[2])
+            pass
+        return ((x0,y0,z0), (x1,y1,z1))
     #f from_bitmap
     def from_bitmap(self, image, scale_factors, is_solid=None):
         """

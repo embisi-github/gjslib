@@ -58,11 +58,12 @@ shader_code["font_fragment"] = """
 in vec3 V_w;
 in vec2 UV;
 in vec3 V_c;
-out vec3 color;
+out vec4 color;
 uniform sampler2D sampler;
 uniform vec3 C;
 void main(){
-    color = texture(sampler,UV).r * C;
+    color = texture(sampler,UV).r * vec4(C,1.0);
+    if (texture(sampler,UV).r<0.1) discard;
 }
 """
 

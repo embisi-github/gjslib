@@ -320,14 +320,18 @@ class c_edit_point_map_info(opengl_widget.c_opengl_container_widget):
     #f __init__
     def __init__(self, epm=None, pm=None, **kwargs):
         opengl_widget.c_opengl_container_widget.__init__(self, **kwargs)
-        self.info_widget    = opengl_widget.c_opengl_simple_text_widget(og=epm)
-        self.image_widget   = opengl_widget.c_opengl_simple_text_widget(og=epm)
-        self.mapping_widget = opengl_widget.c_opengl_simple_text_widget(og=epm)
         self.epm = epm
         self.point_mappings = pm
-        self.add_widget(self.info_widget,   map_xywh=( (0.0,0.0,6000.0,100.0), ( -1.0,0.9,2.0,-2*0.1) ) )
-        self.add_widget(self.image_widget,  map_xywh=( (0.0,0.0,6000.0,4000.0), ( 0.0,0.7,2.0,-2*0.7) ) )
-        self.add_widget(self.mapping_widget,map_xywh=( (0.0,0.0,6000.0,4000.0), (-1.0,0.7,2.0,-2*0.7) ) )
+        self.layout    = opengl_widget.c_opengl_layout(og=epm)
+        #self.add_widget(self.layout,   map_xywh=( (0.0,0.0,1.0,0.25), ( -1.0,-0.5,2.0,-0.5) ) )
+        self.add_widget(self.layout,   map_xywh=( (0.0,0.0,1.0,0.25), ( -1.0,1.0,2.0,-2.0) ) )
+        self.info_widget    = opengl_widget.c_opengl_simple_text_widget(og=epm,scale=(0.0005,0.0005))
+        self.image_widget   = opengl_widget.c_opengl_simple_text_widget(og=epm)
+        self.mapping_widget = opengl_widget.c_opengl_simple_text_widget(og=epm)
+        self.layout.add_child(self.info_widget, (0.0,0.0,0.0))
+        #self.add_widget(self.info_widget,   map_xywh=( (0.0,0.0,6000.0,100.0), ( -1.0,0.9,2.0,-2*0.1) ) )
+        #self.add_widget(self.image_widget,  map_xywh=( (0.0,0.0,6000.0,4000.0), ( 0.0,0.7,2.0,-2*0.7) ) )
+        #self.add_widget(self.mapping_widget,map_xywh=( (0.0,0.0,6000.0,4000.0), (-1.0,0.7,2.0,-2*0.7) ) )
         pass
     #f update
     def update(self):
@@ -343,18 +347,20 @@ class c_edit_point_map_info(opengl_widget.c_opengl_container_widget):
             xyz = "(%4f,%4f,%4f)"%(xyz[0],xyz[1],xyz[2])
         info += "Current pt '%s'\nXYZ: %s\n"%(cur_pt,xyz)
         info += "Scale %6f\n"%self.epm.last_scale
-        self.info_widget.replace_text(info, baseline_xy=(0.0,64.0), scale=(1.0,1.0))
+        self.info_widget.replace_text(info, baseline_xy=(0.0,-1.0), scale=(0.3,0.6))
 
         import string
         image_list = self.point_mappings.get_images()
         image_list.sort()
         image_list = string.join(image_list,"\n")
-        self.image_widget.replace_text(str(image_list), baseline_xy=(0.0,64.0), scale=(1.0,1.0))
+        self.image_widget.replace_text(str(image_list), baseline_xy=(0.0,64.0))
 
         mapping_list = self.epm.point_mapping_names
         mapping_list.sort()
         mapping_list = string.join(mapping_list,"\n")
-        self.mapping_widget.replace_text(mapping_list, baseline_xy=(0.0,64.0), scale=(1.0,1.0))
+        self.mapping_widget.replace_text(mapping_list, baseline_xy=(0.0,64.0))
+
+        self.layout.layout()
         pass
     #f All done
     pass
@@ -667,7 +673,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
     #f test
     def test(self, image_name, pt_name):
         proj = self.point_mappings.images[image_name]["projection"]
-        proj.blah(self.point_mappings)
+        proj.optimize_camera(self.point_mappings)
         pass
     #f menu_select
     def menu_select(self, menu, value):

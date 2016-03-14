@@ -739,9 +739,9 @@ class c_image_projection(object):
             pass
         print "Total error",sum_d
         pass
-    #f blah
-    def blah(self, point_mappings, verbose=True):
-        print "Camera before blah"
+    #f optimize_camera
+    def optimize_camera(self, point_mappings, verbose=True):
+        print "Camera before optimization"
         print self.projection["camera"]
         projection = {"xfov":self.projection["xfov"],
                       "yfov":self.projection["yfov"],
