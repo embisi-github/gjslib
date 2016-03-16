@@ -46,7 +46,7 @@ class c_view_obj(opengl_app.c_opengl_camera_app):
 
         self.matrix_push()
         self.matrix_rotate(95,(1,0,0))
-        self.xxx += 0.2#0.1
+        #self.xxx += 0.2#0.1
         brightness = 0.4
         self.matrix_rotate(self.xxx,(0,0,1))
 
@@ -70,11 +70,11 @@ class c_view_obj(opengl_app.c_opengl_camera_app):
 def test_object():
     obj = opengl_obj.c_opengl_obj()
 
-    #texture_filename = "earth_ico.png"
+    texture_filename = "earth_ico.png"
     #texture_filename = "../../1_earth_16k_div10.png"
     #texture_filename = "icosahedron.png"
     #texture_filename = "test2.png"
-    texture_filename = "brick.png"
+    #texture_filename = "brick.png"
 
     #f = open("icosahedron.obj")
     #obj.load_from_file(f)
@@ -85,6 +85,10 @@ def test_object():
                     texture_filename=texture_filename,
                     window_size=(1000,1000))
     og.init_opengl()
+    og.seal_hack = True
+    og.camera["fov"] = 5
+
+    og.zFar = 100.0
     #og.create_menus(menus)
     #og.attach_menu("main_menu")
     og.main_loop()

@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 # PYTHONPATH=`pwd`/../python:$PYTHONPATH ./panoram360.py
+# Changing the scale gives larger/smaller pngs
+# The scale is the number of pixels per icosahedron triangle
+# Good values or 256 to 1024 (slow)    
 from gjslib.math.spherical_coords import c_spherical_coord
 import math
 
@@ -49,7 +52,7 @@ def draw_triangle(im,draw,corners,fill=128):
     draw.line(coords,fill=fill)
     pass
 
-png_filename = "../../1_earth_16k_div10.png"
+png_filename = "../../1_earth_16k_div14.png"
 png_filename = "../../1_earth_16k.jpg"
 from PIL import Image, ImageDraw
 png = Image.open(png_filename)
@@ -95,14 +98,17 @@ def im_set_pixel(im,xy,c):
     if (xy[1]>=im.size[1]):return
     im.putpixel(xy,c)
     return
-asd
-scale = 1024
+
+scale = 1024*2
+#scale = 1024
 im = Image.new("RGB", (scale*2,scale*5), "white")
 draw = ImageDraw.Draw(im)
 p = c_spherical_coord()
 for t in triangle_map:
+    print "Triangle",t
     #if t not in [1]: continue
     for u in range(scale):
+        if (u%100)==0: print "Step",u
         for v in range(scale):
             if (u+v>=scale):break
             p.from_icos_tuv((t,u/(scale+0.0),v/(scale+0.0)))

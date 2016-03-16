@@ -69,6 +69,7 @@ class c_opengl_widget(object):
         self.og = og
         self.decorations = {}
         self.backgrounds = {}
+        self.mouse_widget = None
         pass
     #f __create_vbos
     def __create_vbos(self):
@@ -184,6 +185,60 @@ class c_opengl_widget(object):
             d.draw(self.og)
             pass
         pass
+    #f mouse_event
+    def mouse_event(self, b,s,m,xyz,dxyz):
+        print self,"mev",b,s,m,xyz
+        if self.mouse_widget is not None:
+            self.mouse_widget = self.mouse_press_continue(b,s,m,xyz,dxyz)
+            if self.mouse_widget is None:
+                return None
+            return self
+        r = self.mouse_press_initiate(b,s,m,xyz,dxyz)
+        if r is not None:
+            self.mouse_widget = r
+            return self
+        self.mouse_widget = None
+        return None
+    #f mouse_press_initiate
+    def mouse_press_initiate(self, b,s,m,xyz,dxyz):
+        print self, "mpi",b,s,m,xyz
+        if "border_one_color" in self.decorations:
+            if s=="down":
+                self.decorations["border_one_color"].color = (1.0,0.0,0.0)
+            else:
+                self.decorations["border_one_color"].color = (0.0,0.0,0.0)
+                pass
+            return self
+        pass
+    #f mouse_press_continue
+    def mouse_press_continue(self,b,s,m,xyz,dxyz):
+        """
+        w should be self at this point for a 'terminal' widget - i.e. one that returned self to mouse_press_initiate
+        """
+        if self.mouse_widget is not None:
+            self.mouse_widget = self.mouse_widget.mouse_press_continue(b,s,m,xyz,dxyz)
+            if self.mouse_widget is None: return None
+            return self
+        print self, "mpc",b,s,m,xyz
+        if "border_one_color" in self.decorations:
+            if s=="down":
+                self.decorations["border_one_color"].color = (1.0,0.0,0.0)
+                return self
+            else:
+                self.decorations["border_one_color"].color = (0.0,0.0,0.0)
+                return None
+                pass
+            pass
+        return None
+    #f motion_event
+    def motion_event(self, xyz, dxyz):
+        #print "widget:motion",self,xyz,dxyz,self.mouse_widget
+        if self.mouse_widget is not None:
+            self.mouse_widget = self.mouse_widget.motion_event(xyz,dxyz)
+            pass
+        if self.mouse_widget is None:
+            return None
+        return self
     #f All done
     pass
 
@@ -256,6 +311,21 @@ class c_opengl_layout(c_opengl_widget):
             c.display_background()
             pass
         pass
+    #f mouse_press_initiate
+    def mouse_press_initiate(self, b,s,m,xyz,dxyz):
+        print self,"mpi",b,s,m,xyz,dxyz
+        for (xyz,whd,c) in self.children:
+            r = c.mouse_press_initiate(b,s,m,xyz,dxyz)
+            if r is not None:
+                return r
+            pass
+        return None
+    #f motion_event
+    #def motion_event(self, xyz, dxyz):
+    #    if self.mouse_widget is None:
+    #        return None
+        
+
 
 #c c_opengl_simple_text_widget
 class c_opengl_simple_text_widget(c_opengl_widget):
@@ -327,6 +397,7 @@ class c_opengl_container_widget(c_opengl_widget, opengl_utils.c_depth_contents):
     def add_widget(self, widget, depth=0, **kwargs):
         content = {"widget":widget,
                    "transformation":opengl_utils.transformation(**kwargs),}
+        content["inverse_transformation"] = content["transformation"].inverse()
         self.add_contents(content=content,
                           depth=depth)
         pass
@@ -341,5 +412,32 @@ class c_opengl_container_widget(c_opengl_widget, opengl_utils.c_depth_contents):
             self.og.matrix_pop()
             pass
         pass
+    #f ray_transform
+    def ray_transform(self,c,xyz,dxyz):
+        xyz = c["inverse_transformation"].apply((xyz[0],xyz[1],xyz[2],1.0))
+        dxyz = c["inverse_transformation"].apply((dxyz[0],dxyz[1],dxyz[2],1.0))
+        return (xyz[:3], dxyz[:3])
+    #f mouse_press_continue
+    def mouse_press_continue(self,b,s,m,xyz,dxyz):
+        if self.mouse_widget is None: return None
+        (xyz,dxyz) = self.ray_transform(self.mouse_widget,xyz,dxyz)
+        return self.mouse_widget["widget"].mouse_event(b,s,m,xyz,dxyz)
+    #f mouse_press_initiate
+    def mouse_press_initiate(self, b,s,m,xyz,dxyz):
+        for c in self:
+            (xyz,dxyz) = self.ray_transform(c,xyz,dxyz)
+            r = c["widget"].mouse_event(b,s,m,xyz,dxyz)
+            if r is not None:
+                return c
+            pass
+        return None
+    #f motion_event
+    def motion_event(self, xyz,dxyz):
+        print "ocw:motion",self,self.mouse_widget,xyz,dxyz
+        if self.mouse_widget is None:
+            return
+        (xyz,dxyz) = self.ray_transform(self.mouse_widget,xyz,dxyz)
+        r = self.mouse_widget["widget"].motion_event(xyz,dxyz)
+        #if r is not None:
     #f All done
     pass

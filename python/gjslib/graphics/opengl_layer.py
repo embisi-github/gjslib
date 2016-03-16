@@ -43,6 +43,7 @@ class c_opengl_layer(opengl_utils.c_depth_contents):
         self.xywh = xywh
         self.autoclear = autoclear
         opengl_utils.c_depth_contents.__init__(self)
+        self.mouse_widget = None
         pass
     #f display_init
     def display_init(self):
@@ -74,6 +75,41 @@ class c_opengl_layer(opengl_utils.c_depth_contents):
         """
         return ((xy[0]-self.xywh[0])/float(self.xywh[2]),
                 (xy[1]-self.xywh[1])/float(self.xywh[3]))
+    #f mouse_event
+    def mouse_event(self,state,b,s,m,x,y):
+        xy = self.scaled_xy((x,y))
+        xyz = (xy[0], xy[1], -10)
+        dxyz = (0,0,1)
+        print "layer mev", self.mouse_widget
+        if (s=="down") and (self.mouse_widget is None):
+            print s, self.mouse_widget
+            for c in self.reverse():
+                w = c.mouse_event(b,s,m,xyz, dxyz)
+                if w is not None:
+                    self.mouse_widget = w
+                    break
+                pass
+            pass
+        elif self.mouse_widget is not None:
+            self.mouse_widget = self.mouse_widget.mouse_event(b,s,m,xyz,dxyz)
+            if self.mouse_widget is None: return None
+            return self
+        print "Done", self.mouse_widget
+        if self.mouse_widget is not None:
+            return self
+        pass
+    #f motion_event
+    def motion_event(self,state,x,y):
+        print "ogl:motion",self,state,x,y,self.mouse_widget
+        if self.mouse_widget is not None:
+            xy = self.scaled_xy((x,y))
+            xyz = (xy[0], xy[1], -10)
+            dxyz = (0,0,1)
+            r = self.mouse_widget.motion_event(xyz, dxyz)
+            if not r:
+                self.mouse_widget = None
+            pass
+        pass
     #f All done
     pass
 

@@ -107,6 +107,9 @@ class c_depth_contents_iter(object):
             pass
         self.content_index = 0
         pass
+    #f __iter__
+    def __iter__(self):
+        return self
     #f next
     def next(self):
         if len(self.depths)==0:

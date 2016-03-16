@@ -394,6 +394,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         self.image_projections = {}
         self.point_mapping_filename = point_mapping_filename
         self.last_scale = 0.01
+        self.motion_event_layer = None
         pass
     #f save_point_mapping
     def save_point_mapping(self, point_map_filename):
@@ -779,14 +780,30 @@ class c_edit_point_map(opengl_app.c_opengl_app):
             return True
         print ord(k),x,y
         pass
+    #f motion
+    def motion(self,x,y):
+        print "epm:motion",x,y,self.motion_event_layer
+        if self.motion_event_layer is not None:
+            self.motion_event_layer.motion_event(self.mouse_state,x,y)
+            pass
+        pass
     #f mouse
     def mouse(self,b,s,m,x,y):
+        if self.motion_event_layer is not None:
+            self.motion_event_layer = self.motion_event_layer.mouse_event(self.mouse_state,b,s,m,x,y)
+            return
         xy = (x,y)
         layers = self.layers.find_layers_at_xy(xy)
         if len(layers)==0:
             self.point_set_end()
             return True
         l = layers[0]
+        if l in self.image_layers:
+            return self.mouse_in_image(l,b,s,m,xy)
+        self.motion_event_layer = l.mouse_event(self.mouse_state,b,s,m,x,y)
+        return True
+    #f mouse_in_image
+    def mouse_in_image(self, l, b, s, m, xy):
         for i in range(len(self.image_layers)):
             if l==self.image_layers[i]:
                 layer_xy = l.scaled_xy(xy)

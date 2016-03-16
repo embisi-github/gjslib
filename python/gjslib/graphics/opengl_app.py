@@ -7,7 +7,7 @@ from OpenGL.GL import *
 from OpenGL.GL import shaders
 import sys
 import math
-from gjslib.math import quaternion, matrix
+from gjslib.math import quaternion, matrix, vectors
 import OpenGL.arrays.vbo as vbo
 import numpy
 
@@ -50,7 +50,7 @@ in vec3 V_c;
 out vec3 color;
 uniform sampler2D sampler;
 void main(){
-    color = texture(sampler,UV).rgb;
+    color = texture(sampler,UV).rgb*0.7;
 }
 """
 shader_code["font_fragment"] = """
@@ -183,6 +183,7 @@ class c_opengl_app(object):
                                                                              1,2,4, 1,2,5, 1,3,4, 1,3,5],
                                                                             dtype=numpy.uint8), target=GL_ELEMENT_ARRAY_BUFFER ),
                                          }
+        self.mouse_state = None
         pass
     #f window_xy
     def window_xy(self, xy):
@@ -333,6 +334,7 @@ class c_opengl_app(object):
         glutKeyboardFunc(self.keypress_callback)
         glutKeyboardUpFunc(self.keyrelease_callback)
         glutMouseFunc(self.mouse_callback)
+        glutMotionFunc(self.motion_callback)
         glutDisplayFunc(self.display_callback)
         glutIdleFunc(self.idle_callback)
         glutIgnoreKeyRepeat(True)
@@ -373,6 +375,25 @@ class c_opengl_app(object):
         pass
     #f mouse_callback
     def mouse_callback(self, button,state,x,y):
+        if self.mouse_state is None:
+            if state==GLUT_DOWN:
+                self.mouse_state = {"xy":(x,y),
+                                    button:state}
+                pass
+            pass
+        else:
+            if state==GLUT_UP:
+                if button in self.mouse_state:
+                    del(self.mouse_state[button])
+                    pass
+                pass
+            if state==GLUT_DOWN:
+                self.mouse_state[button] = state
+                pass
+            pass
+        if len(self.mouse_state)==1: # just xy
+            self.mouse_state = None
+            pass
         w = glutGet(GLUT_WINDOW_WIDTH)
         h = glutGet(GLUT_WINDOW_HEIGHT)
         y = h-y # Invert y as OpenGL want it from BL
@@ -385,6 +406,13 @@ class c_opengl_app(object):
         if button == GLUT_MIDDLE_BUTTON: b="middle"
         if button == GLUT_RIGHT_BUTTON:  b="right"
         self.mouse(b,s,m,x,y)
+        pass
+    #f motion_callback
+    def motion_callback(self, x,y):
+        w = glutGet(GLUT_WINDOW_WIDTH)
+        h = glutGet(GLUT_WINDOW_HEIGHT)
+        y = h-y # Invert y as OpenGL want it from BL
+        self.motion(x,y)
         pass
     #f idle_callback
     def idle_callback(self):
@@ -414,6 +442,12 @@ class c_opengl_app(object):
         pass
     #f mouse
     def mouse(self, b, s, m, x, y):
+        """
+        Should be provided by the subclass
+        """
+        pass
+    #f motion
+    def motion(self, x, y):
         """
         Should be provided by the subclass
         """
@@ -460,6 +494,8 @@ class c_opengl_camera_app(c_opengl_app):
                             "a":(("pitch",2,0),),
                             ".":(("yaw",1,0),),
                             ";":(("yaw",2,0),),
+                            "[":(("fov",1,0),),
+                            "]":(("fov",2,0),),
                             "/":(("speed",1,0),),
                             "'":(("speed",2,0),),
                             " ":(("roll",0,-1),("yaw",0,-1),("pitch",0,-1),("speed",4,3),),
@@ -478,12 +514,12 @@ class c_opengl_camera_app(c_opengl_app):
         self.zNear=1.0
         self.zFar=40.0
         self.camera_controls = set()
-        self.camera_quats = {("roll",1):quaternion.c_quaternion.roll(+0.02),
-                             ("roll",2):quaternion.c_quaternion.roll(-0.02),
-                             ("yaw",1):quaternion.c_quaternion.yaw(+0.02),
-                             ("yaw",2):quaternion.c_quaternion.yaw(-0.02),
-                             ("pitch",1):quaternion.c_quaternion.pitch(+0.02),
-                             ("pitch",2):quaternion.c_quaternion.pitch(-0.02),
+        self.camera_quats = {("roll",1):quaternion.c_quaternion.roll(+0.002),
+                             ("roll",2):quaternion.c_quaternion.roll(-0.002),
+                             ("yaw",1):quaternion.c_quaternion.yaw(+0.002),
+                             ("yaw",2):quaternion.c_quaternion.yaw(-0.002),
+                             ("pitch",1):quaternion.c_quaternion.pitch(+0.002),
+                             ("pitch",2):quaternion.c_quaternion.pitch(-0.002),
                              }
         pass
     #f set_camera
@@ -544,6 +580,8 @@ class c_opengl_camera_app(c_opengl_app):
                 elif a=="speed":
                     self.camera["speed"] += acceleration*(2*controls-3)
                     if controls&4: self.camera["speed"]=0
+                elif a=="fov":
+                    self.camera["fov"] *= 1+0.1*(2*controls-3)
                 pass
             pass
         if self.camera["speed"]!=0:
@@ -624,6 +662,12 @@ class c_opengl_camera_app(c_opengl_app):
         self.camera["position"][0] += self.camera["speed"]*m[0,2]
         self.camera["position"][1] += self.camera["speed"]*m[1,2]
         self.camera["position"][2] += self.camera["speed"]*m[2,2]
+
+        if self.seal_hack:
+            m2 = m.copy()
+            #m2.transpose()
+            #self.camera["position"] = vectors.vector_add((0,-1,0),m2.apply((0,0,-10,1))[0:3])
+            self.camera["position"] = vectors.vector_add((0,0,0),m2.apply((0,0,-10,1))[0:3])
 
         self.matrix_set(m.transpose(), matrix="view")
         self.matrix_translate(self.camera["position"], matrix="view")
