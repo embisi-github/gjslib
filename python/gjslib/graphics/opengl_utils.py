@@ -4,7 +4,7 @@
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 from OpenGL.GL import *
-from gjslib.math import matrix, quaternion
+from gjslib.math import matrix, quaternion, vectors
 from gjslib.graphics.font import c_bitmap_font
 
 #a Useful functions
@@ -132,6 +132,68 @@ def whd_from_xxyyzz(xxyyzz):
 def xyz_whd_from_xxyyzz(xxyyzz):
     return (xxyyzz[0],xxyyzz[2],xxyyzz[4]), (xxyyzz[1]-xxyyzz[0], xxyyzz[3]-xxyyzz[2], xxyyzz[5]-xxyyzz[4])
             
+#f xxyyzz_ray_intersects_face
+def xxyyzz_ray_intersects_face(xxyyzz, bbox, n, normal, epsilon=1E-6):
+    """
+    xxyyzz is xyz, dxyz
+    bbox is xxyyzz - a cuboid
+    n is the face to test for intersection
+    normal is the normal to the face (0,0,1), (0,1,0) or (1,0,0)
+    """
+    dxyz = (xxyyzz[1], xxyyzz[3], xxyyzz[5])
+    xyz = (xxyyzz[0], xxyyzz[2], xxyyzz[4])
+    dn = vectors.dot_product(dxyz,normal)
+    if dn>-epsilon and dn<epsilon: return False
+    k = (bbox[n]-vectors.dot_product(xyz,normal)) / dn
+    if k<=0: return False
+    p = vectors.vector_add(xyz,dxyz,scale=k)
+    if n not in [0,1]:
+        if p[0]<bbox[0] or p[0]>bbox[1]: return False
+    if n not in [2,3]:
+        if p[1]<bbox[2] or p[1]>bbox[3]: return False
+    if n not in [4,5]:
+        if p[2]<bbox[4] or p[2]>bbox[5]: return False
+    return True
+#f xxyyzz_ray_intersects_bbox
+def xxyyzz_ray_intersects_bbox(xxyyzz, bbox):
+    """
+    Ray is xyz[0] + k.xyz[1], k>0
+    Or, a + k.d
+    Bbox is cuboid with normals (0,0,1), (0,1,0), (0,0,1)
+    BBox cuboid faces are (e.g.) x0,y0,z0, x1,y0,z0, x1,y1,z0, x1,y0,z0
+    Such a face has a vector equation p.n = p.(0,0,1) = z0
+    The intersection is then a.n+k.d.n = z0, i.e. k=(z0-a.n) / d.n
+    The intersection point is a+k.d = x,y,z0
+    To be a collision with the bbox k>0, x0<x<x1, y0<y<y1, for at least
+    two faces
+    """
+    # Would rotate ray first by content_inverse_transformation?
+    cnt = 0
+    if xxyyzz_ray_intersects_face(xxyyzz,bbox,4,(0,0,1)):
+        cnt += 1
+        pass
+    if xxyyzz_ray_intersects_face(xxyyzz,bbox,5,(0,0,1)):
+        cnt += 1
+        pass
+    if cnt==2: return True
+    if xxyyzz_ray_intersects_face(xxyyzz,bbox,2,(0,1,0)):
+        cnt += 1
+        pass
+    if cnt==2: return True
+    if xxyyzz_ray_intersects_face(xxyyzz,bbox,3,(0,1,0)):
+        cnt += 1
+        pass
+    if cnt==2: return True
+    if xxyyzz_ray_intersects_face(xxyyzz,bbox,0,(1,0,0)):
+        cnt += 1
+        pass
+    if cnt==2: return True
+    if xxyyzz_ray_intersects_face(xxyyzz,bbox,1,(1,0,0)):
+        cnt += 1
+        pass
+    if cnt==2: return True
+    return False
+
 #a Base useful classes
 #c c_depth_contents_iter
 class c_depth_contents_iter(object):

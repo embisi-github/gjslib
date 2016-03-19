@@ -198,6 +198,11 @@ class c_opengl_app(object):
         pass
     #f clip_push
     def clip_push(self, x,y,w,h):
+        """
+        Can do clipping also by giving portions of the depth buffer space to different levels; each time you push you go farther back into the depth buffer
+        Can do clipping using a clip volume in the fragment shader using a clip transformation (of MVP vector to clip volume - discard if outside unit cube)
+        Can do clipping by overwriting the depth buffer
+        """
         x,y,w,h = int(x),int(y),int(w),int(h)
         self.clips.append((x,y,w,h))
         glViewport(x,y,w,h)
@@ -621,33 +626,6 @@ class c_opengl_camera_app(c_opengl_app):
         if self.key_updown(key,m,x,y,False):
             return
         pass
-    #f blah
-    def blah():
-        
-        acceleration = 0.02
-        if key=='i': self.change_angle(0,+3.1415/4,angle_delta=1)
-        if key=='o': self.change_angle(1,+3.1415/4,angle_delta=1)
-        if key=='p': self.change_angle(1,+3.1415/4,angle_delta=1)
-        if key=='w': self.change_angle(2,-1)
-        if key=='s': self.change_angle(2, 1)
-        if key=='z': self.change_angle(0,-1)
-        if key=='c': self.change_angle(0,+1)
-        if key=='a': self.change_angle(1,-1)
-        if key=='d': self.change_angle(1,+1)
-
-        if key=='W': self.change_position(0,0,-1)
-        if key=='S': self.change_position(0,0,+1)
-        if key=='Z': self.change_position(0,-1,0)
-        if key=='C': self.change_position(0,+1,0)
-        if key=='A': self.change_position(1,0,0)
-        if key=='D': self.change_position(-1,0,0)
-
-        if key==';': self.camera["speed"] += acceleration
-        if key=='.': self.camera["speed"] -= acceleration
-
-        if key=='[': self.change_fov(-1)
-        if key==']': self.change_fov(+1)
-
     #f keypress
     def keypress(self, key,m,x,y):
         if self.key_updown(key,m,x,y,True):
@@ -662,7 +640,7 @@ class c_opengl_camera_app(c_opengl_app):
     def opengl_post_init(self):
         pass
     #f display
-    def display(self, show_crosshairs=False):
+    def display(self, show_crosshairs=False, focus_xxyyzz=None):
         self.matrix_perspective(fovy=self.camera["fov"], aspect=self.aspect, zNear=self.zNear, zFar=self.zFar, matrix="project")
         if self.mvp is not None:
             self.mvp.perspective(self.camera["fov"],self.aspect,self.zNear,self.zFar)
@@ -677,11 +655,13 @@ class c_opengl_camera_app(c_opengl_app):
         self.camera["position"][1] += self.camera["speed"]*m[1,2]
         self.camera["position"][2] += self.camera["speed"]*m[2,2]
 
-        if self.seal_hack:
+        if focus_xxyyzz is not None:
             m2 = m.copy()
             #m2.transpose()
             #self.camera["position"] = vectors.vector_add((0,-1,0),m2.apply((0,0,-10,1))[0:3])
-            self.camera["position"] = vectors.vector_add((0,0,0),m2.apply((0,0,-10,1))[0:3])
+            self.camera["position"] = vectors.vector_add((focus_xxyyzz[0],focus_xxyyzz[2],focus_xxyyzz[4]),
+                                                         m2.apply((focus_xxyyzz[1],focus_xxyyzz[3],focus_xxyyzz[5],1))[0:3])
+            pass
 
         self.matrix_set(m.transpose(), matrix="view")
         self.matrix_translate(self.camera["position"], matrix="view")
@@ -696,21 +676,23 @@ class c_opengl_camera_app(c_opengl_app):
 
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
 
-        if True: # Draw crosshairs
-
+        if show_crosshairs: # Draw crosshairs
             self.matrix_push("project")
             self.matrix_push("view")
             self.matrix_push("model")
             self.matrix_identity("project")
             self.matrix_identity("view")
             self.matrix_identity("model")
-            self.matrix_use()
             self.shader_use("color_standard")
             self.shader_set_attributes(C=(0.7,0.7,0.9))
-            self.draw_lines((-1,0,0,1,0,0, 0,-1,0,0,1,0))
+            self.matrix_use()
+            self.draw_lines((-1,0,-1,1,0,-1, 0,-1,-1,0,1,-1))
             self.matrix_pop("project")
             self.matrix_pop("view")
             self.matrix_pop("model")
+            pass
+        pass
+
     #f All done
     pass
 

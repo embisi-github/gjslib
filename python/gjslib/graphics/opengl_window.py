@@ -67,7 +67,7 @@ class c_opengl_window(opengl_widget.c_opengl_widget):
         self.autoclear = autoclear
         self.width  = wh[0]
         self.height = wh[1]
-        self.border=(50,50,50,50,0,0)
+        self.border=(3,3,3,3,0,0)
         self.padding=(2,2,2,2,0,0)
         self.border_colors = ((0.9,0.9,0.5),)
         self.background_color = (0.1,0.1,0.5)

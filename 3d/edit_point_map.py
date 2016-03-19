@@ -328,7 +328,9 @@ class c_edit_point_map_info(opengl_window.c_opengl_window):
         opengl_window.c_opengl_window.__init__(self, layout_class=opengl_layout.c_opengl_layout_place, **kwargs)
         self.epm = epm
         self.point_mappings = pm
-        self.info_widget = self.add_widget( opengl_widget.c_opengl_simple_text_widget(og=epm,scale=(0.5,0.5), xyz=(0,0)))
+        w = opengl_widget.c_opengl_simple_text_widget(og=epm,scale=(0.5,0.5), xyz=(0,0))
+        w.is_button = True
+        self.info_widget = self.add_widget(w)
         #self.add_widget(self.layout,   map_xywh=( (0.0,0.0,1.0,0.25), ( -1.0,-0.5,2.0,-0.5) ) )
         #self.add_widget(self.layout,   map_xywh=( (0.0,0.0,1.0,0.25), ( -1.0,1.0,2.0,-2.0) ) )
         #self.info_widget    = opengl_widget.c_opengl_simple_text_widget(og=epm,scale=(0.0005,0.0005))
@@ -789,8 +791,8 @@ class c_edit_point_map(opengl_app.c_opengl_app):
             return True
         print ord(k),x,y
         pass
-    #f motion
-    def motion(self,x,y):
+    #f motion_old
+    def motion_old(self,x,y):
         print "epm:motion",x,y,self.motion_event_layer
         if self.motion_event_layer is not None:
             self.motion_event_layer.motion_event(self.mouse_state,x,y)
@@ -798,6 +800,14 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         pass
     #f mouse
     def mouse(self,b,s,m,x,y):
+        self.layers.mouse(b,s,m,x,y)
+        pass
+    #f motion
+    def motion(self,x,y):
+        self.layers.motion(x,y)
+        pass
+    #f mouse_old
+    def mouse_old(self,b,s,m,x,y):
         if self.motion_event_layer is not None:
             self.motion_event_layer = self.motion_event_layer.mouse_event(self.mouse_state,b,s,m,x,y)
             return

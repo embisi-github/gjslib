@@ -37,10 +37,19 @@ class c_view_obj(opengl_app.c_opengl_camera_app):
         return self.ll_to_xyz(lat,lon)
     #f ll_to_xyz
     def ll_to_xyz(self, lat, lon):
-        lon -= 90.0
+        #lon -= 90.0
         #lat -= 10.0
-        q = quaternion.c_quaternion.pitch(-lat,degrees=True).multiply(quaternion.c_quaternion.roll(-lon,degrees=True))
-        xyz = q.get_matrixn(order=3).apply((1.01,0,0))
+        # these two work ish
+        #q = quaternion.c_quaternion.pitch(-lat,degrees=True).multiply(quaternion.c_quaternion.roll(-lon,degrees=True))
+        #xyz = q.get_matrixn(order=3).apply((1.01,0,0))
+        #q = quaternion.c_quaternion(euler=(0,90-lat,lon),degrees=True)
+        q = quaternion.c_quaternion(euler=(0,lat,lon),degrees=True)
+        xyz = q.get_matrixn(order=3).apply((0,0,1.01))
+        q = quaternion.c_quaternion()
+        #q = quaternion.c_quaternion.roll(90,degrees=True).multiply(q)
+        q = quaternion.c_quaternion.pitch(90,degrees=True).multiply(q)
+        #q = quaternion.c_quaternion.yaw(90,degrees=True).multiply(q)
+        xyz = q.get_matrixn(order=3).apply(xyz)
         return xyz
     #f seal_trail
     def seal_trail(self,seal):
@@ -59,6 +68,34 @@ class c_view_obj(opengl_app.c_opengl_camera_app):
                                   "nvertices":len(vertices),
                                   }
         pass
+    #f line_of_latitude
+    def line_of_latitude(self,lat,n=180):
+        vertices = []
+        for i in range(n+1):
+            l = (360.0*i/n)
+            vertices.append(self.ll_to_xyz(lat,l))
+            vertices.append(self.ll_to_xyz(lat,l))
+            pass
+        vertices.pop(0)
+        vertices.pop()
+        self.decorations["lat%s"%lat] = {"vectors":vbo.VBO(data=numpy.array(vertices, dtype=numpy.float32), target=GL_ARRAY_BUFFER ),
+                                         "nvertices":len(vertices),
+                                         }
+        pass
+    #f line_of_longitude
+    def line_of_longitude(self,lon,n=180):
+        vertices = []
+        for i in range(n+1):
+            l = (360.0*i/n)
+            vertices.append(self.ll_to_xyz(l,lon))
+            vertices.append(self.ll_to_xyz(l,lon))
+            pass
+        vertices.pop(0)
+        vertices.pop()
+        self.decorations["lon%s"%lon] = {"vectors":vbo.VBO(data=numpy.array(vertices, dtype=numpy.float32), target=GL_ARRAY_BUFFER ),
+                                         "nvertices":len(vertices),
+                                         }
+        pass
     #f opengl_post_init
     def opengl_post_init(self):
         self.texture = opengl_utils.texture_from_png(self.texture_filename)
@@ -66,8 +103,37 @@ class c_view_obj(opengl_app.c_opengl_camera_app):
         for s in self.seals:
             self.seal_trail(s)
             pass
+        self.decorations = {}
+        for l in (0,15,30,45,60,75):
+            self.line_of_latitude(lat=l)
+            self.line_of_longitude(lon=l)
+            if l==0:
+                self.line_of_latitude(lat=-0.1)
+                self.line_of_longitude(lon=-0.1)
+                pass
+            else:
+                self.line_of_latitude(lat=-l)
+                self.line_of_longitude(lon=-l)
+                pass
+            pass
         self.camera["facing"] = quaternion.c_quaternion(euler=(-156.3232,21.7793,-30.0554),degrees=True)
-        self.camera["position"] = [1.837988774095713, 3.94907536416929, -9.001477713931706]
+        # (0 to 90) 0 0 is polar
+        #self.camera["facing"] = quaternion.c_quaternion(euler=(0,0,0),degrees=True)
+        # 0,90,0 is focused on lat/lon 0,0 but north pole is on the left
+        #self.camera["facing"] = quaternion.c_quaternion(euler=(0,90,0),degrees=True)
+        # -90,90,0 is focused on lat/lon 0,0  with north pole up
+        #self.camera["facing"] = quaternion.c_quaternion(euler=(-90,90,0),degrees=True)
+        # (0,0,30) multiply (-90,90,0) is focused on lat/lon 30,0  with north pole up
+        #self.camera["facing"] = quaternion.c_quaternion(euler=(0,0,30),degrees=True).multiply(quaternion.c_quaternion(euler=(-90,90,0),degrees=True))
+        # (0,30,0) multiply (-90,90,0) is focused on lat/lon 0,30  with north pole up
+        #self.camera["facing"] = quaternion.c_quaternion(euler=(0,30,0),degrees=True).multiply(quaternion.c_quaternion(euler=(-90,90,0),degrees=True))
+        # (0,0,30) multiply (0,30,0) multiply (-90,90,0) is focused on lat/lon 30,30  with north pole up
+        #self.camera["facing"] = quaternion.c_quaternion(euler=(0,0,30),degrees=True).multiply(quaternion.c_quaternion(euler=(0,30,0),degrees=True).multiply(quaternion.c_quaternion(euler=(-90,90,0),degrees=True)))
+        # (0,0,30) multiply (0,10,0) multiply (-90,90,0) is focused on lat/lon 30,10  with north pole up
+        # self.camera["facing"] = quaternion.c_quaternion(euler=(0,0,30),degrees=True).multiply(quaternion.c_quaternion(euler=(0,10,0),degrees=True).multiply(quaternion.c_quaternion(euler=(-90,90,0),degrees=True)))
+        # (0,0,lat) multiply (0,lon,0) multiply (-90,90,0) is focused on lat,lon  with north pole up
+        self.camera["facing"] = quaternion.c_quaternion(euler=(0,0,-54.00),degrees=True).multiply(quaternion.c_quaternion(euler=(0,38.05,0),degrees=True).multiply(quaternion.c_quaternion(euler=(-90,90,0),degrees=True)))
+        #self.camera["facing"] = quaternion.c_quaternion(euler=(-90,90,0),degrees=True)
         pass
     #f select_years
     def select_years(self,year=None):
@@ -115,23 +181,13 @@ class c_view_obj(opengl_app.c_opengl_camera_app):
         return opengl_app.c_opengl_camera_app.keypress(self, key,m,x,y)
     #f display
     def display(self):
-        opengl_app.c_opengl_camera_app.display(self)
+        opengl_app.c_opengl_camera_app.display(self, show_crosshairs=True,
+                                               focus_xxyyzz=(0,0, 0,0, 0,-10))
         self.display_time = max(self.display_min_time, self.display_time)
         if self.display_time>self.display_max_time: self.display_time=self.display_min_time
         self.display_time += 1000
 
         self.yyy += 0.03
-        lightZeroPosition = [4.+3*math.sin(self.yyy),4.,4.-3*math.cos(self.yyy),1.]
-        lightZeroColor = [0.7,1.0,0.7,1.0] #white
-        ambient_lightZeroColor = [1.0,1.0,1.0,1.0] #green tinged
-
-        #glPushMatrix()
-        #color = [1.0,0.,0.,1.]
-        #glTranslate(lightZeroPosition[0],lightZeroPosition[1],lightZeroPosition[2])
-        #glScale(0.3,0.3,0.3)
-        #glutSolidSphere(2,40,40)
-        #glPopMatrix()
-
         color = [0.5,0,0.,0.,1.]
 
         self.matrix_push()
@@ -141,13 +197,20 @@ class c_view_obj(opengl_app.c_opengl_camera_app):
         self.matrix_push()
         self.matrix_scale(4)
 
-        self.matrix_use()
         self.shader_use("color_standard")
+        self.matrix_use()
+
+        for d in self.decorations:
+            self.decorations[d]["vectors"].bind()
+            self.shader_set_attributes( t=3, v=0, C=(1.0,1.0,1.0) )
+            glDrawArrays(GL_LINES,0,self.decorations[d]["nvertices"])
+            self.decorations[d]["vectors"].unbind()
+            pass
 
         for seal in self.seals:
             if self.years[self.seals[seal].year]:
-                self.matrix_use()
                 self.seal_trails[seal]["vectors"].bind()
+                self.matrix_use() # because draw_simple_object messes with the matrix in the shader
                 self.shader_set_attributes( t=3, v=0, C=self.seals[seal].color )
                 glDrawArrays(GL_LINES,0,self.seal_trails[seal]["nvertices"])
                 self.seal_trails[seal]["vectors"].unbind()
@@ -256,6 +319,7 @@ def test_object():
 
     obj = opengl_obj.c_opengl_obj()
 
+    draft = True
     draft = False
     texture_filename = "earth_ico2048.png"
     subdivide = 5

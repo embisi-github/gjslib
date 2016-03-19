@@ -75,6 +75,16 @@ class c_opengl_widget_decoration(object):
 class c_opengl_widget(object):
     """
     A basic opengl widget is something that is displayed
+    Actually, this is quite all-encompassing; subclasses mainly effect display
+    This widget therefore includes code for:
+    * non-displayed widgets (zero size or just non-displayed/non-interactive, can be popped open later)
+    * disabled widgets (change visual state if disabled - disabled state overrides selected/active)
+    * selectable widgets (change visual state if selected/deselected)
+    * activatable widgets (change visual state if active/inactive, button press/release/click to change)
+    * widgets with other widgets as contents (with whatever layout class)
+
+    a selectable widget can be in an exclusion class with various properites (at most one selected, exactly one selected, etc)
+
     """
     margin = None
     border = None
@@ -95,6 +105,8 @@ class c_opengl_widget(object):
         self.content_transformation = None
         self.display_iter = None
         self.interact_iter = None
+        self.mouse_state = None
+        self.is_button = False
         if layout_class is None:
             self._layout = None
             self.children = []
@@ -116,7 +128,6 @@ class c_opengl_widget(object):
             i_xxyyzz = self.inner_bbox
             (blx,brx,bby,bty,_,_) = b_xxyyzz
             (ilx,irx,iby,ity,_,_) = i_xxyyzz
-            print "border",blx,brx,bby,bty,ilx,irx,iby,ity
             d = c_opengl_widget_decoration( color=self.border_colors[0],
                                             vertex_data = (blx,bby,0, brx,bby,0, brx,bty,0, blx,bty,0,
                                                            ilx,iby,0, irx,iby,0, irx,ity,0, ilx,ity,0,
@@ -128,13 +139,11 @@ class c_opengl_widget(object):
         if self.background_color is not None: # Not so good for 3D?
             i_xxyyzz = self.inner_bbox
             (ilx,irx,iby,ity,_,_) = i_xxyyzz
-            print "bg",i_xxyyzz, ilx, irx, iby, ity
             d = c_opengl_widget_decoration( color=self.background_color,
                                             vertex_data = (ilx,iby,0, irx,iby,0, irx,ity,0, ilx,ity,0,),
                                             indices = (0,3,1, 1,3,2,) )
             self.backgrounds["content"] = d
             pass
-        print self
         pass
     #f __margin_border_padding
     def __margin_border_padding(self):
@@ -253,121 +262,145 @@ class c_opengl_widget(object):
             d.draw(self.og)
             pass
         pass
-    #f motion
-    def motion(self,x,y):
-        print "epm:motion",x,y,self.motion_event_layer
-        if self.motion_event_layer is not None:
-            self.motion_event_layer.motion_event(self.mouse_state,x,y)
-            pass
-        pass
     #f mouse
     def mouse(self,b,s,m,x,y):
         """
         Turn a mouse press/release into individual method calls for press/release with xyz,dxyz coordinates
         """
-        if self.mouse_state is None:
-            if state==GLUT_DOWN:
-                self.mouse_state = {"xy":(x,y),
-                                    button:state}
+        action = None
+        if s == "down":
+            if self.mouse_state is None:
+                action = s
+                pass
+            else:
+                action = "cancel"
                 pass
             pass
-        else:
-            if state==GLUT_UP:
-                if button in self.mouse_state:
-                    del(self.mouse_state[button])
-                    pass
-                pass
-            if state==GLUT_DOWN:
-                self.mouse_state[button] = state
+        elif s=="up":
+            action = "cancel"
+            if self.mouse_state is not None:
+                action = s
                 pass
             pass
-        if len(self.mouse_state)==1: # just xy
+        xxyyzz = (x,0,y,0,10,-10)
+        if action == "down":
+            self.mouse_state = (b,m,x,y)
+            self.mouse_press(self.mouse_state[0], self.mouse_state[1], xxyyzz)
+            pass
+        elif action == "cancel":
+            self.mouse_cancel(self.mouse_state[0], self.mouse_state[1], xxyyzz)
+            self.mouse_widget = None
             self.mouse_state = None
             pass
-
-        if self.motion_event_layer is not None:
-            self.motion_event_layer = self.motion_event_layer.mouse_event(self.mouse_state,b,s,m,x,y)
-            return
-        xy = (x,y)
-        layers = self.layers.find_layers_at_xy(xy)
-        if len(layers)==0:
-            self.point_set_end()
-            return True
-        l = layers[0]
-        if l in self.image_layers:
-            return self.mouse_in_image(l,b,s,m,xy)
-        self.motion_event_layer = l.mouse_event(self.mouse_state,b,s,m,x,y)
-        return True
-    #f mouse_event
-    def mouse_event(self, b,s,m,xyz,dxyz):
-        print self,"mev",b,s,m,xyz
-        if self.mouse_widget is not None:
-            self.mouse_widget = self.mouse_press_continue(b,s,m,xyz,dxyz)
-            if self.mouse_widget is None:
-                return None
-            return self
-        r = self.mouse_press_initiate(b,s,m,xyz,dxyz)
-        if r is not None:
-            self.mouse_widget = r
-            return self
+        elif action == "up":
+            self.mouse_release(self.mouse_state[0], self.mouse_state[1], xxyyzz)
+            self.mouse_widget = None
+            self.mouse_state = None
+            pass
+        return
+    #f mouse_press
+    def mouse_press(self, b,m, xxyyzz):
         self.mouse_widget = None
-        return None
-    #f mouse_press_initiate
-    def mouse_press_initiate(self, b,s,m,xyz,dxyz):
-        print self,"mpi",b,s,m,xyz,dxyz
-        for (xyz,whd,c) in self.children:
-            r = c.mouse_press_initiate(b,s,m,xyz,dxyz)
-            if r is not None:
-                return r
-            pass
-        return None
-    #f motion_event
-    #def motion_event(self, xyz, dxyz):
-    #    if self.mouse_widget is None:
-    #        return None
-        
-
-
-    #f mouse_press_initiate
-    def mouse_press_initiate(self, b,s,m,xyz,dxyz):
-        print self, "mpi",b,s,m,xyz
-        if "border_one_color" in self.decorations:
-            if s=="down":
-                self.decorations["border_one_color"].color = (1.0,0.0,0.0)
-            else:
-                self.decorations["border_one_color"].color = (0.0,0.0,0.0)
+        if not opengl_utils.xxyyzz_ray_intersects_bbox(xxyyzz, self.display_bbox):
+            return None
+        if self.interact_iter is not None:
+            for c in self.interact_iter():
+                ack = c.mouse_press(b,m,xxyyzz)
+                if ack:
+                    self.mouse_widget = c
+                    break
                 pass
-            return self
-        pass
-    #f mouse_press_continue
-    def mouse_press_continue(self,b,s,m,xyz,dxyz):
-        """
-        w should be self at this point for a 'terminal' widget - i.e. one that returned self to mouse_press_initiate
-        """
-        if self.mouse_widget is not None:
-            self.mouse_widget = self.mouse_widget.mouse_press_continue(b,s,m,xyz,dxyz)
-            if self.mouse_widget is None: return None
-            return self
-        print self, "mpc",b,s,m,xyz
-        if "border_one_color" in self.decorations:
-            if s=="down":
-                self.decorations["border_one_color"].color = (1.0,0.0,0.0)
-                return self
-            else:
-                self.decorations["border_one_color"].color = (0.0,0.0,0.0)
-                return None
-                pass
-            pass
-        return None
-    #f motion_event
-    def motion_event(self, xyz, dxyz):
-        #print "widget:motion",self,xyz,dxyz,self.mouse_widget
-        if self.mouse_widget is not None:
-            self.mouse_widget = self.mouse_widget.motion_event(xyz,dxyz)
             pass
         if self.mouse_widget is None:
-            return None
-        return self
+            if self.is_button:
+                self.button_event(xxyyzz,"press")
+                self.mouse_widget = self
+                return True
+            pass
+        if self.mouse_widget is not None:
+            return True
+        return False
+    #f mouse_cancel
+    def mouse_cancel(self, b,m, xxyyzz):
+        if self.mouse_widget is None:
+            return
+        if self.mouse_widget == self:
+            self.button_event(xxyyzz,"cancel")
+            pass
+        return
+    #f mouse_release
+    def mouse_release(self, b,m, xxyyzz):
+        if self.mouse_widget is None:
+            return
+        if self.mouse_widget == self:
+            self.button_event(xxyyzz,"release")
+            pass
+        else:
+            self.mouse_widget.mouse_release(b,m,xxyyzz)
+            pass
+        return
+    #f motion
+    def motion(self,x,y):
+        xxyyzz = (x,0,y,0,10,-10)
+        self.mouse_motion(xxyyzz)
+        return
+    #f mouse_motion
+    def mouse_motion(self,xxyyzz):
+        if self.mouse_widget is None:
+            return
+        if self.mouse_widget == self:
+            inside = opengl_utils.xxyyzz_ray_intersects_bbox(xxyyzz, self.display_bbox)
+            if inside:
+                event_type = "enter"
+                if self.mouse_inside:
+                    event_type = "inside"
+                    pass
+                pass
+            else:
+                event_type = "outside"
+                if self.mouse_inside:
+                    event_type = "leave"
+                    pass
+                pass
+            self.motion_event(xxyyzz,event_type)
+            pass
+        else:
+            self.mouse_widget.mouse_motion(xxyyzz)
+            pass
+        return
+    #f button_event
+    def button_event(self,xxyyzz,event_type):
+        if event_type in ["press"]:
+            self.mouse_inside = True
+            if "border_one_color" in self.decorations:
+                self.decorations["border_one_color"].color = (1.0,0.0,0.0)
+                pass
+            return
+        if event_type in ["release", "cancel"]:
+            self.mouse_inside = False
+            if "border_one_color" in self.decorations:
+                self.decorations["border_one_color"].color = (1.0,1.0,1.0)
+                pass
+            return
+        pass
+    #f motion_event
+    def motion_event(self, xxyyzz, event_type):
+        """
+        Invoked ONLY on the endpoint widget that acknowledged the mouse_press
+        """
+        if event_type in ["enter"]:
+            self.mouse_inside = True
+            if "border_one_color" in self.decorations:
+                self.decorations["border_one_color"].color = (1.0,0.0,0.0)
+                pass
+            return
+        if event_type in ["leave"]:
+            self.mouse_inside = False
+            if "border_one_color" in self.decorations:
+                self.decorations["border_one_color"].color = (1.0,1.0,1.0)
+                pass
+            return
+        pass
     #f ray_transform
     def ray_transform(self,c,xyz,dxyz):
         xyz = c["inverse_transformation"].apply((xyz[0],xyz[1],xyz[2],1.0))
@@ -387,8 +420,8 @@ class c_opengl_widget(object):
                 return c
             pass
         return None
-    #f motion_event
-    def motion_event(self, xyz,dxyz):
+    #f motion_event_old
+    def motion_event_old(self, xyz,dxyz):
         print "ocw:motion",self,self.mouse_widget,xyz,dxyz
         if self.mouse_widget is None:
             return
