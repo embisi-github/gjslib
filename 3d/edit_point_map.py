@@ -2,7 +2,7 @@
 # PYTHONPATH=`pwd`/../python:$PYTHONPATH ./mapping.py
 
 #a Imports
-from gjslib.graphics import opengl, opengl_obj, opengl_app, opengl_layer, opengl_widget, opengl_utils, opengl_menu
+from gjslib.graphics import opengl, opengl_obj, opengl_app, opengl_layer, opengl_widget, opengl_utils, opengl_menu, opengl_window, opengl_layout
 from gjslib.math import vectors
 from image_projection import c_image_projection
 
@@ -60,7 +60,7 @@ class c_undo_buffer(object):
         return (not undo, op)
     pass
 #a c_edit_point_map_image
-class c_edit_point_map_image(object):
+class c_edit_point_map_image(opengl_window.c_opengl_window):
     """
     This class represents an image that can be presented in an OpenGL widget frame,
     that corresponds to an image with a point mapping of (x,y) points to names
@@ -74,7 +74,8 @@ class c_edit_point_map_image(object):
     The 'focus' indicator defaults to a white border of a configurable OpenGL-coord width/height
     """
     #f __init__
-    def __init__(self, filename=None, image_name=None, epm=None, pm=None, projection=None):
+    def __init__(self, og, filename=None, image_name=None, epm=None, pm=None, projection=None, **kwargs):
+        opengl_window.c_opengl_window.__init__(self, og=og, **kwargs)
         import OpenGL.arrays.vbo as vbo
         import numpy
         self.filename = filename
@@ -263,8 +264,8 @@ class c_edit_point_map_image(object):
         self.epm.shader_set_attributes(C=(0.8,0.8,1.0))
         self.epm.draw_lines(line_data)
         pass
-    #f display
-    def display(self):
+    #f display_contents
+    def display_contents(self):
         """
         Display the point map image with focus if required to the current OpenGL context
         """
@@ -279,7 +280,12 @@ class c_edit_point_map_image(object):
                 pass
             pass
 
+        xxyyzz = self.content_bbox
+        cx,cy = (xxyyzz[0]+xxyyzz[1])/2, (xxyyzz[2]+xxyyzz[3])/2,
+        w,h = xxyyzz[1]-xxyyzz[0], xxyyzz[3]-xxyyzz[2],
         self.epm.matrix_push()
+        self.epm.matrix_translate((cx,cy,0.0))
+        self.epm.matrix_scale((w,-h,1.0,1.0))
         self.epm.matrix_scale((self.scale[0],self.scale[1],1.0,1.0))
         self.epm.matrix_translate((self.center[0],self.center[1],0.0))
         self.epm.shader_use("color_standard")
@@ -311,7 +317,7 @@ class c_edit_point_map_image(object):
     pass
 
 #a c_edit_point_map_info
-class c_edit_point_map_info(opengl_widget.c_opengl_container_widget):
+class c_edit_point_map_info(opengl_window.c_opengl_window):
     """
     This class represents an OpenGL widget that contains information frames for the edit point map
 
@@ -319,16 +325,16 @@ class c_edit_point_map_info(opengl_widget.c_opengl_container_widget):
     """
     #f __init__
     def __init__(self, epm=None, pm=None, **kwargs):
-        opengl_widget.c_opengl_container_widget.__init__(self, **kwargs)
+        opengl_window.c_opengl_window.__init__(self, layout_class=opengl_layout.c_opengl_layout_place, **kwargs)
         self.epm = epm
         self.point_mappings = pm
-        self.layout    = opengl_widget.c_opengl_layout(og=epm)
+        self.info_widget = self.add_widget( opengl_widget.c_opengl_simple_text_widget(og=epm,scale=(0.5,0.5), xyz=(0,0)))
         #self.add_widget(self.layout,   map_xywh=( (0.0,0.0,1.0,0.25), ( -1.0,-0.5,2.0,-0.5) ) )
-        self.add_widget(self.layout,   map_xywh=( (0.0,0.0,1.0,0.25), ( -1.0,1.0,2.0,-2.0) ) )
-        self.info_widget    = opengl_widget.c_opengl_simple_text_widget(og=epm,scale=(0.0005,0.0005))
-        self.image_widget   = opengl_widget.c_opengl_simple_text_widget(og=epm)
-        self.mapping_widget = opengl_widget.c_opengl_simple_text_widget(og=epm)
-        self.layout.add_child(self.info_widget, (0.0,0.0,0.0))
+        #self.add_widget(self.layout,   map_xywh=( (0.0,0.0,1.0,0.25), ( -1.0,1.0,2.0,-2.0) ) )
+        #self.info_widget    = opengl_widget.c_opengl_simple_text_widget(og=epm,scale=(0.0005,0.0005))
+        #self.image_widget   = opengl_widget.c_opengl_simple_text_widget(og=epm)
+        #self.mapping_widget = opengl_widget.c_opengl_simple_text_widget(og=epm)
+        #self.layout.add_child(self.info_widget, (0.0,0.0,0.0))
         #self.add_widget(self.info_widget,   map_xywh=( (0.0,0.0,6000.0,100.0), ( -1.0,0.9,2.0,-2*0.1) ) )
         #self.add_widget(self.image_widget,  map_xywh=( (0.0,0.0,6000.0,4000.0), ( 0.0,0.7,2.0,-2*0.7) ) )
         #self.add_widget(self.mapping_widget,map_xywh=( (0.0,0.0,6000.0,4000.0), (-1.0,0.7,2.0,-2*0.7) ) )
@@ -348,7 +354,7 @@ class c_edit_point_map_info(opengl_widget.c_opengl_container_widget):
         info += "Current pt '%s'\nXYZ: %s\n"%(cur_pt,xyz)
         info += "Scale %6f\n"%self.epm.last_scale
         self.info_widget.replace_text(info, baseline_xy=(0.0,-1.0), scale=(0.3,0.6))
-
+        return
         import string
         image_list = self.point_mappings.get_images()
         image_list.sort()
@@ -415,39 +421,8 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         self.point_mapping_names.sort()
         self.point_mapping_index = 0
         pass
-    #f load_images
-    def load_images(self):
-        image_names = self.point_mappings.get_images()
-        for k in image_names:
-            image_data = self.point_mappings.get_image_data(k)
-            self.image_projections[k] = image_data["projection"]
-            self.images[k] = c_edit_point_map_image(epm=self,
-                                                    pm = self.point_mappings,
-                                                    image_name=k,
-                                                    filename=image_data["filename"],
-                                                    projection = self.image_projections[k],
-                                                    )
-            pass
-        pass
-    #f opengl_post_init
-    def opengl_post_init(self):
-        font_dir = "../../fonts/"
-        self.load_font(font_dir+"cabin-bold")
-        self.point_mappings = c_point_mapping()
-        self.load_point_mapping(self.point_mapping_filename)
-        self.epm_info = c_edit_point_map_info(epm=self, pm=self.point_mappings, og=self)
-        self.load_images()
-
-        self.point_mappings.find_line_sets()
-        self.point_mappings.approximate_positions()
-
-        self.point_set_start_tick = None
-
-        glutSetCursor(GLUT_CURSOR_CROSSHAIR)
-
-        self.image_names = self.images.keys()
-        self.image_names.sort()
-
+    #f create_menus
+    def create_menus(self):
         self.menus = opengl_menu.c_opengl_menu(callback=self.menu_select)
         self.menus.add_menu("images")
         for i in self.image_names:
@@ -474,22 +449,55 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         self.menus.add_item("Save",("save",0))
         self.menus.create_opengl_menus()
         self.attach_menu(self.menus, "main_menu")
+        pass
+    #f opengl_post_init
+    def opengl_post_init(self):
+        font_dir = "../../fonts/"
+        self.load_font(font_dir+"cabin-bold")
+        self.point_mappings = c_point_mapping()
+        self.load_point_mapping(self.point_mapping_filename)
+
+        self.point_mappings.find_line_sets()
+        self.point_mappings.approximate_positions()
+
+        self.point_set_start_tick = None
+
+        glutSetCursor(GLUT_CURSOR_CROSSHAIR)
+
+        self.image_names = self.point_mappings.get_images()
+        self.image_names.sort()
+
+        self.create_menus()
 
         self.displayed_images = [self.image_names[0], self.image_names[1]]
         self.focus_image = 0
-        self.layers = opengl_layer.c_opengl_layer_set()
-        self.image_layers = (self.layers.new_layer( (0,300,900,900), depth=10),
-                             self.layers.new_layer( (900,300,900,900), depth=10 ))
-        self.info_layer = self.layers.new_layer( (0,0,1800,300), depth=1, autoclear="all" )
-        self.info_layer.add_contents(self.epm_info)
+        self.layers = opengl_window.c_opengl_window(og=self, wh=(1800,1200), layout_class=opengl_layout.c_opengl_layout_depth_contents)
+        for k in self.image_names:
+            image_data = self.point_mappings.get_image_data(k)
+            self.image_projections[k] = image_data["projection"]
+            self.images[k] = c_edit_point_map_image(epm=self,
+                                                    pm = self.point_mappings,
+                                                    image_name=k,
+                                                    filename=image_data["filename"],
+                                                    projection = self.image_projections[k],
+                                                    og=self, wh=(900,900)
+                                                    )
+            pass
+        self.epm_info = c_edit_point_map_info(og=self, epm=self, pm=self.point_mappings, wh=(1800,300))
+        self.image_layers = (self.layers.add_widget(self.images[self.image_names[0]], xyz=(0,300,0), depth=10),
+                             self.layers.add_widget(self.images[self.image_names[1]], xyz=(900,300,0), depth=10),
+                             )
+        self.info_layer = self.layers.add_widget( self.epm_info, xy=(0,0), depth=1, autoclear="all" )
+        #self.info_layer.add_contents(self.epm_info)
 
         for i in range(len(self.image_layers)):
-            self.image_layers[i].add_contents(self.images[self.displayed_images[i]])
+            #self.image_layers[i].add_contents(self.images[self.displayed_images[i]])
             self.images[self.displayed_images[i]].set_focus(False)
             pass
         self.images[self.displayed_images[self.focus_image]].set_focus(True)
 
         self.epm_info.update()
+        self.layers.layout()
 
         pass
     #f display
@@ -503,6 +511,7 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         self.glow_tick = (self.tick/10) % len(self.glow_colors)
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
         self.layers.display()
+        #sys.exit()
         glutSwapBuffers()
         pass
     #f shift_focus
@@ -857,7 +866,7 @@ def main():
     if args.map is None:
         args.map = "corridor.map"
     m = c_edit_point_map( point_mapping_filename=args.map,
-                          window_size = (1800,1100))
+                          window_size = (1800,1200))
     m.init_opengl()
     m.main_loop()
 

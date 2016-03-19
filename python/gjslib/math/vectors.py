@@ -18,6 +18,28 @@ def vector_normalize(v, epsilon=1E-8):
     if d<epsilon: d=1
     return vector_scale(v,1.0/d)
 
+def vector_min(a, b):
+    r = []
+    for i in range(len(a)):
+        if a[i] is None:
+            r.append(b[i])
+            pass
+        else:
+            r.append(min(a[i],b[i]))
+        pass
+    return r
+
+def vector_max(a, b):
+    r = []
+    for i in range(len(a)):
+        if a[i] is None:
+            r.append(b[i])
+            pass
+        else:
+            r.append(max(a[i],b[i]))
+        pass
+    return r
+
 def vector_scale(a,scale=1.0):
     d = []
     for i in range(len(a)):

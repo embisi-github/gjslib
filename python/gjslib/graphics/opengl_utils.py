@@ -8,6 +8,20 @@ from gjslib.math import matrix, quaternion
 from gjslib.graphics.font import c_bitmap_font
 
 #a Useful functions
+#f min
+def min(a,b,c=None):
+    if a is None: a=b
+    if a>b:a=b
+    if c is not None and a>c: a=c
+    return a
+
+#f max
+def max(a,b,c=None):
+    if a is None: a=b
+    if a<b:a=b
+    if c is not None and a<c: a=c
+    return a
+
 #f texture_from_png
 def texture_from_png(png_filename):
     from PIL import Image
@@ -87,6 +101,37 @@ def transformation(translation=None, scale=None, rotation=None, map_xywh=None, i
         pass
     return m
     
+#f xxyyzz_from_xyz_pair
+def xxyyzz_from_xyz_pair(xyz0, xyz1):
+    return (xyz0[0], xyz1[0], xyz0[1], xyz1[1], xyz0[2], xyz1[2])
+            
+#f xxyyzz_from_xyz_whd
+def xxyyzz_from_xyz_whd(xyz, whd):
+    return (xyz[0], xyz[0]+whd[0], xyz[1], xyz[1]+whd[1], xyz[2], xyz[2]+whd[2])
+            
+#f xxyyzz_add_border
+def xxyyzz_add_border(xxyyzz, b, scale=1.0):
+    return (xxyyzz[0]+b[0]*scale, xxyyzz[1]-b[1]*scale,
+            xxyyzz[2]+b[2]*scale, xxyyzz[3]-b[3]*scale,
+            xxyyzz[4]+b[4]*scale, xxyyzz[5]-b[5]*scale)
+            
+#f xxyyzz_minmax
+def xxyyzz_minmax(xxyyzz0, xxyyzz1):
+    return (min(xxyyzz0[0], xxyyzz1[0]), max(xxyyzz0[1], xxyyzz1[1]),
+            min(xxyyzz0[2], xxyyzz1[2]), max(xxyyzz0[3], xxyyzz1[3]),
+            min(xxyyzz0[4], xxyyzz1[4]), max(xxyyzz0[5], xxyyzz1[5]))
+            
+#f xyz_pair_from_xxyyzz
+def xyz_pair_from_xxyyzz(xxyyzz):
+    return (xxyyzz[0], xxyyzz[2], xxyyzz[4]), (xxyyzz[1], xxyyzz[3], xxyyzz[5])
+            
+#f whd_from_xxyyzz
+def whd_from_xxyyzz(xxyyzz):
+    return (xxyyzz[1]-xxyyzz[0], xxyyzz[3]-xxyyzz[2], xxyyzz[5]-xxyyzz[4])
+#f xyz_whd_from_xxyyzz
+def xyz_whd_from_xxyyzz(xxyyzz):
+    return (xxyyzz[0],xxyyzz[2],xxyyzz[4]), (xxyyzz[1]-xxyyzz[0], xxyyzz[3]-xxyyzz[2], xxyyzz[5]-xxyyzz[4])
+            
 #a Base useful classes
 #c c_depth_contents_iter
 class c_depth_contents_iter(object):
@@ -96,11 +141,12 @@ class c_depth_contents_iter(object):
     Provides a 'next' method that iterates in a pre-defined order over the contents
     """
     #f __init__
-    def __init__(self, dc, reverse_depth=False):
+    def __init__(self, dc, reverse_depth=False, selector=None):
         """
         Set up iterator to go up in depth (or down)
         """
         self.dc = dc
+        self.selector = selector
         self.depths = dc.keys()
         if reverse_depth:
             self.depths.reverse()
@@ -119,7 +165,10 @@ class c_depth_contents_iter(object):
             raise StopIteration()
         if self.content_index<len(self.dc[d]):
             self.content_index += 1
-            return self.dc[d][self.content_index-1]
+            item = self.dc[d][self.content_index-1]
+            if self.selector is None:
+                return item
+            return self.selector(item)
         self.content_index = 0
         self.depths.pop(0)
         return self.next()
@@ -173,6 +222,9 @@ class c_depth_contents(object):
             self.__dc__contents[d].remove(content)
             return
         raise Exception("Failed to find content to remove (at specified depth)")
+    #f get_iter
+    def get_iter(self, fwd=True, selector=None):
+        return c_depth_contents_iter(self.__dc__contents, reverse_depth=not fwd, selector=selector)
     #f __iter__
     def __iter__(self):
         return c_depth_contents_iter(self.__dc__contents)

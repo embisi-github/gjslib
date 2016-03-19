@@ -169,6 +169,7 @@ class c_opengl_app(object):
                                  "view":   [matrix.c_matrixNxN(order=4).identity()],
                                  "project":[matrix.c_matrixNxN(order=4).identity()],
                                  }
+        self.clips = []
         self.selected_shader = None
         self.simple_object = {}
         self.simple_object["cross"] = {"vectors":vbo.VBO(data=numpy.array([1.0,0.2,0, -1.0,0.2,0, 1.0,-0.2,0, -1.0,-0.2,0, 
@@ -183,7 +184,6 @@ class c_opengl_app(object):
                                                                              1,2,4, 1,2,5, 1,3,4, 1,3,5],
                                                                             dtype=numpy.uint8), target=GL_ELEMENT_ARRAY_BUFFER ),
                                          }
-        self.mouse_state = None
         pass
     #f window_xy
     def window_xy(self, xy):
@@ -195,6 +195,27 @@ class c_opengl_app(object):
     def attach_menu(self, menu, name):
         glutSetMenu(menu.glut_id(name))
         glutAttachMenu(GLUT_RIGHT_BUTTON)
+        pass
+    #f clip_push
+    def clip_push(self, x,y,w,h):
+        x,y,w,h = int(x),int(y),int(w),int(h)
+        self.clips.append((x,y,w,h))
+        glViewport(x,y,w,h)
+        glScissor(x,y,w,h)
+        glEnable(GL_SCISSOR_TEST)
+        pass
+    #f clip_pop
+    def clip_pop(self, matrix="model"):
+        self.clips.pop()
+        if len(self.clips)==0:
+            (x,y,w,h) = (0,0,self.window_size[0],self.window_size[1])
+            glDisable(GL_SCISSOR_TEST)
+            pass
+        else:
+            (x,y,w,h) = self.clips[-1]
+            pass
+        glViewport(x,y,w,h)
+        glScissor(x,y,w,h)
         pass
     #f matrix_push
     def matrix_push(self, matrix="model"):
@@ -345,6 +366,8 @@ class c_opengl_app(object):
         if (not self.display_has_errored):
             try:
                 self.display()
+            except SystemExit as e:
+                raise
             except:
                 traceback.print_exc()
                 self.display_has_errored = True
@@ -375,25 +398,6 @@ class c_opengl_app(object):
         pass
     #f mouse_callback
     def mouse_callback(self, button,state,x,y):
-        if self.mouse_state is None:
-            if state==GLUT_DOWN:
-                self.mouse_state = {"xy":(x,y),
-                                    button:state}
-                pass
-            pass
-        else:
-            if state==GLUT_UP:
-                if button in self.mouse_state:
-                    del(self.mouse_state[button])
-                    pass
-                pass
-            if state==GLUT_DOWN:
-                self.mouse_state[button] = state
-                pass
-            pass
-        if len(self.mouse_state)==1: # just xy
-            self.mouse_state = None
-            pass
         w = glutGet(GLUT_WINDOW_WIDTH)
         h = glutGet(GLUT_WINDOW_HEIGHT)
         y = h-y # Invert y as OpenGL want it from BL
@@ -483,6 +487,16 @@ class c_opengl_app(object):
         glFlush()
         self.fonts[bf.fontname] = (bf, texture)
         return bf
+    #f debug
+    def debug(self, reason, options=None):
+        print "*"*80
+        print "opengl_app.debug",reason
+        print "*"*80
+        print self.clips
+        print self.display_matrices["project"][-1]
+        print self.display_matrices["view"][-1]
+        print self.display_matrices["model"][-1]
+        pass
     #f All done
     pass
 
