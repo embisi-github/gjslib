@@ -27,62 +27,93 @@ class c_seal:
         self.data=[]
         self.filename = filename
         pass
-    def load(self, max_pdop=10):
+    def load(self, max_pdop=10, min_dll=0.0003, max_dll=0.2):
         f=open(self.filename,"r")
         fmt = None
+        last_ll = None,None
         for lines in f:
             for line in lines.split("\r"):
                 line = line.strip()
                 if fmt is None:
                     if line=="Date, Time, Latitude, Longitude, Altitude, Speed, Course, Type, Distance, Essential":
                         fmt = 2012
+                    elif line=="Date,Time,Latitute,Longitude,Temperature,Nav State,Altitude,N Velocity,E Velocity,D Velocity,PDOP,SV Count":
+                        fmt = 2005
+                    elif line in ["Date,Time,Latitude,Longitude,Altitude,Residual Error,Clock Error,Cumulative Clock Error,No Satellites Used,No Satellites Provided",
+                                 "Date,Time,Latitude,Longitude,Altitude,Residual Error,Clock Error,Cumulative Clock Error,# Sats Used,# Sats Provided,",
+                                 "Date,Time,Latitude,Longitude,Altitude,Residual Error,Clock Error,Cumulative Clock Error,No Sats Used,No Sats Provided",
+                                 "Date,Time,Latitude,Longitude,Altitude,Residual Error,Clock Error,Cumulative Clock Error,NoSats Used,No Sats Provided,",
+                                 "Date,Time,Latitude,Longitude,Altitude,Residual Error,Clock Error,Cumulative Clock Error,No Sats Used,No Sats Provided,",
+                                 "Date,Time,Latitude,Longitude,Altitude,Residual_Error,Clock_Error,Cumulative_Clock_Error,No Sats_Used,No Sats_Provided,",
+                                 ]:
+                        fmt = 2006
+                    elif line in ["Date,Time,Latitude,Longitude,Logger ID,Deployment,Altitude,R-Err,C-Err,Total C-Err,No satellites used,No satellites available,Duplicates,Notes",
+                                  "Date,Time,Latitude,Longitude,Logger ID,Deployment,Altitude,R-Err,C-Err,Total C-Err,Sats Used,# Sats,Duplicates,Notes",
+                                  ]:
+                        fmt = 2010
+                    elif line in ["Date,Time,No of satellites used,Latitude,Longitude,Altitude,Clock offset,Accuracy indicator,Battery voltage",
+                                  "Date,Time,No satellites used,Latitude,Longitude,Altitude,Clock offset,Accuracy indicator,Battery voltage",
+                                  "Date,Time,No of satellites used,Latitude,Longitude,Altitude,Clock offset,Accuracy indicator,Battery indicator",
+                                  "Date,Time,No of satellites,Latitude,Longitude,Altitude,Clock offset,Accuracy indicator,Battery voltage",
+                                  "Date,Time,No satellites used,Latitude ,Longitude,Altitude,Clock offset,Accuracy indicator,Battery voltage",
+                                  ]:
+                        fmt = 2011
                     else:
+                        print line
                         fmt = "other"
                         pass
                     pass
                 d = line.split(",")
                 try:
                     if fmt==2012:
-                        d = [d[0],d[1],d[2],d[3],d[4],d[5],d[6],d[7],100]
+                        date,time,lat,lon,pdop,nsat = d[0],d[1],d[2],d[3],0,8
                         pass
-                    # 2011 hack
-                    try:
-                        dint = int(d[2])
+                    elif fmt==2005:
+                        date,time,lat,lon,pdop,nsat = d[0],d[1],d[2],d[3],int(d[10]),int(d[11])
+                        pass
+                    elif fmt==2006:
+                        date,time,lat,lon,pdop,nsat = d[0],d[1],d[2],d[3],0,int(d[8])
+                        pass
+                    elif fmt==2010:
+                        date,time,lat,lon,pdop,nsat = d[0],d[1],d[2],d[3],0,int(d[10])
+                        pass
+                    elif fmt==2011:
+                        date,time,lat,lon,pdop,nsat = d[0],d[1],d[3],d[4],0,int(d[2])
                         useless = float(d[7])
-                        if dint>=0 and dint<=12 and useless<0.001:
-                            d = [d[0],d[1],d[3],d[4],d[5],d[6],0,0,0]
-                            pass
-                        else:
-                            d = []
+                        if useless>0.001: continue
                         pass
-                    except:
-                        pass
-                    if (len(d)<12):
-                        pdop = int(d[8])
                     else:
-                        pdop = int(d[10])
+                        # not used now
+                        date,time,lat,lon,pdop,nsat = d[0],d[1],d[2],d[3],int(d[8]),0
+                        pass
+                    if nsat<0 or nsat>20: continue
                     if pdop>max_pdop: continue
-                    d[2] = float(d[2])
-                    d[3] = float(d[3])
-                    #d[4] = float(d[4])
-                    #d[5] = float(d[5])
-                    d[6] = float(d[6])
-                    (day,mon,yr) = d[0].split("/")
+                    lat = float(lat)
+                    lon = float(lon)
+                    if last_ll[0] is not None:
+                        dlat = abs(lat-last_ll[0])
+                        dlon = abs(lon-last_ll[1])
+                        if dlat>max_dll: continue
+                        if dlon>max_dll: continue
+                        if dlat+dlon<min_dll: continue
+                    last_ll = (lat,lon)
+                    (day,mon,yr) = date.split("/")
                     (day,mon,yr) = (int(day),int(mon),int(yr))
-                    if day>31: (day,mon,yr) = (yr,mon,day)
-                    (h,m,s) = d[1].split(":")[:3]
+                    if day>31: (day,mon,yr) = (yr,mon,day) # Reverse ymd if it is backwards...
+                    (h,m,s) = time.split(":")[:3]
                     (h,m,s) = (int(h),int(m),int(s))
                     seconds = calendar.timegm(datetime.datetime(yr,mon,day,h,m,s).timetuple())
-                    self.data.append((seconds,d[2],d[3],d[4],d[5],d[6]))
+                    self.data.append((seconds,lat,lon))
                 except:
                     pass
                 pass
             pass
+        #print self.data
         #self.data.sort(cmp=lambda x,y:(x[0]<y[0] and -1) or 1)
         pass
     def get_time_bounds(self):
-        print self.filename
-        print self.data[0][0], self.data[-1][0]
+        #print self.filename
+        #print self.data[0][0], self.data[-1][0]
         return self.data[0][0], self.data[-1][0]
     def data_at_time(self, t):
         at_or_after=0
