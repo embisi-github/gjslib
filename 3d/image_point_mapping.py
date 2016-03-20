@@ -6,8 +6,9 @@ import image_projection
 #a c_point_mapping
 class c_point_mapping(object):
     #f __init__
-    def __init__(self):
+    def __init__(self, images_dir=""):
         self.reset()
+        self.images_dir = images_dir
         self.object_guess_locations = {}
         self.object_guess_locations["clk.center"] = (  0.0, -0.32,  8.4)
         self.object_guess_locations["lspike.t"]   = ( -3.3,  0.0, 10.9)
@@ -75,7 +76,7 @@ class c_point_mapping(object):
     #f load_data_add_image
     def load_data_add_image(self, data):
         image_name = data[0]
-        image_filename = data[1]
+        image_filename = self.images_dir+data[1]
         image_size = (int(data[2])+0.0,int(data[3])+0.0)
         use_for_points = True
         if len(data)<5 or not int(data[4]):

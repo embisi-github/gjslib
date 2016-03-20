@@ -72,6 +72,13 @@ from image_point_mapping import c_point_mapping
 from image_projection import c_image_projection
 from gjslib.graphics import opengl_obj
 
+#a Globals
+gjslib_data_dir = os.path.abspath(os.curdir)+"/../../gjslib_data/"
+seal_data_dir = gjslib_data_dir+"seals/"
+texture_dir   = gjslib_data_dir+"icosphere/"
+font_dir = gjslib_data_dir+"fonts/"
+images_dir = gjslib_data_dir+"3d_mapping/"
+
 #a Class
 #c c_plane
 class c_plane(object):
@@ -463,7 +470,7 @@ class c_mapping(opengl_app.c_opengl_camera_app):
         opengl_app.c_opengl_camera_app.__init__(self, **kwargs)
         self.first_pass = True
         self.mvp =  matrix.c_matrix4x4()
-        self.point_mappings = c_point_mapping()
+        self.point_mappings = c_point_mapping(images_dir)
         self.image_projections = {}
         self.load_point_mapping(point_map_filename)
         self.image_names = self.point_mappings.get_images()

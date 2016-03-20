@@ -13,6 +13,13 @@ from OpenGL.GL import *
 from image_point_mapping import c_point_mapping
 import argparse
 
+#a Globals
+gjslib_data_dir = os.path.abspath(os.curdir)+"/../../gjslib_data/"
+seal_data_dir = gjslib_data_dir+"seals/"
+texture_dir   = gjslib_data_dir+"icosphere/"
+font_dir = gjslib_data_dir+"fonts/"
+images_dir = gjslib_data_dir+"3d_mapping/"
+
 #a c_undo_buffer
 class c_undo_buffer(object):
     """
@@ -454,9 +461,8 @@ class c_edit_point_map(opengl_app.c_opengl_app):
         pass
     #f opengl_post_init
     def opengl_post_init(self):
-        font_dir = "../../fonts/"
         self.load_font(font_dir+"cabin-bold")
-        self.point_mappings = c_point_mapping()
+        self.point_mappings = c_point_mapping(images_dir=images_dir)
         self.load_point_mapping(self.point_mapping_filename)
 
         self.point_mappings.find_line_sets()
