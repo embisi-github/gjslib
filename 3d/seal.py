@@ -40,15 +40,18 @@ class c_seal:
                     elif line=="Date,Time,Latitute,Longitude,Temperature,Nav State,Altitude,N Velocity,E Velocity,D Velocity,PDOP,SV Count":
                         fmt = 2005
                     elif line in ["Date,Time,Latitude,Longitude,Altitude,Residual Error,Clock Error,Cumulative Clock Error,No Satellites Used,No Satellites Provided",
-                                 "Date,Time,Latitude,Longitude,Altitude,Residual Error,Clock Error,Cumulative Clock Error,# Sats Used,# Sats Provided,",
-                                 "Date,Time,Latitude,Longitude,Altitude,Residual Error,Clock Error,Cumulative Clock Error,No Sats Used,No Sats Provided",
-                                 "Date,Time,Latitude,Longitude,Altitude,Residual Error,Clock Error,Cumulative Clock Error,NoSats Used,No Sats Provided,",
-                                 "Date,Time,Latitude,Longitude,Altitude,Residual Error,Clock Error,Cumulative Clock Error,No Sats Used,No Sats Provided,",
-                                 "Date,Time,Latitude,Longitude,Altitude,Residual_Error,Clock_Error,Cumulative_Clock_Error,No Sats_Used,No Sats_Provided,",
+                                  "Date,Time,Latitude,Longitude,Altitude,Residual Error,Clock Error,Cumulative Clock Error,# Sats Used,# Sats Provided,",
+                                  "Date,Time,Latitude,Longitude,Altitude,Residual Error,Clock Error,Cumulative Clock Error,No Sats Used,No Sats Provided",
+                                  "Date,Time,Latitude,Longitude,Altitude,Residual Error,Clock Error,Cumulative Clock Error,NoSats Used,No Sats Provided,",
+                                  "Date,Time,Latitude,Longitude,Altitude,Residual Error,Clock Error,Cumulative Clock Error,No Sats Used,No Sats Provided,",
+                                  "Date,Time,Latitude,Longitude,Altitude,Residual_Error,Clock_Error,Cumulative_Clock_Error,No Sats_Used,No Sats_Provided,",
+                                  "Date,Time,Latitude,Longitude,Altitude,Residual Error,Clock Error,Cumulative Clock Error,No Sats Used,No Sats Provided,Duplicates,Notes",
                                  ]:
                         fmt = 2006
                     elif line in ["Date,Time,Latitude,Longitude,Logger ID,Deployment,Altitude,R-Err,C-Err,Total C-Err,No satellites used,No satellites available,Duplicates,Notes",
+                                  "Date,Time,Latitude,Longitude,Logger ID,Deployment,Altitude,R-Err,C-Err,Total C-Err,No satellites used,No satellites provided,Duplicates,Notes",
                                   "Date,Time,Latitude,Longitude,Logger ID,Deployment,Altitude,R-Err,C-Err,Total C-Err,Sats Used,# Sats,Duplicates,Notes",
+                                  "Date,Time,Latitude,Longitude,Logger ID,Deployment,Altitude,R-Err,C-Err,Total C-Err,No satellites used,No satellites used,Duplicates,Notes",
                                   ]:
                         fmt = 2010
                     elif line in ["Date,Time,No of satellites used,Latitude,Longitude,Altitude,Clock offset,Accuracy indicator,Battery voltage",

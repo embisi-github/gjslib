@@ -33,7 +33,7 @@ class c_view_obj(opengl_app.c_opengl_camera_app):
         self.window_title = "Viewing object"
         self.texture_filename = texture_filename
         self.seal_trails = {}
-        self.years = {2005:False, 2006:True, 2007:True, 2010:True, 2011:True, 2012:True}
+        self.years = {2005:False, 2006:True, 2007:True, 2009:True, 2010:True, 2011:True, 2012:True}
         self.display_time = 0
         self.select_years()
         pass
@@ -185,9 +185,10 @@ class c_view_obj(opengl_app.c_opengl_camera_app):
                      "3":2005,
                      "4":2006,
                      "5":2007,
-                     "6":2010,
-                     "7":2011,
-                     "8":2012,
+                     "6":2009,
+                     "7":2010,
+                     "8":2011,
+                     "9":2012,
                      }
         if key in ["1"]:
             print self.camera
@@ -323,6 +324,41 @@ def test_object():
         ("28","2010_2011/AFSMai.28.csv"),
         ("29","2010_2011/AFSMai.29.csv"),
         ("30","2010_2011/AFSMai.30.csv"),
+        ]
+    seal_data_years[2009] = [
+        ("AFSMai_1","2009_2010/AFSMai_1.csv"),
+        ("AFSMai_10","2009_2010/AFSMai_10.csv"),
+        ("AFSMai_11","2009_2010/AFSMai_11.csv"),
+        ("AFSMai_12","2009_2010/AFSMai_12.csv"),
+        ("AFSMai_13","2009_2010/AFSMai_13.csv"),
+        ("AFSMai_14","2009_2010/AFSMai_14.csv"),
+        ("AFSMai_15","2009_2010/AFSMai_15.csv"),
+        ("AFSMai_16","2009_2010/AFSMai_16.csv"),
+        ("AFSMai_2","2009_2010/AFSMai_2.csv"),
+        ("AFSMai_3","2009_2010/AFSMai_3.csv"),
+        ("AFSMai_4","2009_2010/AFSMai_4.csv"),
+        ("AFSMai_5","2009_2010/AFSMai_5.csv"),
+        ("AFSMai_6","2009_2010/AFSMai_6.csv"),
+        ("AFSMai_7","2009_2010/AFSMai_7.csv"),
+        ("AFSMai_8","2009_2010/AFSMai_8.csv"),
+        ("AFSMai_9","2009_2010/AFSMai_9.csv"),
+        ("WH10tagx4.csv","2009_2010/WH10tagx4.csv"),
+        ("WH11tag8.csv","2009_2010/WH11tag8.csv"),
+        ("WH12tag4.csv","2009_2010/WH12tag4.csv"),
+        ("WH13tag6.csv","2009_2010/WH13tag6.csv"),
+        ("WH14tag7.csv","2009_2010/WH14tag7.csv"),
+        ("WH15tag5.csv","2009_2010/WH15tag5.csv"),
+        ("WH16tag8.csv","2009_2010/WH16tag8.csv"),
+        ("WH17tag4.csv","2009_2010/WH17tag4.csv"),
+        ("WH18tagx4.csv","2009_2010/WH18tagx4.csv"),
+        ("WH19tag10.csv","2009_2010/WH19tag10.csv"),
+        ("WH1tag09.csv","2009_2010/WH1tag09.csv"),
+        ("WH2tag04.csv","2009_2010/WH2tag04.csv"),
+        ("WH3tag06.csv","2009_2010/WH3tag06.csv"),
+        ("WH6tag11.csv","2009_2010/WH6tag11.csv"),
+        ("WH7tag8.csv","2009_2010/WH7tag8.csv"),
+        ("WH8tag7.csv","2009_2010/WH8tag7.csv"),
+        ("WH9tag5.csv","2009_2010/WH9tag5.csv"),
         ]
     seal_data_years[2011] = [
         ("W8253","2011_2012/W8253_110112.csv"),
