@@ -921,7 +921,7 @@ def test_use_outline_font(outline_filename, text="Test text"):
     of_obj.create_opengl_surface()
     def display():
         opengl_app.c_opengl_camera_app.display(og)
-        of_obj.draw_opengl_surface()
+        of_obj.draw_opengl_surface(og)
         glutSwapBuffers()
         pass
     og.display = display
@@ -977,20 +977,27 @@ if __name__=="__main__":
     test_text += "restore freedom to the galaxy...."
     font_dir = "../../fonts/"
     font_data = {}
+    font_data["monospace"] = {"ttf_name":"MonospaceTypewriter.ttf",
+                               "ttx_name":"monospace.ttx",
+                               "bitmap_name":"monospace",
+                               "outline_name":"monospace"}
     font_data["cabin-bold"] = {"ttf_name":"cabin/Cabin-Bold-TTF.ttf",
                                "ttx_name":"cabin-bold.ttx",
                                "bitmap_name":"cabin-bold",
                                "outline_name":"cabin-bold"}
     font_data["sf"] = {"ttf_name":"SF Old Republic SC Bold.ttf",
                        "ttx_name":"sf-old-rep-bold.ttx",
-                       "bitmap_name":"sf-old-rep-bold"}
+                       "bitmap_name":"sf-old-rep-bold",
+                       "outline_name":"sf-old-rep-bold"}
     font_data["beneg"] = {"ttf_name":"beneg___.ttf",
                        "ttx_name":"beneg.ttx",
-                       "bitmap_name":"beneg"}
+                       "bitmap_name":"beneg",
+                       "outline_name":"beneg"}
 
-    fd = font_data["cabin-bold"]
+    #fd = font_data["cabin-bold"]
     #fd = font_data["sf"]
     #fd = font_data["beneg"]
+    fd = font_data["monospace"]
     ttf_name = fd["ttf_name"]
     ttx_name = fd["ttx_name"]
     bitmap_name = fd["bitmap_name"]
@@ -1011,22 +1018,24 @@ if __name__=="__main__":
     if False:
         test_draw_glyph_set(ttx_filename=font_dir+ttx_name, names = (u'A', u'B', u'C', u'D', u'E', u'F', u'Q', u'M'))
         pass
-    if False:
+    if True:
         test_create_bitmap_font(ttx_filename=font_dir+ttx_name,
                                 glyphs=("abcdefghijklmnopqrstuvwxyz"+
-                                             "ABCDEFGHIJKLMNOPQRSTUVWXYZ"+
-                                             "0123456789.,!?_-+*="),
+                                        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"+
+                                        "0123456789_-+*="+
+                                        ":;.,<>!?'\""),
                                 bitmap_filename=font_dir+bitmap_name)
         pass
     if False:
         test_use_bitmap_font(bitmap_filename=font_dir+bitmap_name,
                              text = test_text)
         pass
-    if False:
+    if True:
         test_create_outline_font(ttx_filename=font_dir+ttx_name,
                                  glyphs=("abcdeghijklnopqrstuvwxyz"+
                                          "ABCDEFGHIJKLMNOPQRSUVXYZ"+
-                                         "0123456789.,!?_-+*="),
+                                        "0123456789_-+*="+
+                                        ":;.,<>!?'\""),
                                  outline_filename=font_dir+outline_name)
         pass
     if True:

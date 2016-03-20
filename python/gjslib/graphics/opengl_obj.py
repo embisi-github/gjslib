@@ -28,6 +28,7 @@ class c_opengl_obj(c_obj):
             pass
         pass
     #f create_opengl_surface
+    gjs = False
     def create_opengl_surface(self):
         import OpenGL.arrays.vbo as vbo
         import numpy
@@ -39,6 +40,7 @@ class c_opengl_obj(c_obj):
         vector_list = []
         num_vectors = 0
         for f in self.faces:
+            #if self.gjs:print f
             for (vi,vti,vni) in f:
                 vertex = self.vertices[vi]
                 normal = self.normals[vni]
@@ -57,6 +59,9 @@ class c_opengl_obj(c_obj):
         vectors = vbo.VBO( data=numpy.array(vector_list, dtype=numpy.float32), target=GL_ARRAY_BUFFER )
         indices = vbo.VBO( data=numpy.array(index_list, dtype=numpy.uint16), target=GL_ELEMENT_ARRAY_BUFFER )
 
+        #if self.gjs:print vector_list, index_list
+        #if self.gjs:print vectors, indices
+        
         self.opengl_surface["vectors"] = vectors
         self.opengl_surface["indices"] = indices
 

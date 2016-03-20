@@ -2,7 +2,7 @@
 # PYTHONPATH=`pwd`/../python:$PYTHONPATH ./view_obj.py
 
 #a Imports
-from gjslib.graphics import opengl_app, opengl_utils, opengl_obj
+from gjslib.graphics import opengl_app, opengl_utils, opengl_obj, opengl_window, opengl_widget, opengl_layout
 from gjslib.math import quaternion
 
 import math
@@ -11,6 +11,7 @@ from OpenGL.GLU import *
 from OpenGL.GL import *
 import OpenGL.arrays.vbo as vbo
 import numpy
+import datetime
 
 #a Classes
 #c c_view_obj
@@ -25,7 +26,7 @@ class c_view_obj(opengl_app.c_opengl_camera_app):
         self.window_title = "Viewing object"
         self.texture_filename = texture_filename
         self.seal_trails = {}
-        self.years = {2005:False, 2006:True, 2007:True, 2010:True}
+        self.years = {2005:False, 2006:True, 2007:True, 2010:True, 2011:True, 2012:True}
         self.display_time = 0
         self.select_years()
         pass
@@ -56,16 +57,20 @@ class c_view_obj(opengl_app.c_opengl_camera_app):
         s = self.seals[seal]
         vertices = []
         for d in s.data:
-            vertices.append(self.ll_to_xyz(d[1],d[2]))
-            vertices.append(self.ll_to_xyz(d[1],d[2]))
+            vertices.extend(self.ll_to_xyz(d[1],d[2]))
+            vertices.extend(self.ll_to_xyz(d[1],d[2]))
             pass
         if len(vertices)==0:
             print "Argh",seal
             return
         vertices.pop(0)
+        vertices.pop(0)
+        vertices.pop(0)
+        vertices.pop()
+        vertices.pop()
         vertices.pop()
         self.seal_trails[seal] = {"vectors":vbo.VBO(data=numpy.array(vertices, dtype=numpy.float32), target=GL_ARRAY_BUFFER ),
-                                  "nvertices":len(vertices),
+                                  "nvertices":len(vertices)/3,
                                   }
         pass
     #f line_of_latitude
@@ -73,13 +78,17 @@ class c_view_obj(opengl_app.c_opengl_camera_app):
         vertices = []
         for i in range(n+1):
             l = (360.0*i/n)
-            vertices.append(self.ll_to_xyz(lat,l))
-            vertices.append(self.ll_to_xyz(lat,l))
+            vertices.extend(self.ll_to_xyz(lat,l))
+            vertices.extend(self.ll_to_xyz(lat,l))
             pass
         vertices.pop(0)
+        vertices.pop(0)
+        vertices.pop(0)
+        vertices.pop()
+        vertices.pop()
         vertices.pop()
         self.decorations["lat%s"%lat] = {"vectors":vbo.VBO(data=numpy.array(vertices, dtype=numpy.float32), target=GL_ARRAY_BUFFER ),
-                                         "nvertices":len(vertices),
+                                         "nvertices":len(vertices)/3,
                                          }
         pass
     #f line_of_longitude
@@ -87,17 +96,33 @@ class c_view_obj(opengl_app.c_opengl_camera_app):
         vertices = []
         for i in range(n+1):
             l = (360.0*i/n)
-            vertices.append(self.ll_to_xyz(l,lon))
-            vertices.append(self.ll_to_xyz(l,lon))
+            vertices.extend(self.ll_to_xyz(l,lon))
+            vertices.extend(self.ll_to_xyz(l,lon))
             pass
         vertices.pop(0)
+        vertices.pop(0)
+        vertices.pop(0)
+        vertices.pop()
+        vertices.pop()
         vertices.pop()
         self.decorations["lon%s"%lon] = {"vectors":vbo.VBO(data=numpy.array(vertices, dtype=numpy.float32), target=GL_ARRAY_BUFFER ),
-                                         "nvertices":len(vertices),
+                                         "nvertices":len(vertices)/3,
                                          }
         pass
     #f opengl_post_init
     def opengl_post_init(self):
+        font_dir = "../../fonts/"
+        self.load_font(font_dir+"monospace")
+        self.hud = opengl_window.c_opengl_window(og=self, wh=(self.window_size[0],self.window_size[1]), autoclear="depth", layout_class=opengl_layout.c_opengl_layout_place)
+        self.hud_text_info = opengl_widget.c_opengl_simple_text_widget(og=self, xyz=(0,0,0))
+        self.hud_text_info.background_color = None
+        self.hud_text_info.border = None
+        self.hud_text_info.margin = None
+        self.hud_text_info.padding = None
+        self.hud_text_info.replace_text("LOTS OF BLAHLOTS OF BLAHLOTS OF BLAH", scale=(0.3,0.3))
+        self.hud.add_widget(self.hud_text_info)
+        self.hud.background_color = None
+        self.hud.layout()
         self.texture = opengl_utils.texture_from_png(self.texture_filename)
         self.obj.create_opengl_surface()
         for s in self.seals:
@@ -156,7 +181,9 @@ class c_view_obj(opengl_app.c_opengl_camera_app):
             pass
         self.display_min_time = min_t
         self.display_max_time = max_t
-        print min_t, max_t
+        print "Min:",datetime.datetime.utcfromtimestamp(min_t).strftime("%H:%M:%S %d/%m/%y")
+        print "Max:",datetime.datetime.utcfromtimestamp(max_t).strftime("%H:%M:%S %d/%m/%y")
+        pass
     #f keypress
     def keypress(self, key,m,x,y):
         if key in ["1"]:
@@ -185,7 +212,8 @@ class c_view_obj(opengl_app.c_opengl_camera_app):
                                                focus_xxyyzz=(0,0, 0,0, 0,-10))
         self.display_time = max(self.display_min_time, self.display_time)
         if self.display_time>self.display_max_time: self.display_time=self.display_min_time
-        self.display_time += 1000
+        self.display_time += 600
+        hud_text = datetime.datetime.utcfromtimestamp(self.display_time).strftime("%H:%M:%S %d/%m/%y")
 
         self.yyy += 0.03
         color = [0.5,0,0.,0.,1.]
@@ -193,7 +221,6 @@ class c_view_obj(opengl_app.c_opengl_camera_app):
         self.matrix_push()
         brightness = 0.4
 
-        glBindTexture(GL_TEXTURE_2D, self.texture)
         self.matrix_push()
         self.matrix_scale(4)
 
@@ -221,10 +248,14 @@ class c_view_obj(opengl_app.c_opengl_camera_app):
             pass
 
         self.shader_use("texture_standard")
+        glBindTexture(GL_TEXTURE_2D, self.texture)
         self.matrix_use()
         self.obj.draw_opengl_surface(self)
         self.matrix_pop()
         self.matrix_pop()
+
+        self.hud_text_info.replace_text(hud_text, scale=(0.3,0.3))        
+        self.hud.display()
 
         glutSwapBuffers()
         return
@@ -301,7 +332,222 @@ def test_object():
         ("29","seals/2010_2011/AFSMai.29.csv"),
         ("30","seals/2010_2011/AFSMai.30.csv"),
         ]
+    seal_data_years[2011] = [
+        ("W8253","seals/2011_2012/W8253_110112.csv"),
+        ("W8254","seals/2011_2012/W8254_150112.csv"),
+        ("W8257","seals/2011_2012/W8257_140112.csv"),
+        ("W8288","seals/2011_2012/W8288_290212.csv"),
+        ("W8553","seals/2011_2012/W8553_190112.csv"),
+        ("W8554","seals/2011_2012/W8554_220112.csv"),
+        ("W8555","seals/2011_2012/W8555_250112.csv"),
+        ("W8556","seals/2011_2012/W8556_280112.csv"),
+        ("W8557","seals/2011_2012/W8557_020212.csv"),
+        ("W8558","seals/2011_2012/W8558_100212.csv"),
+        ("W8559","seals/2011_2012/W8559_110212.csv"),
+        ("W8560","seals/2011_2012/W8560_200212.csv"),
+        ("W8561","seals/2011_2012/W8561_180212.csv"),
+        ("W8562","seals/2011_2012/W8562_260212.csv"),
+        ]
+    seal_data_years = {}
+    seal_data_years[2012] = {
+        ("ATP01_01","seals/2012_2013/ATP01_01_030113.csv"),
+        ("ATP01_02","seals/2012_2013/ATP01_02_150113.csv"),
+        ("ATP01_03","seals/2012_2013/ATP01_03_310113.csv"),
+        ("ATP01_04","seals/2012_2013/ATP01_04_160213.csv"),
+        ("ATP01_05","seals/2012_2013/ATP01_05_280213.csv"),
+        ("ATP01_06","seals/2012_2013/ATP01_06_160313.csv"),
+        ("ATP01_07","seals/2012_2013/ATP01_07_290313.csv"),
+        ("ATP03_01","seals/2012_2013/ATP03_01_030113.csv"),
+        ("ATP03_02","seals/2012_2013/ATP03_02_150113.csv"),
+        ("ATP03_03","seals/2012_2013/ATP03_03_310113.csv"),
+        ("ATP03_04","seals/2012_2013/ATP03_04_160213.csv"),
+        ("ATP03_05","seals/2012_2013/ATP03_05_240213.csv"),
+        ("ATP03_06","seals/2012_2013/ATP03_06_120313.csv"),
+        ("ATP05_01","seals/2012_2013/ATP05_01_250213.csv"),
+        ("ATP05_02","seals/2012_2013/ATP05_02_130313.csv"),
+        ("ATP05_03","seals/2012_2013/ATP05_03_270313.csv"),
+        ("ATP05_04","seals/2012_2013/ATP05_04_060413.csv"),
+        ("ATP06_01","seals/2012_2013/ATP06_01_040113.csv"),
+        ("ATP06_02","seals/2012_2013/ATP06_02_160113.csv"),
+        ("ATP06_03","seals/2012_2013/ATP06_03_010213.csv"),
+        ("ATP06_04","seals/2012_2013/ATP06_04_170213.csv"),
+        ("ATP06_05","seals/2012_2013/ATP06_05_250213.csv"),
+        ("ATP06_06","seals/2012_2013/ATP06_06_130313.csv"),
+        ("ATP06_07","seals/2012_2013/ATP06_07_250313.csv"),
+        ("ATP07_01","seals/2012_2013/ATP07_01_050113.csv"),
+        ("ATP07_02","seals/2012_2013/ATP07_02_170113.csv"),
+        ("ATP07_03","seals/2012_2013/ATP07_03_020213.csv"),
+        ("ATP07_04","seals/2012_2013/ATP07_04_180213.csv"),
+        ("ATP07_05","seals/2012_2013/ATP07_05_260213.csv"),
+        ("ATP07_06","seals/2012_2013/ATP07_06_140313.csv"),
+        ("ATP07_07","seals/2012_2013/ATP07_07_300313.csv"),
+        ("ATP07_08","seals/2012_2013/ATP07_08_070413.csv"),
+        ("ATP08_01","seals/2012_2013/ATP08_01_050113.csv"),
+        ("ATP08_02","seals/2012_2013/ATP08_02_170113.csv"),
+        ("ATP08_03","seals/2012_2013/ATP08_03_020213.csv"),
+        ("ATP08_04","seals/2012_2013/ATP08_04_180213.csv"),
+        ("ATP08_05","seals/2012_2013/ATP08_05_260213.csv"),
+        ("ATP08_06","seals/2012_2013/ATP08_06_020313.csv"),
+        ("ATP08_08","seals/2012_2013/ATP08_08_240313.csv"),
+        ("ATP09_01","seals/2012_2013/ATP09_01_090113.csv"),
+        ("ATP09_02","seals/2012_2013/ATP09_02_250113.csv"),
+        ("ATP09_03","seals/2012_2013/ATP09_03_100213.csv"),
+        ("ATP09_04","seals/2012_2013/ATP09_04_260213.csv"),
+        ("ATP09_05","seals/2012_2013/ATP09_05_140313.csv"),
+        ("ATP09_06","seals/2012_2013/ATP09_06_040413.csv"),
+        ("ATP10_01","seals/2012_2013/ATP10_01_291212.csv"),
+        ("ATP11_01","seals/2012_2013/ATP11_01_160113.csv"),
+        ("ATP12_01","seals/2012_2013/ATP12_01_260113.csv"),
+        ("ATP12_02","seals/2012_2013/ATP12_02_110213.csv"),
+        ("ATP12_03","seals/2012_2013/ATP12_03_270213.csv"),
+        ("ATP12_04","seals/2012_2013/ATP12_04_070313.csv"),
+        ("ATP13_01","seals/2012_2013/ATP13_01_281212.csv"),
+        ("ATP15_01","seals/2012_2013/ATP15_01_070113.csv"),
+        ("ATP15_02","seals/2012_2013/ATP15_02_230113.csv"),
+        ("ATP15_03","seals/2012_2013/ATP15_03_080213.csv"),
+        ("ATP15_04","seals/2012_2013/ATP15_04_240213.csv"),
+        ("ATP15_05","seals/2012_2013/ATP15_05_120313.csv"),
+        ("ATP16_01","seals/2012_2013/ATP16_01_070113.csv"),
+        ("ATP16_02","seals/2012_2013/ATP16_02_230113.csv"),
+        ("ATP16_03","seals/2012_2013/ATP16_03_080213.csv"),
+        ("ATP16_04","seals/2012_2013/ATP16_04_120313.csv"),
+        ("ATP16_06","seals/2012_2013/ATP16_06_280313.csv"),
+        ("ATP18_01","seals/2012_2013/ATP18_01_311212.csv"),
+        ("ATP19_01","seals/2012_2013/ATP19_01_160113.csv"),
+        ("ATP19_02","seals/2012_2013/ATP19_02_010213.csv"),
+        ("ATP19_03","seals/2012_2013/ATP19_03_170213.csv"),
+        ("ATP19_04","seals/2012_2013/ATP19_04_250213.csv"),
+        ("ATP19_05","seals/2012_2013/ATP19_05_130313.csv"),
+        ("ATP19_06","seals/2012_2013/ATP19_06_250313.csv"),
+        ("ATP19_07","seals/2012_2013/ATP19_07_060413.csv"),
+        ("ATP20_01","seals/2012_2013/ATP20_01_170113.csv"),
+        ("ATP20_02","seals/2012_2013/ATP20_02_020213.csv"),
+        ("ATP20_03","seals/2012_2013/ATP20_03_180213.csv"),
+        ("ATP20_04","seals/2012_2013/ATP20_04_260213.csv"),
+        ("ATP20_05","seals/2012_2013/ATP20_05_140313.csv"),
+        ("ATP21_01","seals/2012_2013/ATP21_01_170113.csv"),
+        ("ATP21_02","seals/2012_2013/ATP21_02_020213.csv"),
+        ("ATP21_03","seals/2012_2013/ATP21_03_180213.csv"),
+        ("ATP21_04","seals/2012_2013/ATP21_04_260213.csv"),
+        ("ATP21_05","seals/2012_2013/ATP21_05_140313.csv"),
+        ("ATP21_06","seals/2012_2013/ATP21_06_050413.csv"),
+        ("ATP21_07","seals/2012_2013/ATP21_07_150413.csv"),
+        ("ATP21_08","seals/2012_2013/ATP21_08_190413.csv"),
+        ("ATP23_01","seals/2012_2013/ATP23_01_150113.csv"),
+        ("ATP23_02","seals/2012_2013/ATP23_02_310113.csv"),
+        ("ATP23_03","seals/2012_2013/ATP23_03_160213.csv"),
+        ("ATP23_04","seals/2012_2013/ATP23_04_250213.csv"),
+        ("ATP23_05","seals/2012_2013/ATP23_05_120313.csv"),
+        ("ATP23_06","seals/2012_2013/ATP23_06_010413.csv"),
+        ("ATP24_01","seals/2012_2013/ATP24_01_280113.csv"),
+        ("ATP24_02","seals/2012_2013/ATP24_02_130213.csv"),
+        ("ATP24_03","seals/2012_2013/ATP24_03_250213.csv"),
+        ("ATP24_04","seals/2012_2013/ATP24_04_130313.csv"),
+        ("ATP24_05","seals/2012_2013/ATP24_05_170313.csv"),
+        ("ATP24_06","seals/2012_2013/ATP24_06_250313.csv"),
+        ("ATP24_07","seals/2012_2013/ATP24_07_060413.csv"),
+        ("ATP24_08","seals/2012_2013/ATP24_08_150413.csv"),
+        ("ATP24_09","seals/2012_2013/ATP24_09_190413.csv"),
+        ("ATP26_01","seals/2012_2013/ATP26_01_260213.csv"),
+        ("ATP26_02","seals/2012_2013/ATP26_02_140313.csv"),
+        ("ATP26_03","seals/2012_2013/ATP26_03_050413.csv"),
+        ("ATP28_01","seals/2012_2013/ATP28_01_170113.csv"),
+        ("ATP28_02","seals/2012_2013/ATP28_02_020213.csv"),
+        ("ATP28_03","seals/2012_2013/ATP28_03_180213.csv"),
+        ("ATP28_04","seals/2012_2013/ATP28_04_260213.csv"),
+        ("ATP28_05","seals/2012_2013/ATP28_05_140313.csv"),
+        ("ATP28_06","seals/2012_2013/ATP28_06_280313.csv"),
+        ("ATP28_07","seals/2012_2013/ATP28_07_070413.csv"),
+        ("ATP29_01","seals/2012_2013/ATP29_01_170113.csv"),
+        ("ATP29_02","seals/2012_2013/ATP29_02_220113.csv"),
+        ("ATP30_01","seals/2012_2013/ATP30_01_180113.csv"),
+        ("ATP30_02","seals/2012_2013/ATP30_02_030213.csv"),
+        ("ATP30_03","seals/2012_2013/ATP30_03_190213.csv"),
+        ("ATP30_04","seals/2012_2013/ATP30_04_270213.csv"),
+        ("ATP30_05","seals/2012_2013/ATP30_05_150313.csv"),
+        ("ATP30_06","seals/2012_2013/ATP30_06_280313.csv"),
+        ("ATP31_01","seals/2012_2013/ATP31_01_260213.csv"),
+        ("ATP31_02","seals/2012_2013/ATP31_02_150313.csv"),
+        ("ATP31_03","seals/2012_2013/ATP31_03_260313.csv"),
+        ("ATP32_01","seals/2012_2013/ATP32_01_260113.csv"),
+        ("ATP32_02","seals/2012_2013/ATP32_02_110213.csv"),
+        ("ATP32_03","seals/2012_2013/ATP32_03_230213.csv"),
+        ("ATP32_05","seals/2012_2013/ATP32_05_080313.csv"),
+        ("ATP33_01","seals/2012_2013/ATP33_01_190113.csv"),
+        ("ATP33_02","seals/2012_2013/ATP33_02_040213.csv"),
+        ("ATP33_03","seals/2012_2013/ATP33_03_200213.csv"),
+        ("ATP33_04","seals/2012_2013/ATP33_04_240213.csv"),
+        ("ATP33_05","seals/2012_2013/ATP33_05_120313.csv"),
+        ("ATP33_06","seals/2012_2013/ATP33_06_280313.csv"),
+        ("ATP34_01","seals/2012_2013/ATP34_01_190113.csv"),
+        ("ATP34_02","seals/2012_2013/ATP34_02_040213.csv"),
+        ("ATP34_03","seals/2012_2013/ATP34_03_200213.csv"),
+        ("ATP34_04","seals/2012_2013/ATP34_04_240213.csv"),
+        ("ATP34_05","seals/2012_2013/ATP34_05_120313.csv"),
+        ("ATP34_06","seals/2012_2013/ATP34_06_290313.csv"),
+        ("ATP36_01","seals/2012_2013/ATP36_01_200113.csv"),
+        ("ATP36_02","seals/2012_2013/ATP36_02_050213.csv"),
+        ("ATP36_03","seals/2012_2013/ATP36_03_200213.csv"),
+        ("ATP36_04","seals/2012_2013/ATP36_04_250213.csv"),
+        ("ATP36_05","seals/2012_2013/ATP36_05_130313.csv"),
+        ("ATP37_01","seals/2012_2013/ATP37_01_280113.csv"),
+        ("ATP37_02","seals/2012_2013/ATP37_02_130213.csv"),
+        ("ATP37_03","seals/2012_2013/ATP37_03_250213.csv"),
+        ("ATP37_04","seals/2012_2013/ATP37_04_130313.csv"),
+        ("ATP37_05","seals/2012_2013/ATP37_05_250313.csv"),
+        ("ATP37_06","seals/2012_2013/ATP37_06_060413.csv"),
+        ("ATP38_01","seals/2012_2013/ATP38_01_240113.csv"),
+        ("ATP38_02","seals/2012_2013/ATP38_02_030213.csv"),
+        ("ATP40_01","seals/2012_2013/ATP40_01_260113.csv"),
+        ("ATP40_02","seals/2012_2013/ATP40_02_110213.csv"),
+        ("ATP40_03","seals/2012_2013/ATP40_03_270213.csv"),
+        ("ATP40_04","seals/2012_2013/ATP40_04_170313.csv"),
+        ("ATP40_05","seals/2012_2013/ATP40_05_290313.csv"),
+        ("ATP40_06","seals/2012_2013/ATP40_06_080413.csv"),
+        ("ATP43_01","seals/2012_2013/ATP43_01_010313.csv"),
+        ("ATP43_02","seals/2012_2013/ATP43_02_170313.csv"),
+        ("ATP43_03","seals/2012_2013/ATP43_03_290313.csv"),
+        ("ATP43_04","seals/2012_2013/ATP43_04_100413.csv"),
+        ("ATP44_01","seals/2012_2013/ATP44_01_240113.csv"),
+        ("ATP44_02","seals/2012_2013/ATP44_02_090213.csv"),
+        ("ATP44_03","seals/2012_2013/ATP44_03_250213.csv"),
+        ("ATP44_04","seals/2012_2013/ATP44_04_130313.csv"),
+        ("ATP44_05","seals/2012_2013/ATP44_05_250313.csv"),
+        ("ATP44_06","seals/2012_2013/ATP44_06_070413.csv"),
+        ("ATP44_07","seals/2012_2013/ATP44_07_160413.csv"),
+        ("ATP46_01","seals/2012_2013/ATP46_01_240113.csv"),
+        ("ATP46_02","seals/2012_2013/ATP46_02_090213.csv"),
+        }
+    seal_data_years = {}
+    seal_data_years[2012] = {
 
+        ("ATP46_03","seals/2012_2013/ATP46_03_250213.csv"),
+        ("ATP46_04","seals/2012_2013/ATP46_04_130313.csv"),
+        ("ATP46_05","seals/2012_2013/ATP46_05_250313.csv"),
+        ("ATP46_06","seals/2012_2013/ATP46_06_070413.csv"),
+        ("ATP47_01","seals/2012_2013/ATP47_01_150313.csv"),
+        ("ATP47_02","seals/2012_2013/ATP47_02_310313.csv"),
+        ("ATP47_03","seals/2012_2013/ATP47_03_080413.csv"),
+        ("W8940","seals/2012_2013/W8940_01_170313.csv"),
+        ("W8944","seals/2012_2013/W8944_01_140313.csv"),
+        ("W8945","seals/2012_2013/W8945_01_080313.csv"),
+        ("W8946","seals/2012_2013/W8946_01_260313.csv"),
+        ("W8947","seals/2012_2013/W8947_01_080413.csv"),
+        ("W8948","seals/2012_2013/W8948_01_050313.csv"),
+        ("W8951","seals/2012_2013/W8951_01_100313.csv"),
+        ("W8955","seals/2012_2013/W8955_01_160313.csv"),
+        ("W8960","seals/2012_2013/W8960_01_110313.csv"),
+        ("W8965","seals/2012_2013/W8965_01_260313.csv"),
+        ("W8967","seals/2012_2013/W8967_01_280313.csv"),
+        ("W8969","seals/2012_2013/W8969_01_060313.csv"),
+        ("W8970","seals/2012_2013/W8970_01_060313.csv"),
+        ("W8973","seals/2012_2013/W8973_01_290313.csv"),
+        ("W8975","seals/2012_2013/W8975_01_210313.csv"),
+        ("W8976","seals/2012_2013/W8976_01_010313.csv"),
+        ("W8983","seals/2012_2013/W8983_01_160313.csv"),
+        ("W8985","seals/2012_2013/W8985_01_030313.csv"),
+        ("W8986","seals/2012_2013/W8986_01_140313.csv"),
+        }
 
     seals = {}
     for y in seal_data_years:
@@ -314,13 +560,13 @@ def test_object():
             pass
         pass
     for k in seals:
-        seals[k].load()
+        seals[k].load(max_pdop=100)
         pass
 
     obj = opengl_obj.c_opengl_obj()
 
     draft = True
-    draft = False
+    #draft = False
     texture_filename = "earth_ico2048.png"
     subdivide = 5
     if draft:
@@ -331,7 +577,7 @@ def test_object():
     og = c_view_obj(obj=obj,
                     seals=seals,
                     texture_filename=texture_filename,
-                    window_size=(1200,1200))
+                    window_size=(1000,1000))
     og.init_opengl()
     og.seal_hack = True
     og.camera["fov"] = 3

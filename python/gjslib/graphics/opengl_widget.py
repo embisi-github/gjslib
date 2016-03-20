@@ -475,6 +475,7 @@ class c_opengl_simple_text_widget(c_opengl_widget):
         self.og_obj.reset()
         if text is not None:
             self.og_obj.add_text(text, self.bitmap_font, baseline_xy, scale=(scale[0]*self.scale[0], scale[1]*self.scale[1]) )
+            self.og_obj.gjs = True
             self.og_obj.create_opengl_surface()
             pass
         pass
